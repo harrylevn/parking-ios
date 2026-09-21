@@ -36,46 +36,146 @@ final class LoginViewModel: ObservableObject {
             // AUTH_FAILED is a failed sign-in, not a dead session: show the message and stay
             // put. The reference web client signs the user out here, which is wrong.
             errorMessage = error.userFacingMessage
+            Haptics.play(.error)
         } catch {
             errorMessage = String(describing: error)
+            Haptics.play(.error)
         }
     }
 }
 
 struct LoginView: View {
     @StateObject var model: LoginViewModel
+    @FocusState private var focus: Field?
+
+    private enum Field { case plate, password }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("Licence plate", text: $model.licensePlate)
-                        .textInputAutocapitalization(.characters)
-                        .autocorrectionDisabled()
-                        .accessibilityIdentifier("login.plate")
-                    SecureField("Password", text: $model.password)
-                        .accessibilityIdentifier("login.password")
-                } footer: {
-                    if let message = model.errorMessage {
-                        Text(message)
-                            .foregroundStyle(.red)
-                            .accessibilityIdentifier("login.error")
-                    }
-                }
+        ZStack {
+            Theme.Palette.canvas.ignoresSafeArea()
 
-                Section {
-                    Button("Sign in") { Task { await model.signIn() } }
+            ScrollView {
+                VStack(spacing: 22) {
+                    masthead
+
+                    VStack(spacing: 12) {
+                        field(
+                            icon: "car.fill", title: "Licence plate",
+                            identifier: "login.plate", focused: focus == .plate
+                        ) {
+                            TextField("ABC-123", text: $model.licensePlate)
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .textContentType(.username)
+                                .focused($focus, equals: .plate)
+                                .submitLabel(.next)
+                                .onSubmit { focus = .password }
+                                .font(.body.monospaced())
+                        }
+
+                        field(
+                            icon: "lock.fill", title: "Password",
+                            identifier: "login.password", focused: focus == .password
+                        ) {
+                            SecureField("At least 6 characters", text: $model.password)
+                                .textContentType(.password)
+                                .focused($focus, equals: .password)
+                                .submitLabel(.go)
+                                .onSubmit { Task { await model.signIn() } }
+                        }
+
+                        if let message = model.errorMessage {
+                            Label(message, systemImage: "exclamationmark.circle.fill")
+                                .font(.footnote)
+                                .foregroundStyle(Theme.Palette.danger)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .accessibilityIdentifier("login.error")
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+                    }
+                    .card()
+
+                    VStack(spacing: 10) {
+                        Button {
+                            Task { await model.signIn() }
+                        } label: {
+                            if model.isBusy {
+                                ProgressView().tint(.white)
+                            } else {
+                                Text("Sign in")
+                            }
+                        }
+                        .buttonStyle(PrimaryButtonStyle())
                         .disabled(!model.canSubmit)
                         .accessibilityIdentifier("login.submit")
-                    Button("Create account") { Task { await model.register() } }
-                        .disabled(!model.canSubmit)
-                        .accessibilityIdentifier("login.register")
+
+                        Button("Create an account") { Task { await model.register() } }
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Theme.Palette.accent)
+                            .frame(minHeight: Theme.Metric.tapTarget)
+                            .disabled(!model.canSubmit)
+                            .accessibilityIdentifier("login.register")
+                    }
                 }
+                .padding(Theme.Metric.gutter)
+                .frame(maxWidth: 480)
+                .frame(maxWidth: .infinity)
             }
-            .navigationTitle("Parking")
-            .overlay {
-                if model.isBusy { ProgressView() }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .animation(.snappy(duration: 0.2), value: model.errorMessage)
+        .tint(Theme.Palette.accent)
+    }
+
+    private var masthead: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Theme.Palette.accentFill)
+                    .frame(width: 74, height: 74)
+                Image(systemName: "parkingsign")
+                    .font(.system(size: 34, weight: .semibold))
+                    .foregroundStyle(Theme.Palette.accent)
+            }
+
+            VStack(spacing: 4) {
+                Text("Parking")
+                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                    .foregroundStyle(Theme.Palette.ink)
+                Text("80 spaces. Opens at 20:00 for tomorrow.")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.Palette.inkMuted)
             }
         }
+        .padding(.top, 36)
+        .padding(.bottom, 4)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func field<Content: View>(
+        icon: String,
+        title: String,
+        identifier: String,
+        focused: Bool,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(title, systemImage: icon)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.Palette.inkMuted)
+            content()
+                .frame(minHeight: Theme.Metric.tapTarget - 10)
+                .padding(.horizontal, 12)
+                .background(Theme.Palette.canvas, in: .rect(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(
+                            focused ? Theme.Palette.accent : Theme.Palette.hairline,
+                            lineWidth: focused ? 1.5 : 1
+                        )
+                )
+                .accessibilityIdentifier(identifier)
+        }
+        .animation(.easeOut(duration: 0.15), value: focused)
     }
 }

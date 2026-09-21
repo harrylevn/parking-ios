@@ -167,3 +167,68 @@ the compiler enforces that each is handled.
 - **A queue-position UI.** The backend already returns `queuePosition` and
   `totalProcessingMs`. With push, "you are 340th of 1000" would turn the 92% failure case
   from a rejection into something legible.
+
+---
+
+## 7. Interface, as built
+
+Screens: `docs/screenshots/`. Captured by `ScreenshotTests`, which drives the real app
+against the live backend — so they are a record of behaviour, not a mock-up, and re-running
+them is the demo rehearsal.
+
+### 7.1 Why the board does not look like the reference web client
+
+The web client paints available spaces green and taken spaces **red**. At 20:00 the board
+goes almost entirely taken, so that design renders 80 red tiles — a screen that reads as
+80 errors when nothing has gone wrong. Someone else simply got there first.
+
+Here, taken is a calm slate with a dashed border, and colour is spent only where it carries
+meaning: green for what you can act on, amber for the space that is yours. Availability is
+carried by border *style* as well as colour, so the board survives greyscale and
+colour-blindness.
+
+### 7.2 Density versus touch target
+
+Two guardrails pull against each other: "all 80 spaces legible on a 6.1-inch screen without
+pinch-zoom" and "44pt minimum touch targets". At 80 cells they cannot both be fully
+satisfied — seven columns of 44pt-plus cells is 12 rows, which is around 70 cells above the
+fold and a short scroll for the rest.
+
+I chose to honour the 44pt target and accept the scroll, rather than shrink cells to fit.
+A board you can see but cannot reliably tap is worse than one you scroll once. The cell
+carries only the number and the plate suffix the brief requires, so nothing is spent on
+decoration, and the hit area is extended into the gutter so the real target clears 44pt.
+
+### 7.3 Selecting and confirming are separate
+
+One tap on the board selects; a second, deliberate tap on the confirm bar spends the money.
+The guardrail is one tap, one attempt — and a board of 80 small targets is a bad place to
+commit $10 on a mis-tap. The confirm bar states the space, the price and the balance after,
+so the commitment is legible before it is made.
+
+### 7.4 The losing sheet is designed, not a fallback
+
+92% of users lose. `OutcomeSheet` therefore gives losing the same care as winning: it names
+what happened, never blames the user, and always offers a next action ("Pick another space").
+The fourth state — *"We're not sure yet"* — is the one most clients would not have, and it
+exists because §3.1 means there are genuinely outcomes the client cannot resolve.
+
+## 8. Bugs this design work surfaced
+
+Three real defects, all found by building the interface rather than by reading code:
+
+1. **A card's hairline overlay swallowed every touch inside it.** The `.overlay(...)`
+   carrying the border sat above the card's contents, so all 80 grid cells were untappable
+   while controls outside a card still worked. Fixed with `.allowsHitTesting(false)`.
+2. **The clock published at 1 Hz whether or not anything changed.** Writing an identical
+   value to an `@Published` property still fires `objectWillChange`, so the entire screen
+   invalidated 60 times a minute at rest. `updateClock()` now assigns only on change, and
+   `refresh()` skips publishing when the board is byte-identical — which is the common case,
+   since the grid changes at most 80 times a day. This is what the "no full-grid flicker"
+   guardrail actually requires.
+3. **Two `.sheet` modifiers on one view.** SwiftUI silently ignores the second, so the
+   outcome sheet never appeared unless the wallet sheet had been opened first. Replaced with
+   a single sheet driven by an `ActiveSheet` enum.
+
+All three were invisible to the unit tests and only showed up when the UI was driven for
+real. That is the argument for the UI test existing at all.

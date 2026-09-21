@@ -57,9 +57,24 @@ final class AppEnvironment: ObservableObject {
             reservations: ReservationService(client: client),
             tokenStore: tokenStore,
             serverClock: serverClock,
-            reauth: BiometricReauthenticator(),
+            reauth: Self.reauthenticator(),
             window: ReservationWindow(openingHour: hour)
         )
+    }
+
+    /// Biometric re-authentication, unless a UI test has asked for it to be stood down.
+    ///
+    /// A UI test cannot satisfy Face ID or type a device passcode, so without this the
+    /// reserve flow is simply untestable end to end. The override is compiled out of
+    /// release builds entirely — it cannot be triggered by launch arguments on a shipped
+    /// binary, which is the property that makes it acceptable to have at all.
+    private static func reauthenticator() -> Reauthenticating {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-UITestSkipReauth") {
+            return AlwaysAllowReauthenticator()
+        }
+        #endif
+        return BiometricReauthenticator()
     }
 
     /// Deterministic in-memory stack for UI tests, selected by the `-UITestMode` launch
@@ -67,14 +82,18 @@ final class AppEnvironment: ObservableObject {
     /// stays green whether or not the Spring Boot service happens to be up.
     static func uiTesting() -> AppEnvironment {
         let tokenStore = InMemoryTokenStore()
-        let spaces = StubSpacesService()
+        let clock = ServerClock()
+        // The stubs never go through HTTPClient, so nothing would ever feed the clock a
+        // `Date` header and the UI would sit on "Checking server time…" forever. Seeding it
+        // keeps the fake stack behaving like the real one.
+        Task { await clock.ingest(serverDate: Date()) }
         return AppEnvironment(
             auth: StubAuthService(tokenStore: tokenStore),
-            spaces: spaces,
+            spaces: StubSpacesService(),
             wallet: StubWalletService(),
             reservations: StubReservationService(),
             tokenStore: tokenStore,
-            serverClock: ServerClock(),
+            serverClock: clock,
             reauth: AlwaysAllowReauthenticator(),
             window: ReservationWindow(openingHour: 0)
         )
@@ -102,12 +121,16 @@ private struct StubAuthService: AuthServicing {
 }
 
 private struct StubSpacesService: SpacesServicing {
+    /// Fixed, not `Date()`: a stub whose value changes on every poll would defeat the
+    /// no-op diffing in `GridViewModel.refresh()` and keep the view permanently redrawing.
+    private static let date = Date()
+
     func grid() async throws -> SpaceGrid {
         let spaces = (1...80).map {
             ParkingSpace(number: $0, isAvailable: $0 % 4 != 0, plateLast3: $0 % 4 == 0 ? "042" : nil)
         }
         return SpaceGrid(
-            date: Date(), totalSpaces: 80,
+            date: Self.date, totalSpaces: 80,
             availableSpaces: spaces.filter(\.isAvailable).count,
             reservedSpaces: spaces.filter { !$0.isAvailable }.count,
             spaces: spaces

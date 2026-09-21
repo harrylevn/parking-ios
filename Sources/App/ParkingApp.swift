@@ -21,7 +21,7 @@ struct RootView: View {
         if environment.account == nil {
             LoginView(model: LoginViewModel(environment: environment))
         } else {
-            GridView(model: GridViewModel(environment: environment))
+            DashboardView(model: GridViewModel(environment: environment))
         }
     }
 }

@@ -7,6 +7,11 @@ enum GridState: Equatable {
     case empty
     case offline
     case failed(String)
+
+    var grid: SpaceGrid? {
+        if case .loaded(let grid) = self { return grid }
+        return nil
+    }
 }
 
 @MainActor
@@ -22,17 +27,39 @@ final class GridViewModel: ObservableObject {
     @Published private(set) var countdown: TimeInterval?
     @Published private(set) var isWindowOpen = false
     @Published private(set) var isClockSkewed = false
-    @Published var balance: Decimal = 0
+    @Published private(set) var hasServerTime = false
+    @Published private(set) var balance: Decimal = 0
+    @Published private(set) var depositError: String?
+    @Published var selectedSpace: Int?
 
     private let environment: AppEnvironment
     private var pollTask: Task<Void, Never>?
 
     init(environment: AppEnvironment) {
         self.environment = environment
+        self.balance = environment.account?.balance ?? 0
     }
 
     deinit {
         pollTask?.cancel()
+    }
+
+    var plate: String { environment.account?.licensePlate ?? "" }
+
+    /// The space this vehicle appears to hold, matched on the last three plate characters.
+    ///
+    /// Returns `nil` when two spaces share our suffix: with three characters across 80 cells
+    /// a collision is possible, and highlighting the wrong space is worse than highlighting
+    /// none. Same rule as `ReservationCoordinator` — never claim what cannot be substantiated.
+    var mySpace: Int? {
+        guard let grid = state.grid, !plate.isEmpty else { return nil }
+        let suffix = String(plate.suffix(3))
+        let matches = grid.spaces.filter { !$0.isAvailable && $0.plateLast3 == suffix }
+        return matches.count == 1 ? matches.first?.number : nil
+    }
+
+    var canReserve: Bool {
+        isWindowOpen && mySpace == nil && !isReserving
     }
 
     /// Structured concurrency: the loop is owned by a task that is cancelled on view
@@ -56,10 +83,15 @@ final class GridViewModel: ObservableObject {
     func refresh() async {
         do {
             let grid = try await environment.spaces.grid()
-            // Diffing is left to SwiftUI's identity: cells are keyed on space number, so a
-            // refresh that changes two cells redraws two cells, with no full-grid flicker
-            // and no scroll jump.
-            state = grid.spaces.isEmpty ? .empty : .loaded(grid)
+            // Two levels of diffing, both required by the "no full-grid flicker or scroll
+            // jump on update" guardrail:
+            //  1. If the poll returns an identical board — the common case, since the grid
+            //     changes at most 80 times in a day — nothing is published at all, so
+            //     SwiftUI does no work.
+            //  2. When it does differ, cells are keyed on space number, so SwiftUI redraws
+            //     only the cells that actually changed.
+            let next: GridState = grid.spaces.isEmpty ? .empty : .loaded(grid)
+            if state != next { state = next }
         } catch let error as APIError {
             switch error {
             case .unauthenticated:
@@ -74,34 +106,84 @@ final class GridViewModel: ObservableObject {
         }
     }
 
+    /// The countdown ticks once a second, but the grid is only refetched every 5 seconds —
+    /// the clock is extrapolated locally, so a smooth countdown costs no requests.
+    func tickClock() async {
+        await updateClock()
+    }
+
+    /// Assigns only on change.
+    ///
+    /// This ticks once a second. Writing the same value back to an `@Published` property
+    /// still fires `objectWillChange`, so an unguarded version invalidates the whole screen
+    /// 60 times a minute whether or not anything moved — which burns battery, and leaves the
+    /// view hierarchy permanently unsettled (UI tests cannot interact with a view that never
+    /// stops re-rendering).
     private func updateClock() async {
-        guard await environment.serverClock.hasReading(),
-              let now = await environment.serverClock.now() else {
+        let hasReading = await environment.serverClock.hasReading()
+        if hasServerTime != hasReading { hasServerTime = hasReading }
+
+        guard hasReading, let now = await environment.serverClock.now() else {
             // No server reading yet: show no countdown at all rather than fall back to the
             // device clock, which the user can trivially change.
-            countdown = nil
+            if countdown != nil { countdown = nil }
             return
         }
-        isWindowOpen = environment.window.isOpen(at: now)
-        countdown = environment.window.timeUntilOpening(from: now)
-        isClockSkewed = await environment.serverClock.isSkewSignificant()
+
+        let open = environment.window.isOpen(at: now)
+        if isWindowOpen != open { isWindowOpen = open }
+
+        // Whole seconds only: the Date header has one-second granularity, so anything finer
+        // would be invented precision — and it keeps this to one update per second at most.
+        let remaining = environment.window.timeUntilOpening(from: now).map { $0.rounded(.down) }
+        if countdown != remaining { countdown = remaining }
+
+        let skewed = await environment.serverClock.isSkewSignificant()
+        if isClockSkewed != skewed { isClockSkewed = skewed }
     }
 
     func reserve(space: Int?) async {
-        guard !isReserving, let plate = environment.account?.licensePlate else { return }
+        guard !isReserving, !plate.isEmpty else { return }
         isReserving = true
         defer { isReserving = false }
 
-        outcome = await environment.coordinator.attempt(preferredSpace: space, plate: plate)
+        let result = await environment.coordinator.attempt(preferredSpace: space, plate: plate)
+        outcome = result
 
-        if case .won(let reservation) = outcome {
+        switch result {
+        case .won(let reservation):
             balance = reservation.newBalance
+            selectedSpace = nil
+            Haptics.play(.success)
+        case .lost:
+            Haptics.play(.warning)
+        case .unknown, .rejected:
+            Haptics.play(.error)
         }
+
         await refresh()
+    }
+
+    func deposit(_ amount: Decimal) async {
+        depositError = nil
+        do {
+            balance = try await environment.wallet.deposit(amount: amount)
+            environment.account?.balance = balance
+            Haptics.play(.success)
+        } catch let error as APIError {
+            depositError = error.userFacingMessage
+        } catch {
+            depositError = String(describing: error)
+        }
     }
 
     func dismissOutcome() {
         outcome = nil
+    }
+
+    func signOut() {
+        stopPolling()
+        environment.signOut()
     }
 }
 
@@ -121,7 +203,7 @@ extension APIError {
         case .business(let response):
             switch response.code {
             case .spaceUnavailable:
-                return String(localized: "Someone took that space first.")
+                return String(localized: "Someone reached that space first.")
             case .lotFull:
                 return String(localized: "Every space is taken for tomorrow.")
             case .alreadyReserved:
