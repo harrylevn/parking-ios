@@ -1,0 +1,87 @@
+name: Parking
+options:
+  bundleIdPrefix: com.vncdc.parking
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    # Guardrail 6.1: -strict-concurrency=complete clean, zero build warnings.
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    GCC_TREAT_WARNINGS_AS_ERRORS: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    # Build number derives from the commit count in CI, never hand-edited (6.4).
+    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "1.0.0"
+
+targets:
+  Parking:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    info:
+      path: Sources/App/Info.plist
+      properties:
+        CFBundleDisplayName: Parking
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # Face ID re-authentication before submitting a reservation (6.5).
+        NSFaceIDUsageDescription: Confirms it is you before a parking space is reserved.
+        # The local backend is plaintext HTTP. Scoped to localhost only, and this
+        # exception is documented in docs/security.md as a local-development bypass.
+        NSAppTransportSecurity:
+          NSExceptionDomains:
+            localhost:
+              NSExceptionAllowsInsecureHTTPLoads: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vncdc.parking
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+
+  ParkingTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/UnitTests
+    dependencies:
+      - target: Parking
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vncdc.parking.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+  ParkingUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/UITests
+    dependencies:
+      - target: Parking
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vncdc.parking.uitests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Parking:
+    build:
+      targets:
+        Parking: all
+        ParkingTests: [test]
+        ParkingUITests: [test]
+    test:
+      gatherCoverageData: true
+      targets:
+        - ParkingTests
+        - ParkingUITests
+    run:
+      config: Debug

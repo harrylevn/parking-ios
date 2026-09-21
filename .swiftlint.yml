@@ -1,0 +1,54 @@
+# SwiftLint at zero violations on the demo branch (6.4, Default column).
+included:
+  - Sources
+  - Tests
+
+analyzer_rules:
+  - unused_import
+
+opt_in_rules:
+  - array_init
+  - closure_spacing
+  - contains_over_first_not_nil
+  - empty_count
+  - explicit_init
+  - first_where
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - last_where
+  - literal_expression_end_indentation
+  - multiline_parameters
+  - overridden_super_call
+  - redundant_nil_coalescing
+  - toggle_bool
+  - unneeded_parentheses_in_closure_argument
+  - yoda_condition
+
+disabled_rules:
+  - todo
+
+line_length:
+  warning: 110
+  error: 140
+  ignores_comments: false
+
+type_body_length:
+  warning: 300
+  error: 400
+
+file_length:
+  warning: 400
+  error: 600
+
+identifier_name:
+  min_length: 2
+  excluded: [id, up, to]
+
+force_cast: error
+force_try: error
+force_unwrapping:
+  severity: error
+
+# Tests legitimately use force unwrapping for fixtures.
+excluded:
+  - Tests/UITests

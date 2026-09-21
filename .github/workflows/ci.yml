@@ -1,0 +1,57 @@
+name: CI
+
+# Guardrail 6.4: CI on every push — build, lint, unit tests, UI tests on a simulator.
+#
+# Runs on a self-hosted runner on the Mac mini, not on GitHub's macOS runners. That is
+# arithmetic, not preference: GitHub Free grants ~200 macOS minutes a month, and this
+# workflow takes roughly 6 minutes, so hosted runners would cover about 12 runs across the
+# whole fortnight. "CI on every push" is not achievable on the free tier.
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # archive derives the build number from the commit count
+
+      - name: Tool versions
+        run: |
+          xcodebuild -version
+          swiftlint version
+          xcodegen --version
+
+      - name: Generate project
+        run: make project
+
+      - name: Lint
+        run: make lint
+
+      - name: Build
+        run: make build
+
+      - name: Unit tests
+        run: make test
+
+      - name: UI tests
+        run: make uitest
+
+      - name: Archive
+        run: make archive
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: .build/DerivedData/Logs/Test
+          if-no-files-found: ignore

@@ -1,0 +1,191 @@
+# Backend defect report
+
+The backend is read-only per the brief's guardrail: nothing here was patched. Each item
+records what was observed, how to reproduce it, and how the client works around it.
+
+Backend under test: `trint218/parking-reservation`, branch `master`, commit `f27120c`.
+Verified 2026-09-21 against a local run (Spring Boot 3.3.4, Java 21, Postgres 15, Redis 7).
+
+---
+
+## D1 — The brief's own flag form silently fails to enable the time gate
+
+**Severity: high.** Following the documented instruction produces the opposite of the
+intended configuration, with no error.
+
+The brief and the README both say to run the backend with
+`-Dapp.reservation.bypass-time-check=false`. Passed that way, the gate stays **bypassed**:
+`spring-boot:run` forks a separate JVM which does not inherit Maven's `-D` system properties.
+
+Reproduce:
+```
+mvn spring-boot:run -Dapp.reservation.bypass-time-check=false
+# then, at any time outside the window, with window-hour=20:
+POST /reservations  ->  HTTP 200      (expected WINDOW_CLOSED)
+```
+Observed 2026-09-21 15:45 (+07): a reservation succeeded against `window-hour=20`.
+
+Correct form, verified to engage the gate:
+```
+mvn spring-boot:run -Dspring-boot.run.jvmArguments="-Dapp.reservation.bypass-time-check=false"
+```
+The same call then returned `WINDOW_CLOSED`.
+
+**Impact.** Anyone following the documentation believes the 20:00 gate is active while it is
+off, so all race handling appears to work and is in fact never exercised.
+
+**Workaround.** `scripts/backend-up.sh` uses the working form. The demo asserts a
+`WINDOW_CLOSED` response before the race is shown, so a misconfigured backend fails loudly
+rather than silently passing.
+
+---
+
+## D2 — `WINDOW_CLOSED` is returned as HTTP 429
+
+A closed reservation window returns `429 Too Many Requests`:
+```json
+{"status":429,"error":"Too Many Requests","code":"WINDOW_CLOSED", ...}
+```
+429 conventionally means rate limiting, and both `URLSession` and most HTTP middleware treat
+it as a retry-with-backoff signal. Retrying a closed window is useless — it opens on a clock,
+not on backoff — and at 20:00 scale it is a self-inflicted thundering herd. `403` or `409`
+would carry the correct semantics.
+
+**Workaround.** The client classifies on the `code` field and never on HTTP status;
+`APIError.isSafelyRetryable` returns `false` for `windowClosed` despite the 429.
+Covered by `ErrorDecodingTests.testWindowClosedArrivesAs429AndIsNotRetryable`.
+
+---
+
+## D3 — Two different 401 shapes, only one documented
+
+| Trigger | Status | Body | Header |
+|---|---|---|---|
+| missing / malformed / expired token | 401 | empty, `Content-Length: 0` | `WWW-Authenticate: Bearer` |
+| wrong password on `/auth/login` | 401 | full JSON, `code: AUTH_FAILED` | none |
+
+The first is produced by the Spring Security filter chain, which runs before
+`GlobalExceptionHandler` (a `@RestControllerAdvice`) and so never reaches it. The brief
+documents only this one.
+
+**Impact.** A client that decodes every 401 as JSON throws on the empty body. A client that
+treats every 401 as an expired session signs the user out when they merely mistype a password
+— which is exactly what the reference web client in `frontend/` does
+(`src/services/api.ts` clears storage and redirects on any 401).
+
+**Workaround.** `HTTPClient.decodeFailure` branches on body emptiness, not status, and
+`APIError.requiresReauthentication` is true only for the bare 401. Covered by
+`ErrorDecodingTests.testBare401…` and `…testAuthFailed401…`.
+
+---
+
+## D4 — No idempotency key, and no way to reconcile a lost response
+
+`ReservationRequest` exposes only `preferredSpaceNumber`. Idempotency is derived
+**server-side** from `(userId, date)` in `RedisLockService.checkAndSetIdempotency`, and
+`ReservationService.reserve` clears that key in its `finally` block on failure.
+
+Consequently, after a network timeout the client cannot determine what happened:
+- retrying returns `DUPLICATE_REQUEST`, which means *either* "still in flight" *or*
+  "already succeeded";
+- there is **no `GET /reservations`** endpoint to ask;
+- the only reconciliation surface is `GET /spaces`, matched on `plateLast3` — three
+  characters, so two plates can collide and the client cannot tell which space is its own.
+
+**Suggested fix.** Accept a client-supplied `Idempotency-Key` header and return the original
+response for a repeat, or expose `GET /reservations/me`.
+
+**Workaround.** `ReservationCoordinator` issues exactly one attempt per tap, never retries a
+timed-out reservation, reconciles against the grid, and reports
+`ReservationOutcome.unknown` when it cannot prove the result — rather than guessing. Covered
+by `ReservationCoordinatorTests`.
+
+---
+
+## D5 — No time endpoint, and the window's time zone is undiscoverable
+
+The 20:00 gate is evaluated with `LocalTime.now()` in the **JVM default time zone**, while
+`spring.jackson.time-zone` is pinned to `Asia/Bangkok`. Nothing in the API exposes either the
+server's current time or its zone, yet the brief requires a countdown derived from server
+time rather than the device clock.
+
+The gate is also hour-granularity with **no upper bound**: `now.getHour() < windowHour`. The
+window therefore runs from the top of the hour until midnight, when
+`LocalDate.now().plusDays(1)` rolls over and it shuts.
+
+**Suggested fix.** A `GET /time` returning the server instant, the configured window hour and
+the zone.
+
+**Workaround.** `ServerClock` anchors the HTTP `Date` response header against a
+`ContinuousClock` and extrapolates, so the countdown survives device clock tampering; the
+zone and hour are configuration. Note `Date` has one-second granularity and includes one
+network leg of latency, so the countdown does not claim sub-second precision.
+
+---
+
+## D6 — Contract gaps in `openapi.yml`
+
+- `ErrorResponse` appears nowhere in `components.schemas`; only 200 responses are documented,
+  so every error shape the client must handle is undocumented.
+- The semantics of `DUPLICATE_REQUEST` vs `ALREADY_QUEUED` vs `ALREADY_RESERVED` are unstated.
+- `GET /wallet/balance` is typed as a free-form `additionalProperties: number` map rather than
+  a named schema, so the key name is not part of the contract. The client reads it
+  defensively.
+- `GET /spaces` requires authentication but the document does not say so.
+- The README Quick Start references `./mvnw`, which does not exist in the repository.
+
+---
+
+## D7 — `ALREADY_RESERVED` is unreachable on the normal path
+
+`ALREADY_RESERVED` is thrown in `ReservationTransactionService` off the
+`uk_user_date` unique constraint, but the Redis idempotency check at step 3 fires first for
+the same user, so a second attempt always yields `DUPLICATE_REQUEST` instead. Confirmed
+empirically — it could not be triggered through the API.
+
+It can therefore only surface when Redis and Postgres disagree (Redis flushed or evicted
+while the row survives). That makes it *more* trustworthy than `DUPLICATE_REQUEST`, not less:
+it is the only unambiguous "you already hold a reservation".
+
+**Workaround.** The client trusts `ALREADY_RESERVED` without reconciling and reconciles on
+`DUPLICATE_REQUEST`. Covered by
+`ReservationCoordinatorTests.testAlreadyReservedIsTrustedWithoutReconciliation`.
+
+---
+
+## D8 — The repo's own k6 stress test cannot pass, and passes when it should not
+
+Two separate problems in `tests/load-stress-test.js`:
+
+1. It counts HTTP 409 as a failed request, so `http_req_failed` crosses its `rate<0.01`
+   threshold the moment the 81st user arrives. A 1000-VU run on 2026-09-21 reported
+   `rate=99.53%` and `** THRESHOLD CROSSED **` while behaving perfectly — every business
+   invariant held and `reservation_server_errors` was 0.
+2. It classifies 429 as "rate limited — expected under high load" and counts it as neither an
+   error nor a failed check. Since 429 is `WINDOW_CLOSED` here (see D2), a run against a
+   closed gate reports **green with zero reservations**. Combined with D1, it is possible to
+   run the suite, see it pass, and have exercised nothing.
+
+**Workaround.** Treat `reservation_success == 80` as the pass criterion. Recorded because
+the brief requires defects be reported rather than worked around silently.
+
+---
+
+## Appendix — measured behaviour, 1000-VU stress run
+
+Clean database, `FLUSHALL`ed Redis, gate on with the window open. 2026-09-21.
+
+| Measure | Value |
+|---|---|
+| reservations created | 80 |
+| distinct spaces / distinct users | 80 / 80 |
+| duplicate space rows, duplicate (user, date) rows | 0, 0 |
+| money taken | 800.00 = 80 × 10.00 exactly |
+| users with balance ≠ 100 − paid | 0 |
+| 5xx, EOF errors, exhausted retries | 0, 0, 0 |
+| reservation p95 / p99 / max | 248 ms / 368 ms / 867 ms |
+| sustained throughput | ~2,967 req/s |
+
+The concurrency design is correct under load. These numbers set the client's timeout budget
+(see `APIConfiguration.reservationTimeout`) and are the evidence behind the design doc's
+claim that 92% of users lose the race.
