@@ -187,17 +187,37 @@ meaning: green for what you can act on, amber for the space that is yours. Avail
 carried by border *style* as well as colour, so the board survives greyscale and
 colour-blindness.
 
-### 7.2 Density versus touch target
+### 7.2 Density versus touch target — and which one wins
 
-Two guardrails pull against each other: "all 80 spaces legible on a 6.1-inch screen without
-pinch-zoom" and "44pt minimum touch targets". At 80 cells they cannot both be fully
-satisfied — seven columns of 44pt-plus cells is 12 rows, which is around 70 cells above the
-fold and a short scroll for the rest.
+Section 6.3 puts these in different columns, and that decides the argument:
 
-I chose to honour the 44pt target and accept the scroll, rather than shrink cells to fit.
-A board you can see but cannot reliably tap is worse than one you scroll once. The cell
-carries only the number and the plate suffix the brief requires, so nothing is spent on
-decoration, and the hit area is extended into the gutter so the real target clears 44pt.
+| Guardrail (non-negotiable) | Default (swappable if defended) |
+|---|---|
+| **All 80 spaces legible on a 6.1-inch screen without relying on pinch-zoom** | Dynamic Type, VoiceOver labels, **44pt minimum touch targets**, contrast |
+
+At 80 cells on a 393×852 screen these pull against each other, and an earlier version of this
+document resolved it the wrong way round — honouring 44pt and letting the board scroll, which
+sacrifices the non-negotiable item to protect the negotiable one. Corrected.
+
+The board now fits. `BoardLayout` searches column counts and picks the largest cell size that
+puts all 80 in the space available, ranking candidates so that a layout meeting 44pt outright
+always beats one that does not; only if none does would the Default yield.
+
+In the end neither has to yield. Folding the countdown and the counts into one card, and
+dropping the oversized title in portrait, bought roughly 110pt of vertical space — enough that
+on the 6.1-inch reference screen the board lands on **7 columns × 12 rows at 44×43pt cells**,
+an effective target of 48.7 × 47.2pt including the gutter. All 80 visible, no scrolling, 44pt
+comfortably cleared.
+
+`BoardLayoutTests` asserts this against the 393×852 reference rather than against whatever
+simulator happens to be installed — the smallest device available locally is 6.3 inches, and a
+layout that fits there can still breach the guardrail on the screen the brief actually names.
+One of those tests exists purely to fail if a future change quietly reintroduces the
+trade-off.
+
+The one place the board is allowed to scroll is at accessibility text sizes, where a fixed
+board would clip. Clipping content is worse than scrolling it, and the guardrail is about
+legibility at the default reading size.
 
 ### 7.3 Selecting and confirming are separate
 
@@ -232,3 +252,33 @@ Three real defects, all found by building the interface rather than by reading c
 
 All three were invisible to the unit tests and only showed up when the UI was driven for
 real. That is the argument for the UI test existing at all.
+
+
+## 9. iPad and landscape
+
+Stretch, from 6.3. Both use the same responsive machinery rather than a second codebase.
+
+**Layout switch.** Side-by-side whenever there is width to spare — `horizontalSizeClass ==
+.regular` (iPad, either orientation) or `verticalSizeClass == .compact` (iPhone landscape).
+The board takes the leading side at full height; the header, countdown, holding banner and
+confirm panel become a sidebar.
+
+Stacking the portrait layout into a landscape phone would squeeze the board into a letterbox
+strip. Spreading wide instead lets `BoardLayout` use the extra width: the same 80 cells land
+on **10 columns × 8 rows** in iPhone landscape and **6 × 14** on iPad, with cells growing
+rather than the board scrolling.
+
+**The confirm control moves with the layout.** Docked to the bottom of the screen in portrait,
+where the thumb is; a card in the sidebar when wide, next to the board it refers to. A
+bottom-docked bar on a 13-inch iPad would put the action a hand's travel from the thing it
+acts on. Same view, two chrome styles, so the copy and behaviour cannot drift apart.
+
+**A bug this surfaced.** The app was not scene-based: because the target supplies its own
+`Info.plist`, nothing synthesised a `UIApplicationSceneManifest`, so the window never
+resized. Rotating an iPhone left a portrait-shaped app letterboxed on a landscape screen, and
+iPad multitasking would not have worked either. Declaring the manifest fixed both.
+
+A second, smaller trap worth recording: `app.screenshot()` captures the app's window without
+accounting for interface orientation, so a correctly-rotated app comes back as rotated content
+in a portrait frame. The evidence that the app itself was fine was the frame assertion, not the
+picture — `XCUIScreen.main.screenshot()` is what the capture uses now.

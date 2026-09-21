@@ -9,6 +9,7 @@ struct DashboardHeader: View {
     let plate: String
     let balance: Decimal
     let date: Date?
+    var isCompact: Bool = false
     let onWallet: () -> Void
     let onSignOut: () -> Void
 
@@ -58,7 +59,7 @@ struct DashboardHeader: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text("Tomorrow")
-                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                    .font(.system(isCompact ? .title2 : .largeTitle, design: .rounded).weight(.bold))
                     .foregroundStyle(Theme.Palette.ink)
                 if let date {
                     Text(date.formatted(.dateTime.weekday(.wide).day().month(.wide)))

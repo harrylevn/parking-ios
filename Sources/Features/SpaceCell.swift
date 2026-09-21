@@ -37,6 +37,11 @@ struct SpaceCell: View {
 
     let space: ParkingSpace
     let appearance: Appearance
+    /// Driven by `BoardLayout` so the board fits the screen it is on.
+    var height: CGFloat = 46
+    /// Half the grid gutter. Extends the touch target into the gap between tiles, so the
+    /// effective target stays close to 44pt even where the visible tile is narrower.
+    var hitSlop: CGFloat = 2
     let action: () -> Void
 
     private var isInteractive: Bool {
@@ -47,9 +52,11 @@ struct SpaceCell: View {
         Button(action: action) {
             VStack(spacing: 0) {
                 Text("\(space.number)")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .font(.system(size: min(15, height * 0.36), weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(numberColour)
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(1)
 
                 if appearance == .mine {
                     Image(systemName: "checkmark.seal.fill")
@@ -57,14 +64,14 @@ struct SpaceCell: View {
                         .foregroundStyle(Theme.Palette.mine)
                 } else {
                     Text(space.plateLast3 ?? " ")
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .font(.system(size: min(9, height * 0.22), weight: .medium, design: .monospaced))
                         .foregroundStyle(Theme.Palette.inkMuted)
                         .lineLimit(1)
                         .minimumScaleFactor(0.65)
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 46)
+            .frame(height: height)
             .background(appearance.fill, in: .rect(cornerRadius: 9))
             .overlay(
                 RoundedRectangle(cornerRadius: 9)
@@ -76,9 +83,7 @@ struct SpaceCell: View {
                         )
                     )
             )
-            // The visible tile is ~45pt wide; the hit area is extended into the surrounding
-            // gutter so the real touch target clears 44pt on both axes.
-            .contentShape(.rect.inset(by: -3))
+            .contentShape(.rect.inset(by: -hitSlop))
         }
         .buttonStyle(SpringyCellStyle(isInteractive: isInteractive))
         .disabled(!isInteractive)

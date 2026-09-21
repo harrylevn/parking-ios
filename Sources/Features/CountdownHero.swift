@@ -15,6 +15,11 @@ struct CountdownHero: View {
     let hasServerTime: Bool
     let isSkewed: Bool
     let availableSpaces: Int
+    /// Collapses the hero to a slim banner once the window is open, handing the screen back
+    /// to the board — which is what the 6.3 guardrail needs the space for.
+    var isCompact: Bool = false
+    /// False when the hero shares a card with the stat strip.
+    var isFramed: Bool = true
 
     var body: some View {
         VStack(spacing: 12) {
@@ -33,12 +38,14 @@ struct CountdownHero: View {
                 waiting
             } else if isOpen {
                 openBanner
+            } else if isCompact {
+                compactCountdown
             } else {
                 closedHero
             }
         }
         .frame(maxWidth: .infinity)
-        .card()
+        .modifier(HeroChrome(isFramed: isFramed))
     }
 
     private var waiting: some View {
@@ -79,6 +86,32 @@ struct CountdownHero: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("grid.windowOpen")
+    }
+
+    /// One line rather than three, for when the board needs the height.
+    private var compactCountdown: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "clock.fill")
+                .font(.footnote)
+                .foregroundStyle(Theme.Palette.accent)
+            Text("Opens in")
+                .font(.subheadline)
+                .foregroundStyle(Theme.Palette.inkMuted)
+            Text(clockString)
+                .font(.system(.title3, design: .rounded).weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(Theme.Palette.ink)
+                .contentTransition(.numericText(countsDown: true))
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spokenCountdown)
+        .accessibilityIdentifier("grid.countdown")
+    }
+
+    private var clockString: String {
+        let parts = segments
+        return String(format: "%02d:%02d:%02d", parts[0].value, parts[1].value, parts[2].value)
     }
 
     private var closedHero: some View {
@@ -140,5 +173,13 @@ private struct TimeSegment: View {
                 .foregroundStyle(Theme.Palette.inkMuted)
         }
         .frame(minWidth: 58)
+    }
+}
+
+private struct HeroChrome: ViewModifier {
+    let isFramed: Bool
+
+    func body(content: Content) -> some View {
+        if isFramed { content.card() } else { content }
     }
 }

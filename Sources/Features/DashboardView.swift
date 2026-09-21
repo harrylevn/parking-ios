@@ -3,6 +3,8 @@ import SwiftUI
 struct DashboardView: View {
     @StateObject var model: GridViewModel
     @State private var activeSheet: Sheet?
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     /// One sheet modifier, not two. Attaching two `.sheet` modifiers to the same view is
     /// unreliable in SwiftUI — the second is silently ignored — which showed up as the
@@ -23,78 +25,142 @@ struct DashboardView: View {
     // server time is extrapolated locally, so a smooth countdown costs zero requests.
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
+    /// Side-by-side whenever there is width to spare: iPad in either orientation, and iPhone
+    /// in landscape, where a stacked layout would leave the board a letterbox strip.
+    private var isWide: Bool {
+        horizontalSizeClass == .regular || verticalSizeClass == .compact
+    }
+
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottom) {
-                Theme.Palette.canvas.ignoresSafeArea()
+        ZStack(alignment: .bottom) {
+            Theme.Palette.canvas.ignoresSafeArea()
 
-                ScrollView {
-                    VStack(spacing: 14) {
-                        DashboardHeader(
-                            plate: model.plate,
-                            balance: model.balance,
-                            date: model.state.grid?.date,
-                            onWallet: { activeSheet = .deposit },
-                            onSignOut: { model.signOut() }
-                        )
+            if isWide { wideLayout } else { compactLayout }
 
-                        CountdownHero(
-                            countdown: model.countdown,
-                            isOpen: model.isWindowOpen,
-                            hasServerTime: model.hasServerTime,
-                            isSkewed: model.isClockSkewed,
-                            availableSpaces: model.state.grid?.availableSpaces ?? 0
-                        )
-
-                        if let space = model.mySpace {
-                            HoldingBanner(spaceNumber: space)
-                        }
-
-                        content
-                    }
-                    .padding(.horizontal, Theme.Metric.gutter)
-                    .padding(.top, 8)
-                    .padding(.bottom, model.selectedSpace == nil ? 24 : 132)
-                }
-                .refreshable { await model.refresh() }
-                .scrollDismissesKeyboard(.immediately)
-
-                if let selected = model.selectedSpace, model.mySpace == nil {
-                    ConfirmBar(
-                        spaceNumber: selected,
-                        balance: model.balance,
-                        isWindowOpen: model.isWindowOpen,
-                        isReserving: model.isReserving,
-                        onCancel: { withAnimation(.snappy) { model.selectedSpace = nil } },
-                        onConfirm: { Task { await model.reserve(space: selected) } }
-                    )
+            if let selected = model.selectedSpace, model.mySpace == nil, !isWide {
+                confirmBar(selected)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
             }
-            .toolbar(.hidden, for: .navigationBar)
-            .task { model.startPolling() }
-            .onDisappear { model.stopPolling() }
-            .onReceive(tick) { _ in Task { await model.tickClock() } }
-            .onChange(of: model.outcome) { _, outcome in
-                if let outcome { activeSheet = .outcome(outcome) }
-            }
-            .sheet(item: $activeSheet, onDismiss: { model.dismissOutcome() }, content: { sheet in
-                switch sheet {
-                case .deposit:
-                    DepositSheet(model: model)
-                        .presentationDetents([.height(340)])
-                        .presentationDragIndicator(.visible)
-                case .outcome(let outcome):
-                    OutcomeSheet(outcome: outcome) { activeSheet = nil }
-                        .presentationDetents([.height(380)])
-                }
-            })
         }
+        .task { model.startPolling() }
+        .onDisappear { model.stopPolling() }
+        .onReceive(tick) { _ in Task { await model.tickClock() } }
+        .onChange(of: model.outcome) { _, outcome in
+            if let outcome { activeSheet = .outcome(outcome) }
+        }
+        .sheet(item: $activeSheet, onDismiss: { model.dismissOutcome() }, content: { sheet in
+            switch sheet {
+            case .deposit:
+                DepositSheet(model: model)
+                    .presentationDetents([.height(340)])
+                    .presentationDragIndicator(.visible)
+            case .outcome(let outcome):
+                OutcomeSheet(outcome: outcome) { activeSheet = nil }
+                    .presentationDetents([.height(380)])
+            }
+        })
         .tint(Theme.Palette.accent)
     }
 
+    // MARK: - Layouts
+
+    /// Portrait iPhone. The board is given every point the chrome does not need, so all 80
+    /// cells fit on a 6.1-inch screen without scrolling (6.3 guardrail).
+    private var compactLayout: some View {
+        VStack(spacing: 10) {
+            DashboardHeader(
+                plate: model.plate,
+                balance: model.balance,
+                date: model.state.grid?.date,
+                isCompact: true,
+                onWallet: { activeSheet = .deposit },
+                onSignOut: { model.signOut() }
+            )
+
+            // Countdown and counts share one card. Two separate cards cost ~110pt of
+            // chrome, which is the difference between the board fitting on a 6.1-inch
+            // screen at a 44pt target and not fitting at all.
+            VStack(spacing: 10) {
+                CountdownHero(
+                    countdown: model.countdown,
+                    isOpen: model.isWindowOpen,
+                    hasServerTime: model.hasServerTime,
+                    isSkewed: model.isClockSkewed,
+                    availableSpaces: model.state.grid?.availableSpaces ?? 0,
+                    isCompact: true,
+                    isFramed: false
+                )
+                if let grid = model.state.grid {
+                    Divider().overlay(Theme.Palette.hairline)
+                    StatStrip(grid: grid)
+                }
+            }
+            .card(padding: 12)
+
+            if let space = model.mySpace {
+                HoldingBanner(spaceNumber: space)
+            }
+
+            board
+        }
+        .padding(.horizontal, Theme.Metric.gutter)
+        .padding(.top, 2)
+        .padding(.bottom, model.selectedSpace == nil ? 6 : 126)
+    }
+
+    /// Landscape iPhone and iPad. The board takes the full height on the leading side and
+    /// everything else becomes a sidebar, so the grid stays square-ish instead of being
+    /// squashed into a letterbox.
+    private var wideLayout: some View {
+        HStack(alignment: .top, spacing: 14) {
+            board
+                .frame(maxWidth: .infinity)
+
+            ScrollView {
+                VStack(spacing: 12) {
+                    header
+                    CountdownHero(
+                        countdown: model.countdown,
+                        isOpen: model.isWindowOpen,
+                        hasServerTime: model.hasServerTime,
+                        isSkewed: model.isClockSkewed,
+                        availableSpaces: model.state.grid?.availableSpaces ?? 0,
+                        isCompact: false
+                    )
+                    if let space = model.mySpace {
+                        HoldingBanner(spaceNumber: space)
+                    }
+                    if let selected = model.selectedSpace, model.mySpace == nil {
+                        confirmPanel(selected)
+                    }
+                }
+            }
+            .frame(width: sidebarWidth)
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .padding(.horizontal, Theme.Metric.gutter)
+        .padding(.vertical, 10)
+    }
+
+    private var sidebarWidth: CGFloat {
+        horizontalSizeClass == .regular ? 340 : 300
+    }
+
+    // MARK: - Pieces
+
+    private var header: some View {
+        DashboardHeader(
+            plate: model.plate,
+            balance: model.balance,
+            date: model.state.grid?.date,
+            isCompact: isWide,
+            onWallet: { activeSheet = .deposit },
+            onSignOut: { model.signOut() }
+        )
+    }
+
     @ViewBuilder
-    private var content: some View {
+    private var board: some View {
         switch model.state {
         case .loading:
             SkeletonBoard()
@@ -108,7 +174,7 @@ struct DashboardView: View {
             StatusCard(
                 icon: "wifi.slash", tint: Theme.Palette.warning,
                 title: "You're offline",
-                message: "Showing nothing rather than something that might not be true. Pull to retry."
+                message: "Showing nothing rather than something that might not be true."
             )
         case .failed(let message):
             StatusCard(
@@ -116,138 +182,39 @@ struct DashboardView: View {
                 title: "Something went wrong", message: message
             )
         case .loaded(let grid):
-            BoardView(grid: grid, model: model)
-        }
-    }
-
-    private var outcomeBinding: Binding<ReservationOutcome?> {
-        Binding(get: { model.outcome }, set: { _ in model.dismissOutcome() })
-    }
-}
-
-// MARK: - Board
-
-private struct BoardView: View {
-    let grid: SpaceGrid
-    @ObservedObject var model: GridViewModel
-    /// Honoured rather than ignored: selection still happens instantly, it just does not
-    /// slide. Also makes the flow deterministic under UI test, which cannot reliably
-    /// interact with a view that is mid-transition.
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    // Adaptive rather than a fixed column count: 44pt minimum satisfies both the touch
-    // target and "all 80 legible without pinch-zoom", and the board reflows as Dynamic
-    // Type grows instead of clipping.
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 5), count: 7)
-
-    var body: some View {
-        VStack(spacing: 14) {
-            StatStrip(grid: grid)
-
-            LazyVGrid(columns: columns, spacing: 5) {
-                ForEach(grid.spaces) { space in
-                    SpaceCell(space: space, appearance: appearance(for: space)) {
-                        select(space)
-                    }
-                }
+            VStack(spacing: 8) {
+                if isWide { StatStrip(grid: grid) }
+                BoardView(grid: grid, model: model)
+                Legend()
             }
-
-            Legend()
-        }
-        .card(padding: 14)
-    }
-
-    private func appearance(for space: ParkingSpace) -> SpaceCell.Appearance {
-        if space.number == model.mySpace { return .mine }
-        if space.number == model.selectedSpace { return .selected }
-        return space.isAvailable ? .available : .reserved
-    }
-
-    private func select(_ space: ParkingSpace) {
-        guard model.mySpace == nil else { return }
-        Haptics.select()
-        withAnimation(reduceMotion ? nil : .snappy(duration: 0.22)) {
-            model.selectedSpace = model.selectedSpace == space.number ? nil : space.number
+            .card(padding: 10)
         }
     }
-}
 
-private struct StatStrip: View {
-    let grid: SpaceGrid
-
-    var body: some View {
-        HStack(spacing: 0) {
-            stat(value: grid.availableSpaces, label: "Free", tint: Theme.Palette.available)
-            divider
-            stat(value: grid.reservedSpaces, label: "Taken", tint: Theme.Palette.reserved)
-            divider
-            stat(value: grid.totalSpaces, label: "Total", tint: Theme.Palette.inkMuted)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "\(grid.availableSpaces) free of \(grid.totalSpaces) spaces, \(grid.reservedSpaces) taken"
+    private func confirmBar(_ selected: Int) -> some View {
+        ConfirmBar(
+            spaceNumber: selected,
+            balance: model.balance,
+            isWindowOpen: model.isWindowOpen,
+            isReserving: model.isReserving,
+            style: .bar,
+            onCancel: { withAnimation(.snappy) { model.selectedSpace = nil } },
+            onConfirm: { Task { await model.reserve(space: selected) } }
         )
     }
 
-    private var divider: some View {
-        Rectangle()
-            .fill(Theme.Palette.hairline)
-            .frame(width: 1, height: 26)
-    }
-
-    private func stat(value: Int, label: String, tint: Color) -> some View {
-        VStack(spacing: 1) {
-            Text("\(value)")
-                .font(.system(.title3, design: .rounded).weight(.bold))
-                .monospacedDigit()
-                .foregroundStyle(tint)
-                .contentTransition(.numericText())
-                .animation(.snappy, value: value)
-            Text(label)
-                .font(.caption2.weight(.medium))
-                .textCase(.uppercase)
-                .foregroundStyle(Theme.Palette.inkMuted)
-        }
-        .frame(maxWidth: .infinity)
+    private func confirmPanel(_ selected: Int) -> some View {
+        ConfirmBar(
+            spaceNumber: selected,
+            balance: model.balance,
+            isWindowOpen: model.isWindowOpen,
+            isReserving: model.isReserving,
+            style: .panel,
+            onCancel: { withAnimation(.snappy) { model.selectedSpace = nil } },
+            onConfirm: { Task { await model.reserve(space: selected) } }
+        )
     }
 }
-
-private struct Legend: View {
-    var body: some View {
-        HStack(spacing: 14) {
-            item(
-                color: Theme.Palette.available, fill: Theme.Palette.availableFill,
-                text: "Free", dashed: false
-            )
-            item(
-                color: Theme.Palette.reserved, fill: Theme.Palette.reservedFill,
-                text: "Taken", dashed: true
-            )
-            item(
-                color: Theme.Palette.mine, fill: Theme.Palette.mineFill,
-                text: "Yours", dashed: false
-            )
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityHidden(true)
-    }
-
-    private func item(color: Color, fill: Color, text: String, dashed: Bool) -> some View {
-        HStack(spacing: 5) {
-            RoundedRectangle(cornerRadius: 4)
-                .fill(fill)
-                .frame(width: 14, height: 14)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .strokeBorder(color, style: StrokeStyle(lineWidth: 1, dash: dashed ? [2.5, 2] : []))
-                )
-            Text(text)
-                .font(.caption2)
-                .foregroundStyle(Theme.Palette.inkMuted)
-        }
-    }
-}
-
 // MARK: - Supporting views
 
 private struct HoldingBanner: View {
@@ -325,11 +292,18 @@ private struct SkeletonBoard: View {
 /// The commit step. Selecting a space and confirming it are deliberately separate: one tap
 /// must produce exactly one reservation attempt, and a board of 80 small targets is a bad
 /// place to spend money on a mis-tap.
-private struct ConfirmBar: View {
+///
+/// Two presentations, same content: a bar docked to the bottom in portrait, and a card in the
+/// sidebar when there is width for one. A bottom bar on iPad would put the action a hand's
+/// travel away from the board it refers to.
+struct ConfirmBar: View {
+    enum Style { case bar, panel }
+
     let spaceNumber: Int
     let balance: Decimal
     let isWindowOpen: Bool
     let isReserving: Bool
+    let style: Style
     let onCancel: () -> Void
     let onConfirm: () -> Void
 
@@ -337,17 +311,17 @@ private struct ConfirmBar: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            HStack {
+            HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Space \(spaceNumber)")
                         .font(.headline)
                         .foregroundStyle(Theme.Palette.ink)
-                    Text("$10.00 · balance after $\(afterBalance)")
+                    Text("$10.00 · balance after \(DashboardHeader.money(balance - 10))")
                         .font(.caption)
                         .foregroundStyle(Theme.Palette.inkMuted)
                         .monospacedDigit()
                 }
-                Spacer()
+                Spacer(minLength: 8)
                 Button("Cancel", action: onCancel)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.Palette.inkMuted)
@@ -371,14 +345,27 @@ private struct ConfirmBar: View {
             .disabled(isReserving || !isWindowOpen || !canAfford)
             .accessibilityIdentifier("dashboard.confirm")
         }
-        .padding(Theme.Metric.gutter)
-        .background(.regularMaterial)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Theme.Palette.hairline).frame(height: 1)
-        }
+        .modifier(ConfirmChrome(style: style))
     }
+}
 
-    private var afterBalance: String {
-        NSDecimalNumber(decimal: balance - 10).stringValue
+private struct ConfirmChrome: ViewModifier {
+    let style: ConfirmBar.Style
+
+    func body(content: Content) -> some View {
+        switch style {
+        case .bar:
+            content
+                .padding(Theme.Metric.gutter)
+                .background(.regularMaterial)
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(Theme.Palette.hairline)
+                        .frame(height: 1)
+                        .allowsHitTesting(false)
+                }
+        case .panel:
+            content.card()
+        }
     }
 }

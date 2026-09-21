@@ -12,8 +12,11 @@ final class ScreenshotTests: XCTestCase {
         ProcessInfo.processInfo.environment["SCREENSHOTS"] == "1"
     }
 
+    /// `XCUIScreen.main` rather than `app.screenshot()`: the latter captures the app's
+    /// window without accounting for interface orientation, so a landscape run comes back as
+    /// rotated content in a portrait-shaped frame even though the app resized correctly.
     private func capture(_ app: XCUIApplication, _ name: String) {
-        let shot = XCTAttachment(screenshot: app.screenshot())
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         shot.name = name
         shot.lifetime = .keepAlways
         add(shot)
@@ -70,6 +73,48 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["dashboard.holding"].waitForExistence(timeout: 10),
                       "after a win the board should show which space is held")
         capture(app, "06-holding")
+    }
+
+    /// Landscape and iPad use the side-by-side layout: board on the leading side taking the
+    /// full height, everything else in a sidebar. A bottom-docked confirm bar on iPad would
+    /// put the action a hand's travel from the board it refers to.
+    func testCaptureWideLayout() throws {
+        try XCTSkipUnless(isEnabled, "Set SCREENSHOTS=1 and start the backend")
+
+        let app = XCUIApplication()
+        app.launchArguments += ["-UITestSkipReauth"]
+        app.launchEnvironment["PARKING_WINDOW_HOUR"] = "20"
+        app.launch()
+
+        let plate = app.textFields["login.plate"]
+        XCTAssertTrue(plate.waitForExistence(timeout: 10))
+        plate.tap()
+        plate.typeText("TEST-001")
+        app.secureTextFields["login.password"].tap()
+        app.secureTextFields["login.password"].typeText("probation123")
+        app.buttons["login.submit"].tap()
+
+        XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 15))
+
+        XCUIDevice.shared.orientation = .landscapeLeft
+        // Wait for the window to actually resize, not just for the rotation to be requested —
+        // capturing mid-rotation yields a portrait-shaped frame on a landscape screen.
+        let rotated = expectation(for: NSPredicate { _, _ in
+            let frame = XCUIApplication().frame
+            return frame.width > frame.height
+        }, evaluatedWith: app)
+        wait(for: [rotated], timeout: 10)
+        XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 10))
+        capture(app, "10-landscape")
+
+        for number in 1...80 where app.buttons["space.\(number)"].isEnabled {
+            app.buttons["space.\(number)"].tap()
+            break
+        }
+        _ = app.buttons["dashboard.confirm"].waitForExistence(timeout: 5)
+        capture(app, "11-landscape-confirm")
+
+        XCUIDevice.shared.orientation = .portrait
     }
 
     /// The window-closed state: the countdown hero at full size.
