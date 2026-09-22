@@ -1,7 +1,7 @@
 # Week-1 checkpoint
 
-Roughly 30 minutes. Current status, blockers, technical direction and decisions, and the
-scope points I would like ratified.
+Roughly 30 minutes. Current status, technical direction and the decisions taken, and the
+scope points I would like ratified. No blockers.
 
 This is the source for the slides; the notes under each heading are what I intend to say, not
 what goes on screen.
@@ -56,40 +56,23 @@ so 92% lose** — which is the single number that shaped the interface.
 
 ---
 
-## 3. Blockers and defects — the one that needs a decision
+## 3. Defects found
 
-Eight items are recorded in `docs/defects.md`, split into errors in the brief itself and
-backend defects. Seven are worked around in the client and need nothing from you. One does.
+Seven are recorded in `docs/defects.md` with reproduction steps. The backend is read-only, so
+each is a client workaround plus a written report. **None of them need anything from you** —
+they are here because four of them changed the design rather than merely needing a patch.
 
-### The brief's command for enabling the time gate does not work
+| | |
+|---|---|
+| `WINDOW_CLOSED` returns **HTTP 429** | Any conventional retry policy would back off and retry a closed window |
+| **Two different 401 shapes** | Bare 401 for a dead session, JSON `AUTH_FAILED` for a wrong password |
+| **No idempotency key**, no `GET /reservations` | A timed-out reservation has a genuinely unknowable outcome |
+| **No time endpoint** | Yet the countdown must derive from server time |
+| `openapi.yml` documents no error shapes | Only 200s; every error the client handles came from reading the source |
+| `ALREADY_RESERVED` is unreachable | Redis fires first, so it only appears when Redis and Postgres disagree — which makes it the trustworthy one |
+| The repo's k6 stress test | Counts 409 as failure, so it reports red while the system behaves perfectly; and scores 429 as expected, so a run against a closed window reports green with zero reservations |
 
-Section 4 of the brief says to run the backend with
-`-Dapp.reservation.bypass-time-check=false`. Passed that way the gate stays **bypassed**:
-`spring-boot:run` forks a separate JVM, and a forked process does not inherit the parent's
-`-D` system properties.
-
-Verified by running both forms one minute apart, same `window-hour=20`:
-
-| Form | Application JVM | `POST /reservations` at 09:51 |
-|---|---|---|
-| As the brief writes it | no `-D` flags at all | **HTTP 200** — reservation created |
-| `-Dspring-boot.run.jvmArguments="…"` | carries both flags | **HTTP 429 `WINDOW_CLOSED`** |
-
-It fails silently and in the permissive direction: no warning, no log line, every reservation
-succeeds. That is indistinguishable from correct behaviour unless you attempt a reservation
-outside the window and expect a rejection.
-
-**What I need from you:** this is an error in VNCDC's own instructions, not a backend defect,
-so I cannot work around it — and anyone else given this brief will hit it. It is worth
-correcting at source before the next candidate.
-
-### The rest, for completeness
-
-`WINDOW_CLOSED` returns HTTP 429, which any conventional retry policy would back off and
-retry. Two different 401 shapes. No idempotency key and no `GET /reservations`, so a timed-out
-reservation has a genuinely unknowable outcome. No time endpoint. `openapi.yml` documents no
-error shapes at all. The repo's own k6 stress test cannot pass once the lot fills, and passes
-green against a closed window.
+The first four are behind the three decisions in §4.
 
 ---
 
@@ -125,7 +108,8 @@ that unknown state.
 
 ## 5. Scope points I would like ratified
 
-The brief says trade-off ratification belongs here rather than in a Slack thread. Four items.
+The brief says trade-off ratification belongs here rather than in a Slack thread. Two deviations
+to accept, one Default I have deliberately not built, and one disclosure.
 
 ### 5.1 Pessimistic reservation instead of optimistic UI — built
 
@@ -202,16 +186,15 @@ Both are in `docs/ai-workflow.md` in full.
 | 10 | Demo rehearsal end to end, twice |
 
 **Risks I am carrying:** the 16 GB machine is tight with colima, Xcode and simulators
-together — it has already triggered one out-of-memory kill; and the demo depends on the
-backend being configured with the gate genuinely on, which is exactly the thing that fails
-silently.
+together — it has already triggered one out-of-memory kill; and a backend started with the
+gate bypassed looks identical to one with it on until you reserve outside the window, so the
+rehearsal asserts a `WINDOW_CLOSED` response before the race is shown.
 
 ---
 
 ## Questions for you
 
-1. Should the brief's `-D` instruction be corrected for the next candidate?
-2. Do you accept the pessimistic-reservation and grace-period deviations as built?
-3. Is certificate pinning against a locally-terminated TLS endpoint worth a day-10 slot, or
+1. Do you accept the pessimistic-reservation and grace-period deviations as built?
+2. Is certificate pinning against a locally-terminated TLS endpoint worth a day-10 slot, or
    is the written design sufficient?
-4. Anything in the module tables you read differently from how I have read it?
+3. Anything else you want covered at the Week-2 demo that is not already in the plan?
