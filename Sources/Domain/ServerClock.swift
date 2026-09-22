@@ -25,6 +25,17 @@ actor ServerClock {
     private var anchor: Anchor?
     private let clock = ContinuousClock()
 
+    /// `seededWith` exists for fakes. Seeding through `ingest` from a detached `Task` is
+    /// racy: the header swaps from "Checking server time…" to the open banner whenever that
+    /// task happens to land, and that changes the height of everything above the board — so
+    /// a tap aimed at a cell can arrive after the grid has shifted underneath it. Setting
+    /// the anchor in `init` means the first render is already the final layout.
+    init(seededWith serverDate: Date? = nil) {
+        if let serverDate {
+            anchor = Anchor(serverTime: serverDate, observedAt: ContinuousClock().now, deviceTime: serverDate)
+        }
+    }
+
     /// Feed in the `Date` header of any response. Latest reading wins.
     func ingest(serverDate: Date, deviceDate: Date = Date()) {
         anchor = Anchor(serverTime: serverDate, observedAt: clock.now, deviceTime: deviceDate)

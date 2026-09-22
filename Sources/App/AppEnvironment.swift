@@ -93,11 +93,10 @@ final class AppEnvironment: ObservableObject {
     /// stays green whether or not the Spring Boot service happens to be up.
     static func uiTesting() -> AppEnvironment {
         let tokenStore = InMemoryTokenStore()
-        let clock = ServerClock()
         // The stubs never go through HTTPClient, so nothing would ever feed the clock a
-        // `Date` header and the UI would sit on "Checking server time…" forever. Seeding it
-        // keeps the fake stack behaving like the real one.
-        Task { await clock.ingest(serverDate: Date()) }
+        // `Date` header and the UI would sit on "Checking server time…" forever. Seeded
+        // synchronously, so the first render is already the final layout — see ServerClock.
+        let clock = ServerClock(seededWith: Date())
         return AppEnvironment(
             auth: StubAuthService(tokenStore: tokenStore),
             spaces: StubSpacesService(),
