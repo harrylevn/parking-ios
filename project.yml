@@ -9,7 +9,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    # Guardrail 6.1: -strict-concurrency=complete clean, zero build warnings.
+    # 6.1 Default column: zero build warnings, -strict-concurrency=complete clean,
+    # SPM only. Implemented as written rather than swapped.
     SWIFT_STRICT_CONCURRENCY: complete
     SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
     GCC_TREAT_WARNINGS_AS_ERRORS: YES

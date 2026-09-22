@@ -1,8 +1,8 @@
 import Foundation
 import Security
 
-/// Session token storage. Guardrail 6.5: Keychain with a justified accessibility class,
-/// never `UserDefaults` or a plist.
+/// Session token storage. 6.5 **guardrail**: Keychain with a justified accessibility
+/// class, never `UserDefaults` or a plist.
 ///
 /// **Accessibility: `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`.**
 ///

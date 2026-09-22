@@ -282,3 +282,84 @@ A second, smaller trap worth recording: `app.screenshot()` captures the app's wi
 accounting for interface orientation, so a correctly-rotated app comes back as rotated content
 in a portrait frame. The evidence that the app itself was fine was the frame assertion, not the
 picture — `XCUIScreen.main.screenshot()` is what the capture uses now.
+
+---
+
+## 10. Guardrail / Default compliance matrix
+
+Section 6 scores five modules independently, and the two columns mean different things:
+Guardrail items are non-negotiable, Default items may be swapped if the alternative is
+defended *and* built. Getting a row in the wrong column is therefore a scoring error, not a
+pedantic one — and I made exactly that mistake in §7.2 before correcting it.
+
+The brief's tables are two-column PDF tables, which flatten into a single text stream when
+extracted. Column membership below was recovered from the glyph x-coordinates rather than
+read off the flattened text, because the flattened version is what produced the original
+error.
+
+### 6.1 App architecture and Swift concurrency
+
+| Col | Item | State |
+|---|---|---|
+| **G** | Native iOS, SwiftUI, minimum deployment target iOS 17 | met (`project.yml`) |
+| **G** | Services behind protocols and injected, fakeable in tests | met (`Sources/Domain/Services.swift`) |
+| D | MVVM or Clean Architecture; UI/domain/data separated, no view reaching networking or persistence | kept as written |
+| D | Structured concurrency only; `@MainActor` explicit; space cache and wallet balance actor-isolated | kept as written |
+| D | Zero build warnings, `-strict-concurrency=complete` clean, SPM only, each dependency justified | kept as written; zero dependencies |
+
+### 6.2 Contention, resilience and UX truth
+
+| Col | Item | State |
+|---|---|---|
+| **G** | 80-space grid with availability and plate suffix, **deposit field** and balance display | met — the deposit *field* was missing until this audit; presets alone are not a field |
+| **G** | Window opens at 20:00, countdown from server time not the device clock, do not hardcode 20:00 | met (`ServerClock`, `ReservationWindow`; hour is configuration) |
+| **G** | One tap, exactly one attempt; retry after timeout idempotent and cannot double-book | met (`ReservationCoordinator`, actor-guarded; never retries a timeout) |
+| **G** | Two response shapes handled, not one — JSON `ErrorResponse` **and** the bare 401 | met (`HTTPClient.decodeFailure` branches on body emptiness) |
+| D | Optimistic UI permitted, with correct visible rollback | **swapped** — reservation stays pessimistic, defended in §4 |
+| D | Grid refresh strategy chosen and defended, no full-grid flicker or scroll jump | kept; 5s poll bounded by the server's Redis TTL, no-op diffing |
+
+### 6.3 UI/UX design and accessibility
+
+| Col | Item | State |
+|---|---|---|
+| **G** | Screen and information architecture designed by you, rationale in `docs/design.md` | met |
+| **G** | All 80 spaces legible on a 6.1-inch screen without pinch-zoom | met — 7×12 at 44×43pt, asserted in `BoardLayoutTests` |
+| **G** | Full state matrix: loading, empty, error, offline, insufficient balance, race lost, success | met (`GridState`, `ReservationOutcome`) |
+| D | HIG, dark mode, no hardcoded user-facing strings | kept |
+| D | Dynamic Type to accessibility sizes, VoiceOver labels, 44pt targets, contrast | kept; board scrolls only at accessibility sizes, rather than clipping |
+| D | The 20:00 moment designed deliberately | kept |
+
+### 6.4 Testing and delivery discipline
+
+| Col | Item | State |
+|---|---|---|
+| **G** | Unit tests on the domain **and view models**, race and retry logic genuinely tested | met — view-model tests were missing until this audit |
+| **G** | At least one UI test covering login, grid and reserve | met |
+| **G** | CI on every push: build, lint, unit tests, UI tests on a simulator | **not yet met** — workflow written, no runner registered, so it has never run |
+| D | Tests against fakes never the live backend; SwiftLint in CI at zero violations | kept, with one exception: `ScreenshotTests` drives the live backend deliberately. Skipped unless `SCREENSHOTS=1`, so CI never runs it |
+| D | `xcodebuild archive` in CI, build number from the commit, `docs/runbook.md` | kept (`make archive` derives from `git rev-list --count`) |
+| D | CI on a self-hosted runner on the Mac mini | accepted — the free-tier arithmetic makes it the only way to meet the guardrail above |
+
+### 6.5 Standards: security bar and AI-assisted workflow
+
+| Col | Item | State |
+|---|---|---|
+| **G** | Session token in the Keychain with a justified accessibility class | met (`KeychainTokenStore`) |
+| **G** | No secrets, keys or credentialled endpoints in the repo or app bundle | met |
+| **G** | `docs/security.md` threat note: what is not implemented, what production would do, why out of scope | met |
+| **G** | AI working agreement committed: conventions and quality gates AI code must clear | met (`CLAUDE.md`) |
+| **G** | An honest account of where AI helped and where it failed | met — `docs/ai-workflow.md` was referenced but missing until this audit |
+| D | Face ID / Touch ID re-auth before a reservation, correct non-biometric fallback | kept, with a 120s grace period defended in §4 |
+| D | Certificate pinning against the local backend, bypass gated to debug builds | **not built** — see the risk note below |
+| D | A proposal for measuring AI contribution on a mobile repo | met (`CLAUDE.md`) |
+| D | Data-privacy limits for an AI tool in a banking context | met (`CLAUDE.md`) |
+
+### Known risk
+
+Certificate pinning is the one Default I have neither kept nor replaced with something built.
+`docs/security.md` argues it cannot be meaningfully demonstrated against a plaintext
+`http://localhost` backend, and describes what production would use. That reasoning is sound
+but the brief is explicit that a swap requires you to *build and demo* the alternative, and an
+omission is not a swap. If time allows, the honest fix is to terminate TLS locally with a
+self-signed certificate and pin its SPKI hash, so the control exists and can be demonstrated
+failing on a wrong pin.

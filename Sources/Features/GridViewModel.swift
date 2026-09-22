@@ -1,6 +1,6 @@
 import Foundation
 
-/// The full state matrix the brief requires be handled visually (6.3).
+/// The full state matrix 6.3's **guardrail** requires be handled visually.
 enum GridState: Equatable {
     case loading
     case loaded(SpaceGrid)

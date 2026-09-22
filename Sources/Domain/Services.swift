@@ -1,7 +1,9 @@
 import Foundation
 
-/// Every service is a protocol so the view models can be driven by fakes in tests.
-/// Guardrail 6.4: tests run against fakes, never the live backend.
+// Every service is a protocol so the view models can be driven by fakes in tests.
+//
+// 6.1 guardrail: services behind protocols and injected, fakeable in tests. Running those
+// tests against fakes rather than the live backend is 6.4's Default column, kept as written.
 
 protocol AuthServicing: Sendable {
     func register(licensePlate: String, password: String) async throws -> Account

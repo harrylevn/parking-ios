@@ -15,6 +15,14 @@ final class ScreenshotTests: XCTestCase {
     /// `XCUIScreen.main` rather than `app.screenshot()`: the latter captures the app's
     /// window without accounting for interface orientation, so a landscape run comes back as
     /// rotated content in a portrait-shaped frame even though the app resized correctly.
+    /// The hour the backend is running with. Defaults to *now*, so a capture run works
+    /// whatever time of day it happens at — hard-coding 20 meant the run silently produced
+    /// a closed-window board every morning.
+    private var windowHour: String {
+        ProcessInfo.processInfo.environment["PARKING_WINDOW_HOUR"]
+            ?? String(Calendar.current.component(.hour, from: Date()))
+    }
+
     private func capture(_ app: XCUIApplication, _ name: String) {
         let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         shot.name = name
@@ -27,7 +35,7 @@ final class ScreenshotTests: XCTestCase {
 
         let app = XCUIApplication()
         app.launchArguments += ["-UITestSkipReauth"]
-        app.launchEnvironment["PARKING_WINDOW_HOUR"] = "20"
+        app.launchEnvironment["PARKING_WINDOW_HOUR"] = windowHour
         app.launch()
 
         capture(app, "01-login")
@@ -83,7 +91,7 @@ final class ScreenshotTests: XCTestCase {
 
         let app = XCUIApplication()
         app.launchArguments += ["-UITestSkipReauth"]
-        app.launchEnvironment["PARKING_WINDOW_HOUR"] = "20"
+        app.launchEnvironment["PARKING_WINDOW_HOUR"] = windowHour
         app.launch()
 
         let plate = app.textFields["login.plate"]
@@ -124,7 +132,9 @@ final class ScreenshotTests: XCTestCase {
         let app = XCUIApplication()
         // A window hour just ahead of now forces the closed state regardless of wall clock.
         app.launchArguments += ["-UITestSkipReauth"]
-        app.launchEnvironment["PARKING_WINDOW_HOUR"] = "23"
+        // An hour ahead of now forces the closed state whatever the wall clock says.
+        let nextHour = (Calendar.current.component(.hour, from: Date()) + 1) % 24
+        app.launchEnvironment["PARKING_WINDOW_HOUR"] = String(nextHour)
         app.launch()
 
         let plate = app.textFields["login.plate"]

@@ -1,6 +1,6 @@
 import XCTest
 
-/// Guardrail 6.4: at least one UI test covering login, grid and reserve.
+/// 6.4 **guardrail**: at least one UI test covering login, grid and reserve.
 ///
 /// Runs against the app's in-process fakes (`-UITestMode`), so it never touches the live
 /// backend and stays green whether or not Spring Boot happens to be running.

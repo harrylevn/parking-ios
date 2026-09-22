@@ -1,7 +1,7 @@
 import XCTest
 @testable import Parking
 
-// MARK: - Fakes (guardrail 6.4: never the live backend)
+// MARK: - Fakes (6.4 Default: tests run against fakes, never the live backend)
 
 actor FakeReservationService: ReservationServicing {
     enum Behaviour: Sendable {

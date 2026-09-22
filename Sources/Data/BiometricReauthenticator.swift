@@ -1,7 +1,8 @@
 import Foundation
 import LocalAuthentication
 
-/// Face ID / Touch ID re-authentication ahead of a reservation (6.5, Default column).
+/// Face ID / Touch ID re-authentication ahead of a reservation (6.5, Default column —
+/// kept, with the grace period defended in docs/design.md §4).
 ///
 /// `.deviceOwnerAuthentication` rather than `.deviceOwnerAuthenticationWithBiometrics` is
 /// deliberate: it falls back to the device passcode automatically, so a user without
