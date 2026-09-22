@@ -122,7 +122,7 @@ the Default column as the expected answer.
 | 8 | `xcodegen`, `swiftlint` and `git` on the runner's PATH | The project is generated, not committed. Homebrew's `/opt/homebrew/bin` must be on PATH for the runner's shell, which does **not** inherit your interactive profile |
 | 9 | The runner is installed **outside** `~/Documents` or any cloud-synced folder | Sync extended attributes break iOS code signing — `Command CodeSign failed`. Use `~/actions-runner`; its `_work/` checkout inherits the location |
 | 10 | ~20 GB free | DerivedData plus simulator runtimes. Measured: 219 GB free — met |
-| 10b | **The Mac does not idle-sleep** | Measured on this machine: `sleep 1` on **both** battery and AC, i.e. it sleeps after one idle minute. A runner cannot survive that — jobs are suspended mid-build and the run eventually fails or hangs. Fix before registering: `sudo pmset -c sleep 0` (AC only, leaves battery behaviour alone) |
+| 10b | **The Mac does not idle-sleep** | A runner cannot survive idle sleep — jobs are suspended mid-build and the run eventually fails or hangs. This machine shipped at `sleep 1` on both battery and AC, i.e. asleep after one idle minute. Set with `sudo pmset -c sleep 0`, which changes the AC profile only and leaves battery behaviour alone. Verify with `pmset -g custom`. **Needs a real terminal** — `sudo` cannot prompt for a password without a TTY |
 | 11 | Installed as a launchd service (`svc.sh`) | Otherwise the runner dies with the terminal and CI stops silently between pushes |
 
 **Not required:** the backend. Unit and UI tests run against in-process fakes, and
@@ -175,17 +175,95 @@ The registration token is short-lived (one hour) and is not a secret worth keepi
 
 ### 6.4 Verifying it actually works
 
-Registration is not the same as CI passing. Confirm all four:
+Registration is not the same as CI passing:
 
 ```bash
-gh api repos/<owner>/parking-ios/actions/runners --jq '.runners[] | {name, status, busy}'
+gh api repos/harrylevn/parking-ios/actions/runners --jq '.runners[] | {name, status, busy}'
 git commit --allow-empty -m "ci: verify runner" && git push
 gh run watch
-gh run view --log-failed     # if it fails
 ```
 
-The first run is the one that finds PATH problems: `xcodegen: command not found` means
-condition 8 is unmet, and `Command CodeSign failed` means condition 9 is.
+The first run is what finds the environment problems: `xcodegen: command not found` means
+condition 8 is unmet, and `Command CodeSign failed` means condition 9 is. Reading the result
+is §6.5.
+
+### 6.5 Reading a CI run
+
+Registration is the one-off part. This is the part you do every day.
+
+**The whole run, in a browser.** Fastest when something is red and you want to see which step:
+
+```bash
+gh run list --web          # every run
+gh run view --web          # the latest one, click through to per-step logs
+```
+
+Or go straight to <https://github.com/harrylevn/parking-ios/actions>.
+
+**From the terminal:**
+
+| Task | Command |
+|---|---|
+| Last ten runs | `gh run list` |
+| One run's summary | `gh run view <id>` |
+| **Only the failing step's log** | `gh run view <id> --log-failed` |
+| The entire log | `gh run view <id> --log` |
+| Follow a run live | `gh run watch` |
+| Re-run after a flake | `gh run rerun <id>` |
+
+`--log-failed` is the one worth remembering. A green run produces several thousand lines of
+compiler output; it skips all of that and prints the step that broke.
+
+**When a UI test fails, look at the screenshot before theorising.**
+
+The workflow uploads the `.xcresult` bundle as an artifact, and XCTest puts a screenshot of
+the screen at the moment of failure inside it. That is not a nicety — it is usually the
+fastest path to the cause:
+
+```bash
+gh run download <id> -D /tmp/ci
+open /tmp/ci/test-results/*.xcresult      # opens in Xcode
+```
+
+In Xcode: **Tests** tab → the red test → the attachments underneath it. Both screenshots and
+the captured element tree are there.
+
+This is worth insisting on. A UI test that fails only on CI invites guessing, and two
+plausible-sounding fixes in a row can both be wrong while the screenshot shows the answer
+immediately — in one case here, iOS's "Save Password?" dialog sitting on top of the board
+while the element underneath still reported itself hittable.
+
+**A test that passes locally and fails on CI is usually the simulator runtime.**
+
+`name=iPhone 17 Pro` resolves to the **newest installed runtime**, which is not necessarily
+the one you have been testing against. The `Tool versions` step logs what is installed. To
+reproduce a CI failure locally, run against that runtime explicitly by UDID:
+
+```bash
+xcrun simctl list devices available | grep -B1 "iPhone 17 Pro"
+xcodebuild -project Parking.xcodeproj -scheme Parking \
+  -destination "platform=iOS Simulator,id=<udid>" \
+  -derivedDataPath .build/DerivedData -only-testing:ParkingUITests test
+```
+
+That turns a remote flake into a local failure, which is the only comfortable place to debug one.
+
+**When the job never starts at all**, the problem is the runner rather than the code:
+
+```bash
+# is it online and idle?
+gh api repos/harrylevn/parking-ios/actions/runners \
+  --jq '.runners[] | "\(.name) status=\(.status) busy=\(.busy)"'
+
+# the service's own log
+tail -f ~/Library/Logs/actions.runner.harrylevn-parking-ios.harry-mbp-m4/*.log
+
+# restart it
+cd ~/actions-runner && ./svc.sh stop && ./svc.sh start && ./svc.sh status
+```
+
+A runner showing `offline` after the Mac has been asleep or rebooted is the usual cause; the
+launchd agent restarts it at login, not at boot.
 
 ### 6.6 Resource contention on a 16 GB machine
 
@@ -199,7 +277,7 @@ Practical mitigations, in order of preference: stop colima when the backend is n
 simultaneously. The `concurrency` group in the workflow already cancels superseded runs, so
 rapid pushes do not stack.
 
-### 6.5 If the runner cannot be registered
+### 6.7 If the runner cannot be registered
 
 The guardrail is CI on every push, not a self-hosted runner specifically. If registration is
 blocked — no admin rights, corporate device management — the fallback is a hosted macOS
