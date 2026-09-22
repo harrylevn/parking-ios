@@ -5,6 +5,37 @@ import XCTest
 /// Runs against the app's in-process fakes (`-UITestMode`), so it never touches the live
 /// backend and stays green whether or not Spring Boot happens to be running.
 @MainActor
+extension XCTestCase {
+    /// Dismisses iOS's "Save Password?" prompt.
+    ///
+    /// The login screen sets `.textContentType(.username)` and `.password`, which is correct
+    /// for real users — it enables Keychain autofill — and causes iOS to offer to save the
+    /// credential after a successful sign-in. The prompt belongs to SpringBoard, not to the
+    /// app, so the app's own elements still report themselves hittable while every touch
+    /// actually lands on the dialog. That is why a tap could be delivered to the right
+    /// coordinates and still do nothing.
+    ///
+    /// It is runtime-dependent: iOS 26.3 shows it, 26.0 and 26.1 do not. Since CI resolves
+    /// `name=iPhone 17 Pro` to the newest installed runtime, the suite passed on this laptop
+    /// and failed on the runner for the whole of that difference.
+    /// The prompt is presented as a sheet **inside the app's own element tree**
+    /// (`app.sheets["Save Password?"]`), not as a SpringBoard alert — which is why querying
+    /// SpringBoard for it finds nothing.
+    func dismissSavePasswordPromptIfPresent(in app: XCUIApplication, timeout: TimeInterval = 5) {
+        let sheet = app.sheets["Save Password?"]
+        guard sheet.waitForExistence(timeout: timeout) else { return }
+        for label in ["Not Now", "Never for This App", "Save"] {
+            let button = sheet.buttons[label]
+            if button.exists {
+                button.tap()
+                return
+            }
+        }
+        sheet.buttons.firstMatch.tap()
+    }
+}
+
+@MainActor
 extension XCUIElement {
     /// `waitForExistence` has no `isSelected` equivalent, and polling by hand is what makes
     /// these tests flaky under load.
@@ -41,6 +72,7 @@ final class ReservationFlowUITests: XCTestCase {
         password.typeText("probation123")
 
         app.buttons["login.submit"].tap()
+        dismissSavePasswordPromptIfPresent(in: app)
 
         // Grid
         let firstFree = app.buttons["space.1"]
@@ -80,6 +112,7 @@ final class ReservationFlowUITests: XCTestCase {
         app.secureTextFields["login.password"].tap()
         app.secureTextFields["login.password"].typeText("probation123")
         app.buttons["login.submit"].tap()
+        dismissSavePasswordPromptIfPresent(in: app)
 
         // The stub marks every fourth space as taken.
         let taken = app.buttons["space.4"]

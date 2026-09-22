@@ -48,6 +48,7 @@ final class ScreenshotTests: XCTestCase {
         app.secureTextFields["login.password"].tap()
         app.secureTextFields["login.password"].typeText("probation123")
         app.buttons["login.submit"].tap()
+        dismissSavePasswordPromptIfPresent(in: app)
 
         XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 15), "grid should load")
         capture(app, "02-board")
@@ -101,6 +102,7 @@ final class ScreenshotTests: XCTestCase {
         app.secureTextFields["login.password"].tap()
         app.secureTextFields["login.password"].typeText("probation123")
         app.buttons["login.submit"].tap()
+        dismissSavePasswordPromptIfPresent(in: app)
 
         XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 15))
 
@@ -144,6 +146,7 @@ final class ScreenshotTests: XCTestCase {
         app.secureTextFields["login.password"].tap()
         app.secureTextFields["login.password"].typeText("probation123")
         app.buttons["login.submit"].tap()
+        dismissSavePasswordPromptIfPresent(in: app)
 
         XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 15))
         capture(app, "07-countdown")

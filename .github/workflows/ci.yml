@@ -34,6 +34,11 @@ jobs:
           xcodebuild -version
           swiftlint version
           xcodegen --version
+          # `name=iPhone 17 Pro` resolves to the newest installed runtime, which is not
+          # necessarily the one a developer tested on. Logged so a divergence between a
+          # local pass and a CI failure is visible in the first place someone looks.
+          echo "--- available iPhone 17 Pro runtimes ---"
+          xcrun simctl list devices available | grep -B1 "iPhone 17 Pro" || true
 
       - name: Generate project
         run: make project
