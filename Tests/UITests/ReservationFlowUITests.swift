@@ -21,17 +21,58 @@ extension XCTestCase {
     /// The prompt is presented as a sheet **inside the app's own element tree**
     /// (`app.sheets["Save Password?"]`), not as a SpringBoard alert — which is why querying
     /// SpringBoard for it finds nothing.
-    func dismissSavePasswordPromptIfPresent(in app: XCUIApplication, timeout: TimeInterval = 5) {
+    @discardableResult
+    func dismissSavePasswordPromptIfPresent(in app: XCUIApplication, timeout: TimeInterval = 0) -> Bool {
         let sheet = app.sheets["Save Password?"]
-        guard sheet.waitForExistence(timeout: timeout) else { return }
-        for label in ["Not Now", "Never for This App", "Save"] {
-            let button = sheet.buttons[label]
-            if button.exists {
-                button.tap()
-                return
-            }
+        let present = timeout > 0 ? sheet.waitForExistence(timeout: timeout) : sheet.exists
+        guard present else { return false }
+
+        // The button is queried both through the sheet and at app level: the sheet is a
+        // remote view, and which query resolves it is not consistent across runtimes.
+        let candidates = ["Not Now", "Never for This App"]
+        let button = candidates.lazy
+            .flatMap { [sheet.buttons[$0], app.buttons[$0]] }
+            .first { $0.exists && $0.isHittable }
+        (button ?? sheet.buttons.firstMatch).tap()
+
+        // Wait for it to actually go away. Tapping the cell while the sheet is still
+        // animating out puts the touch back into the same hole it just came out of.
+        let deadline = Date().addingTimeInterval(3)
+        while sheet.exists && Date() < deadline {
+            _ = app.wait(for: .runningForeground, timeout: 0.1)
         }
-        sheet.buttons.firstMatch.tap()
+        // The element leaves the tree before the presentation finishes animating out, and a
+        // tap delivered in that gap is swallowed.
+        _ = app.wait(for: .runningForeground, timeout: 0.6)
+        return true
+    }
+
+    /// Taps a grid cell and confirms the selection registered.
+    ///
+    /// iOS offers to save the password on its own schedule. Measured on iOS 26.3: the sheet
+    /// is *not* on screen when the grid appears, and *is* on screen immediately after the
+    /// tap — so it materialises in the window between the two and swallows the touch.
+    /// Dismissing beforehand cannot catch that, and no fixed wait is reliable, because
+    /// whether it appears at all depends on the runtime and on AutoFill state left behind by
+    /// earlier runs.
+    ///
+    /// So: tap, and if the tap was swallowed *and a sheet is now up*, dismiss it and tap
+    /// again, up to three times. The retry is deliberately conditional on a dialog actually
+    /// being present — a tap that vanishes with nothing on screen is a real bug and still
+    /// fails the test rather than being retried into a pass.
+    func tapCell(_ cell: XCUIElement, in app: XCUIApplication, attempts: Int = 3) {
+        for _ in 0..<attempts {
+            let dismissed = dismissSavePasswordPromptIfPresent(in: app)
+            cell.tap()
+            if cell.waitForSelected(timeout: 2) { return }
+
+            // Retry while the dialog is still in play — either it is up now and ate this
+            // tap, or it was up a moment ago and this tap landed during its dismissal.
+            // Measured: attempt 0 is eaten by the sheet appearing, attempt 1 is eaten by the
+            // sheet animating out, attempt 2 lands. Stopping after a successful dismissal
+            // was the bug: it returned exactly one tap too early.
+            guard app.sheets["Save Password?"].exists || dismissed else { return }
+        }
     }
 }
 
@@ -72,7 +113,6 @@ final class ReservationFlowUITests: XCTestCase {
         password.typeText("probation123")
 
         app.buttons["login.submit"].tap()
-        dismissSavePasswordPromptIfPresent(in: app)
 
         // Grid
         let firstFree = app.buttons["space.1"]
@@ -80,7 +120,7 @@ final class ReservationFlowUITests: XCTestCase {
 
         // Selecting is deliberately separate from committing, so the confirm bar must appear
         // before any money can move.
-        firstFree.tap()
+        tapCell(firstFree, in: app)
 
         // Two separate waits, so a failure says whether the tap was lost or the bar failed
         // to appear after a registered tap. Collapsing them hides which half broke.
@@ -112,7 +152,6 @@ final class ReservationFlowUITests: XCTestCase {
         app.secureTextFields["login.password"].tap()
         app.secureTextFields["login.password"].typeText("probation123")
         app.buttons["login.submit"].tap()
-        dismissSavePasswordPromptIfPresent(in: app)
 
         // The stub marks every fourth space as taken.
         let taken = app.buttons["space.4"]

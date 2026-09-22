@@ -13,6 +13,10 @@ final class LoginViewModel: ObservableObject {
         self.environment = environment
     }
 
+    /// See `AppEnvironment.isUITesting` — omitting AutoFill content types keeps iOS from
+    /// putting its "Save Password?" sheet over the board mid-test.
+    var isUITesting: Bool { environment.isUITesting }
+
     var canSubmit: Bool {
         licensePlate.count >= 3 && password.count >= 6 && !isBusy
     }
@@ -66,7 +70,7 @@ struct LoginView: View {
                             TextField("ABC-123", text: $model.licensePlate)
                                 .textInputAutocapitalization(.characters)
                                 .autocorrectionDisabled()
-                                .textContentType(.username)
+                                .textContentType(model.isUITesting ? nil : .username)
                                 .focused($focus, equals: .plate)
                                 .submitLabel(.next)
                                 .onSubmit { focus = .password }
@@ -78,7 +82,7 @@ struct LoginView: View {
                             identifier: "login.password", focused: focus == .password
                         ) {
                             SecureField("At least 6 characters", text: $model.password)
-                                .textContentType(.password)
+                                .textContentType(model.isUITesting ? nil : .password)
                                 .focused($focus, equals: .password)
                                 .submitLabel(.go)
                                 .onSubmit { Task { await model.signIn() } }

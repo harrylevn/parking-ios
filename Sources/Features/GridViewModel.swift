@@ -46,7 +46,7 @@ final class GridViewModel: ObservableObject {
 
     var plate: String { environment.account?.licensePlate ?? "" }
 
-    var disablesAnimations: Bool { environment.disablesAnimations }
+    var disablesAnimations: Bool { environment.isUITesting }
 
     /// The space this vehicle appears to hold, matched on the last three plate characters.
     ///

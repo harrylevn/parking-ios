@@ -13,14 +13,21 @@ final class AppEnvironment: ObservableObject {
     let coordinator: ReservationCoordinator
     let window: ReservationWindow
 
-    /// Suppresses view transitions under UI test.
+    /// True when the app is driven by a UI test.
     ///
-    /// A UI test drives the app faster than any human, and an in-flight transition is a
-    /// window in which a tap lands on nothing. Earlier this was handled by switching Reduce
-    /// Motion on in the simulator by hand, which made the suite pass on this machine and
-    /// fail on CI — a test that is green because of how one laptop is configured is worse
-    /// than no test. Carrying it here makes it a property of the run, not the environment.
-    let disablesAnimations: Bool
+    /// Two things hang off it, both of which are about removing nondeterminism a test cannot
+    /// control rather than about changing what the app does:
+    ///
+    /// * **Animations are suppressed.** A test drives the app faster than any human, and an
+    ///   in-flight transition is a window in which a tap lands on nothing.
+    /// * **AutoFill content types are omitted on the login fields.** With them, a successful
+    ///   sign-in makes iOS present its "Save Password?" sheet over the app. It is presented
+    ///   inside the app's own element tree, so the board underneath still reports itself
+    ///   hittable while every touch lands on the dialog — and it appears on some iOS
+    ///   runtimes and not others, at a moment no wait can be relied on to catch.
+    ///
+    /// Real users keep both. This is a property of the run, not of the product.
+    let isUITesting: Bool
 
     @Published var account: Account?
 
@@ -33,7 +40,7 @@ final class AppEnvironment: ObservableObject {
         serverClock: ServerClock,
         reauth: Reauthenticating,
         window: ReservationWindow,
-        disablesAnimations: Bool = false
+        isUITesting: Bool = false
     ) {
         self.auth = auth
         self.spaces = spaces
@@ -42,7 +49,7 @@ final class AppEnvironment: ObservableObject {
         self.tokenStore = tokenStore
         self.serverClock = serverClock
         self.window = window
-        self.disablesAnimations = disablesAnimations
+        self.isUITesting = isUITesting
         self.coordinator = ReservationCoordinator(
             reservations: reservations, spaces: spaces, reauth: reauth
         )
@@ -106,7 +113,7 @@ final class AppEnvironment: ObservableObject {
             serverClock: clock,
             reauth: AlwaysAllowReauthenticator(),
             window: ReservationWindow(openingHour: 0),
-            disablesAnimations: true
+            isUITesting: true
         )
     }
 
