@@ -265,6 +265,26 @@ cd ~/actions-runner && ./svc.sh stop && ./svc.sh start && ./svc.sh status
 A runner showing `offline` after the Mac has been asleep or rebooted is the usual cause; the
 launchd agent restarts it at login, not at boot.
 
+**A run marked failed with no logs at all did not fail — it lost contact with GitHub.**
+
+If `gh run view <id> --log` answers `log not found` and the failing step has no conclusion,
+the job did not break: the runner could not report back. The step output was never uploaded,
+so the web UI shows nothing either. The truth is in the runner's own diagnostics, which are
+written locally regardless:
+
+```bash
+grep -nE "HttpRequestException|SocketException|nodename nor servname" \
+  ~/actions-runner/_diag/Worker_*.log | tail
+```
+
+Seen here once: `nodename nor servname provided, or not known
+(results-receiver.actions.githubusercontent.com)` — a transient DNS failure part-way through
+a job. The tests themselves had not failed. `gh run rerun <id>` was the whole fix, and the
+rerun passed unchanged.
+
+Worth checking before assuming a real failure, because the symptom is indistinguishable from
+a broken build in every view except that one log file.
+
 ### 6.6 Resource contention on a 16 GB machine
 
 The runner shares the machine with everything else. During this project, running colima
