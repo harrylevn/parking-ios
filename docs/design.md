@@ -338,7 +338,7 @@ error.
 |---|---|---|
 | **G** | Unit tests on the domain **and view models**, race and retry logic genuinely tested | met — view-model tests were missing until this audit |
 | **G** | At least one UI test covering login, grid and reserve | met |
-| **G** | CI on every push: build, lint, unit tests, UI tests on a simulator | **not yet met** — workflow written, no runner registered, so it has never run |
+| **G** | CI on every push: build, lint, unit tests, UI tests on a simulator | met — `.github/workflows/ci.yml` runs lint, build, unit tests, UI tests and archive on every push to `main`, on the runner below. It has caught a UI test that was green only because of a simulator setting I had changed by hand |
 | D | Tests against fakes never the live backend; SwiftLint in CI at zero violations | kept, with one exception: `ScreenshotTests` drives the live backend deliberately. Skipped unless `SCREENSHOTS=1`, so CI never runs it |
 | D | `xcodebuild archive` in CI, build number from the commit, `docs/runbook.md` | kept (`make archive` derives from `git rev-list --count`) |
 | D | CI on a self-hosted runner on the development machine | runner `harry-mbp-m4` registered and online; conditions in `docs/runbook.md` §6 |
