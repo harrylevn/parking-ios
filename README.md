@@ -22,8 +22,10 @@ The backend must be running for the app itself; tests do not need it. See
 
 ## Documentation
 
-- [`docs/design.md`](docs/design.md) — architecture, and the decisions the backend's real
-  behaviour forced
+- [`docs/codebase.md`](docs/codebase.md) — what lives where, and the four files worth
+  reading first
+- [`docs/design.md`](docs/design.md) — architecture, the decisions the backend's real
+  behaviour forced, and the guardrail/Default compliance matrix
 - [`docs/security.md`](docs/security.md) — Keychain, re-authentication, threat note
 - [`docs/runbook.md`](docs/runbook.md) — build, run, test, and bring the backend up from
   nothing
