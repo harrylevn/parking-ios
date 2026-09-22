@@ -47,7 +47,7 @@ extension XCTestCase {
         return true
     }
 
-    /// Taps a grid cell and confirms the selection registered.
+    /// Taps an element and confirms the effect actually landed.
     ///
     /// iOS offers to save the password on its own schedule. Measured on iOS 26.3: the sheet
     /// is *not* on screen when the grid appears, and *is* on screen immediately after the
@@ -60,17 +60,25 @@ extension XCTestCase {
     /// again, up to three times. The retry is deliberately conditional on a dialog actually
     /// being present — a tap that vanishes with nothing on screen is a real bug and still
     /// fails the test rather than being retried into a pass.
-    func tapCell(_ cell: XCUIElement, in app: XCUIApplication, attempts: Int = 3) {
+    /// `landed` is what the tap was supposed to achieve — a cell becoming selected, a sheet
+    /// appearing. Checking the effect rather than the tap is the point: a tap that iOS
+    /// swallowed and a tap that did nothing look identical otherwise.
+    func tap(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        attempts: Int = 3,
+        until landed: () -> Bool
+    ) {
         for _ in 0..<attempts {
             let dismissed = dismissSavePasswordPromptIfPresent(in: app)
-            cell.tap()
-            if cell.waitForSelected(timeout: 2) { return }
+            element.tap()
+            if landed() { return }
 
             // Retry while the dialog is still in play — either it is up now and ate this
             // tap, or it was up a moment ago and this tap landed during its dismissal.
-            // Measured: attempt 0 is eaten by the sheet appearing, attempt 1 is eaten by the
-            // sheet animating out, attempt 2 lands. Stopping after a successful dismissal
-            // was the bug: it returned exactly one tap too early.
+            // Measured: attempt 0 is eaten by the sheet appearing, attempt 1 by the sheet
+            // animating out, attempt 2 lands. Stopping after a successful dismissal was the
+            // original bug: it gave up exactly one tap too early.
             guard app.sheets["Save Password?"].exists || dismissed else { return }
         }
     }
@@ -120,7 +128,7 @@ final class ReservationFlowUITests: XCTestCase {
 
         // Selecting is deliberately separate from committing, so the confirm bar must appear
         // before any money can move.
-        tapCell(firstFree, in: app)
+        tap(firstFree, in: app) { firstFree.waitForSelected(timeout: 2) }
 
         // Two separate waits, so a failure says whether the tap was lost or the bar failed
         // to appear after a registered tap. Collapsing them hides which half broke.
@@ -132,11 +140,14 @@ final class ReservationFlowUITests: XCTestCase {
         let confirm = app.buttons["dashboard.confirm"]
         XCTAssertTrue(confirm.waitForExistence(timeout: 5), "a selected space should raise the confirm bar")
 
-        confirm.tap()
+        // The confirm button needs the same treatment: iOS can put its sheet up at any
+        // point, and a swallowed confirm looks exactly like a reservation that never
+        // resolved.
+        let dismiss = app.buttons["outcome.dismiss"]
+        tap(confirm, in: app) { dismiss.waitForExistence(timeout: 8) }
 
         // Whatever the result, the attempt must resolve into something the user can read.
-        let dismiss = app.buttons["outcome.dismiss"]
-        XCTAssertTrue(dismiss.waitForExistence(timeout: 10), "an attempt must always resolve visibly")
+        XCTAssertTrue(dismiss.exists, "an attempt must always resolve visibly")
         dismiss.tap()
     }
 
