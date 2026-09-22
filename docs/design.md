@@ -338,7 +338,7 @@ error.
 | **G** | CI on every push: build, lint, unit tests, UI tests on a simulator | **not yet met** — workflow written, no runner registered, so it has never run |
 | D | Tests against fakes never the live backend; SwiftLint in CI at zero violations | kept, with one exception: `ScreenshotTests` drives the live backend deliberately. Skipped unless `SCREENSHOTS=1`, so CI never runs it |
 | D | `xcodebuild archive` in CI, build number from the commit, `docs/runbook.md` | kept (`make archive` derives from `git rev-list --count`) |
-| D | CI on a self-hosted runner on the Mac mini | accepted in principle; registration conditions enumerated in `docs/runbook.md` §6, two of which are unmet (no git remote, 1-minute idle sleep). The machine is in fact a MacBook Pro M4, not a Mac mini |
+| D | CI on a self-hosted runner on the development machine | runner `harry-mbp-m4` registered and online; conditions in `docs/runbook.md` §6 |
 
 ### 6.5 Standards: security bar and AI-assisted workflow
 

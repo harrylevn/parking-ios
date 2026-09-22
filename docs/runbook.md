@@ -116,7 +116,7 @@ the Default column as the expected answer.
 
 | # | Condition | Why |
 |---|---|---|
-| 5 | macOS on arm64 | Runner package is `osx-arm64`. This machine: MacBook Pro M4, 16 GB, macOS 26.5.1, arm64 — **not** the Mac mini the brief assumes, which changes nothing except that 16 GB is tight (see 6.6) |
+| 5 | macOS on arm64 | Runner package is `osx-arm64`. This machine: MacBook Pro M4, 16 GB, macOS 26.5.1 — the machine the brief calls "your Mac mini". 16 GB is tight; see 6.6 |
 | 6 | Xcode installed, selected and licensed | `xcode-select -p`; `sudo xcodebuild -license accept` once |
 | 7 | An iOS simulator runtime is installed | The workflow runs UI tests on `iPhone 17 Pro`; `xcrun simctl list runtimes` |
 | 8 | `xcodegen`, `swiftlint` and `git` on the runner's PATH | The project is generated, not committed. Homebrew's `/opt/homebrew/bin` must be on PATH for the runner's shell, which does **not** inherit your interactive profile |

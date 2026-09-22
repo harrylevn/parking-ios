@@ -1,44 +1,81 @@
-# Backend defect report
+# Defect report
 
-The backend is read-only per the brief's guardrail: nothing here was patched. Each item
-records what was observed, how to reproduce it, and how the client works around it.
+Two different things are recorded here, and they go to different places:
+
+* **Section A — errors in the project brief itself.** Instructions from VNCDC that do not do
+  what they say. These are not backend defects and cannot be "worked around in the client";
+  they need correcting at source.
+* **Section B — backend defects.** The backend is read-only per the brief's guardrail:
+  nothing here was patched. Each item records what was observed, how to reproduce it, and how
+  the client works around it.
 
 Backend under test: `trint218/parking-reservation`, branch `master`, commit `f27120c`.
 Verified 2026-09-21 against a local run (Spring Boot 3.3.4, Java 21, Postgres 15, Redis 7).
 
 ---
 
-## D1 — The brief's own flag form silently fails to enable the time gate
+# Section A — errors in the project brief
+
+## D1 — The flag form the brief gives does not enable the time gate
 
 **Severity: high.** Following the documented instruction produces the opposite of the
 intended configuration, with no error.
 
-The brief and the README both say to run the backend with
-`-Dapp.reservation.bypass-time-check=false`. Passed that way, the gate stays **bypassed**:
-`spring-boot:run` forks a separate JVM which does not inherit Maven's `-D` system properties.
+**Source.** The project brief, section 4 *Constraints and ground rules → Environment*
+(page 2): "Run the backend with `-Dapp.reservation.bypass-time-check=false`." The same flag
+is referenced again in the section 3 guardrails ("Run the backend with its time gate on") and
+in the 6.2 guardrail ("Demo runs with `app.reservation.bypass-time-check=false`").
 
-Reproduce:
-```
-mvn spring-boot:run -Dapp.reservation.bypass-time-check=false
-# then, at any time outside the window, with window-hour=20:
-POST /reservations  ->  HTTP 200      (expected WINDOW_CLOSED)
-```
-Observed 2026-09-21 15:45 (+07): a reservation succeeded against `window-hour=20`.
+This command form appears **only in the brief**. The backend repository never suggests it:
+`bypass-time-check` appears there solely as a YAML property in `application-dev.yml`,
+`application-prod.yml` and `application-test.yml`. So this is an error in VNCDC's own
+instructions, not a backend defect — which is why it sits in Section A.
 
-Correct form, verified to engage the gate:
+Passed as written, the gate stays **bypassed**: `spring-boot:run` forks a separate JVM, and a
+forked process does not inherit the parent's `-D` system properties.
+
+**Evidence.** Both forms run back to back on 2026-09-22 at 09:51 and 09:52, same
+`window-hour=20`, same request:
+
+| Form | Maven JVM | Application JVM | `POST /reservations` |
+|---|---|---|---|
+| `-Dapp.reservation.bypass-time-check=false` | carries the flags | **no `-D` flags at all** | **HTTP 200**, reservation created |
+| `-Dspring-boot.run.jvmArguments="…"` | — | **carries both flags** | **HTTP 429 `WINDOW_CLOSED`** |
+
+The process tree shows the mechanism directly — the application JVM is a *child* of the
+Maven JVM, and the properties never cross:
+
+```
+pid 94779  java … Launcher -Dapp.reservation.bypass-time-check=false -Dapp.reservation.window-hour=20
+pid 94807  java … com.parking.ParkingApplication          <- child, no -D flags
+```
+
+Either of these works, because the plugin puts them on the forked JVM's command line:
 ```
 mvn spring-boot:run -Dspring-boot.run.jvmArguments="-Dapp.reservation.bypass-time-check=false"
+mvn spring-boot:run -Dspring-boot.run.arguments="--app.reservation.bypass-time-check=false"
 ```
-The same call then returned `WINDOW_CLOSED`.
 
-**Impact.** Anyone following the documentation believes the 20:00 gate is active while it is
-off, so all race handling appears to work and is in fact never exercised.
+**Impact.** It fails silently and in the *permissive* direction: no warning, no log line, the
+application starts normally and every reservation succeeds. That is indistinguishable from
+correct behaviour until you attempt a reservation outside the window and expect a rejection.
+Anyone following the brief believes the 20:00 gate is active while it is off, so all race
+handling appears to work and is in fact never exercised — which is precisely the outcome the
+brief's own section 3 warns against.
+
+**Verification one-liner.** Outside the window, with the gate on, this must print `429`:
+```
+curl -s -o /dev/null -w '%{http_code}\n' -X POST localhost:8080/reservations \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}'
+```
 
 **Workaround.** `scripts/backend-up.sh` uses the working form. The demo asserts a
 `WINDOW_CLOSED` response before the race is shown, so a misconfigured backend fails loudly
 rather than silently passing.
 
 ---
+
+# Section B — backend defects
 
 ## D2 — `WINDOW_CLOSED` is returned as HTTP 429
 
@@ -57,7 +94,7 @@ Covered by `ErrorDecodingTests.testWindowClosedArrivesAs429AndIsNotRetryable`.
 
 ---
 
-## D3 — Two different 401 shapes, only one documented
+## D3 — Two different 401 shapes, undocumented in the contract
 
 | Trigger | Status | Body | Header |
 |---|---|---|---|
@@ -65,8 +102,14 @@ Covered by `ErrorDecodingTests.testWindowClosedArrivesAs429AndIsNotRetryable`.
 | wrong password on `/auth/login` | 401 | full JSON, `code: AUTH_FAILED` | none |
 
 The first is produced by the Spring Security filter chain, which runs before
-`GlobalExceptionHandler` (a `@RestControllerAdvice`) and so never reaches it. The brief
-documents only this one.
+`GlobalExceptionHandler` (a `@RestControllerAdvice`) and so never reaches it.
+
+**Correction to an earlier version of this document:** I previously wrote that the brief
+documents only one of these shapes. That is wrong — section 6.2 describes both, accurately
+and in detail, including `AUTH_FAILED` in the JSON list and the bare 401's empty body and
+`WWW-Authenticate: Bearer` header. The gap is in the backend's `openapi.yml`, which documents
+neither (see D6), and in the reference web client, which conflates them. The brief got this
+right and I misread it.
 
 **Impact.** A client that decodes every 401 as JSON throws on the empty body. A client that
 treats every 401 as an expired session signs the user out when they merely mistype a password
