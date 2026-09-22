@@ -2,8 +2,11 @@
 
 Native iOS client for the Parking Space Reservation System. SwiftUI, iOS 17 minimum.
 
-This document records decisions and the reasoning behind them. Where I deviated from the
-brief's Default column, the deviation and its justification are marked **Deviation**.
+This document is the narrative: the argument in prose, for a reader who wants to follow the
+reasoning end to end. [`architecture.md`](architecture.md) is the same decisions as a numbered
+ADR log, including one superseded record and one open risk; [`codebase.md`](codebase.md) maps
+where everything lives. Where I deviated from the brief's Default column, the deviation and its
+justification are marked **Deviation**.
 
 ---
 

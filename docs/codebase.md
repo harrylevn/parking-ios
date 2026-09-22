@@ -1,8 +1,8 @@
 # Codebase
 
 A map of what lives where and why, for someone opening this repository cold.
-Architecture *decisions* and their justification are in [`design.md`](design.md); this file
-is the layout.
+Architecture *decisions* live in [`architecture.md`](architecture.md) as numbered ADRs, and
+[`design.md`](design.md) argues them in prose. This file is the layout.
 
 Roughly 3,900 lines of Swift across 29 files: ~2,300 of app code, ~1,600 of tests.
 
@@ -27,7 +27,7 @@ Tests/
   UnitTests/             domain and view models, against fakes only
   UITests/               the reserve flow against in-process fakes, plus screenshot capture
 
-docs/                    design, security, runbook, defects, AI account, this file
+docs/                    architecture (ADRs), design, security, runbook, defects, AI account
 ```
 
 ## Dependency direction

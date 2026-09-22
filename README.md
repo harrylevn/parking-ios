@@ -22,6 +22,8 @@ The backend must be running for the app itself; tests do not need it. See
 
 ## Documentation
 
+- [`docs/architecture.md`](docs/architecture.md) — the decision log: 19 ADRs, including the
+  one that was superseded and the one recorded as an open risk
 - [`docs/codebase.md`](docs/codebase.md) — what lives where, and the four files worth
   reading first
 - [`docs/design.md`](docs/design.md) — architecture, the decisions the backend's real
