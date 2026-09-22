@@ -31,6 +31,6 @@ The backend must be running for the app itself; tests do not need it. See
 - [`docs/security.md`](docs/security.md) — Keychain, re-authentication, threat note
 - [`docs/runbook.md`](docs/runbook.md) — build, run, test, and bring the backend up from
   nothing
-- [`docs/defects.md`](docs/defects.md) — backend defects found, reported in writing and
-  worked around in the client
+- [`docs/defects.md`](docs/defects.md) — defects found and reported in writing: section A is
+  errors in the brief itself, section B is backend defects worked around in the client
 - [`CLAUDE.md`](CLAUDE.md) — AI working agreement and quality gates
