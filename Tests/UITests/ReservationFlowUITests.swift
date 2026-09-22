@@ -5,6 +5,20 @@ import XCTest
 /// Runs against the app's in-process fakes (`-UITestMode`), so it never touches the live
 /// backend and stays green whether or not Spring Boot happens to be running.
 @MainActor
+extension XCUIElement {
+    /// `waitForExistence` has no `isSelected` equivalent, and polling by hand is what makes
+    /// these tests flaky under load.
+    func waitForSelected(timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if isSelected { return true }
+            _ = XCUIApplication().wait(for: .runningForeground, timeout: 0.1)
+        }
+        return isSelected
+    }
+}
+
+@MainActor
 final class ReservationFlowUITests: XCTestCase {
 
     private func launchApp() -> XCUIApplication {
@@ -36,8 +50,15 @@ final class ReservationFlowUITests: XCTestCase {
         // before any money can move.
         firstFree.tap()
 
+        // Two separate waits, so a failure says whether the tap was lost or the bar failed
+        // to appear after a registered tap. Collapsing them hides which half broke.
+        XCTAssertTrue(
+            firstFree.waitForSelected(timeout: 5),
+            "the tap on space 1 did not register as a selection"
+        )
+
         let confirm = app.buttons["dashboard.confirm"]
-        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "selecting a space should raise the confirm bar")
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "a selected space should raise the confirm bar")
 
         confirm.tap()
 

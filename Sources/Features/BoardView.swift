@@ -72,7 +72,8 @@ struct BoardView: View {
     private func select(_ space: ParkingSpace) {
         guard model.mySpace == nil else { return }
         Haptics.select()
-        withAnimation(reduceMotion ? nil : .snappy(duration: 0.22)) {
+        let animated = !reduceMotion && !model.disablesAnimations
+        withAnimation(animated ? .snappy(duration: 0.22) : nil) {
             model.selectedSpace = model.selectedSpace == space.number ? nil : space.number
         }
     }

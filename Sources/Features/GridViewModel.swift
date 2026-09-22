@@ -46,6 +46,8 @@ final class GridViewModel: ObservableObject {
 
     var plate: String { environment.account?.licensePlate ?? "" }
 
+    var disablesAnimations: Bool { environment.disablesAnimations }
+
     /// The space this vehicle appears to hold, matched on the last three plate characters.
     ///
     /// Returns `nil` when two spaces share our suffix: with three characters across 80 cells

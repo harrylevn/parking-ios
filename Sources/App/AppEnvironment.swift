@@ -13,6 +13,15 @@ final class AppEnvironment: ObservableObject {
     let coordinator: ReservationCoordinator
     let window: ReservationWindow
 
+    /// Suppresses view transitions under UI test.
+    ///
+    /// A UI test drives the app faster than any human, and an in-flight transition is a
+    /// window in which a tap lands on nothing. Earlier this was handled by switching Reduce
+    /// Motion on in the simulator by hand, which made the suite pass on this machine and
+    /// fail on CI — a test that is green because of how one laptop is configured is worse
+    /// than no test. Carrying it here makes it a property of the run, not the environment.
+    let disablesAnimations: Bool
+
     @Published var account: Account?
 
     init(
@@ -23,7 +32,8 @@ final class AppEnvironment: ObservableObject {
         tokenStore: TokenStoring,
         serverClock: ServerClock,
         reauth: Reauthenticating,
-        window: ReservationWindow
+        window: ReservationWindow,
+        disablesAnimations: Bool = false
     ) {
         self.auth = auth
         self.spaces = spaces
@@ -32,6 +42,7 @@ final class AppEnvironment: ObservableObject {
         self.tokenStore = tokenStore
         self.serverClock = serverClock
         self.window = window
+        self.disablesAnimations = disablesAnimations
         self.coordinator = ReservationCoordinator(
             reservations: reservations, spaces: spaces, reauth: reauth
         )
@@ -95,7 +106,8 @@ final class AppEnvironment: ObservableObject {
             tokenStore: tokenStore,
             serverClock: clock,
             reauth: AlwaysAllowReauthenticator(),
-            window: ReservationWindow(openingHour: 0)
+            window: ReservationWindow(openingHour: 0),
+            disablesAnimations: true
         )
     }
 
