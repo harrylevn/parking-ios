@@ -110,3 +110,19 @@ final class HTTPClientRequestTests: XCTestCase {
         XCTAssertNil(client.request("spaces", method: "GET").value(forHTTPHeaderField: "Authorization"))
     }
 }
+
+extension ErrorDecodingTests {
+    /// Registering a plate that already exists. An unknown `code` makes the whole body fail to
+    /// decode, so a missing case does not degrade gracefully — it discards the message too.
+    func testDuplicateResourceDecodesRatherThanFallingBackToMalformed() {
+        let body = Data("""
+        {"status":409,"error":"Conflict","message":"License plate already registered: TEST-001",
+        "code":"DUPLICATE_RESOURCE","timestamp":"2026-09-23T07:47:05.664144Z","path":"/auth/register"}
+        """.utf8)
+
+        let error = HTTPClient.decodeFailure(status: 409, data: body)
+
+        XCTAssertEqual(error.businessCode, .duplicateResource)
+        XCTAssertFalse(error.requiresReauthentication)
+    }
+}

@@ -84,7 +84,9 @@ actor ReservationCoordinator {
                  .windowClosed, .validationError, .lockTimeout:
                 return .lost(response.code)
 
-            case .authFailed, .internalError:
+            case .authFailed, .internalError, .duplicateResource:
+                // `duplicateResource` is a registration code and cannot reach a reservation;
+                // it is listed rather than defaulted so a new code has to be thought about.
                 return .rejected(error)
             }
 

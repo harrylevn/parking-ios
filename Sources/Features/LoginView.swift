@@ -28,21 +28,16 @@ final class LoginViewModel: ObservableObject {
         licensePlate.count >= 3 && password.count >= 6 && !isBusy
     }
 
-    func signIn() async { await submit(register: false) }
-    func register() async { await submit(register: true) }
-
-    private func submit(register: Bool) async {
+    func signIn() async {
         guard canSubmit else { return }
         isBusy = true
         errorMessage = nil
         defer { isBusy = false }
 
         do {
-            let plate = licensePlate.uppercased()
-            let account = register
-                ? try await environment.auth.register(licensePlate: plate, password: password)
-                : try await environment.auth.login(licensePlate: plate, password: password)
-            environment.account = account
+            environment.account = try await environment.auth.login(
+                licensePlate: licensePlate.uppercased(), password: password
+            )
         } catch let error as APIError {
             // AUTH_FAILED is a failed sign-in, not a dead session: show the message and stay
             // put. The reference web client signs the user out here, which is wrong.
@@ -57,6 +52,8 @@ final class LoginViewModel: ObservableObject {
 
 struct LoginView: View {
     @StateObject var model: LoginViewModel
+    @EnvironmentObject private var environment: AppEnvironment
+    @State private var showingRegister = false
     @FocusState private var focus: Field?
 
     private enum Field { case plate, password }
@@ -70,7 +67,7 @@ struct LoginView: View {
                     masthead
 
                     VStack(spacing: 12) {
-                        field(
+                        FormField(
                             icon: "car.fill", title: "Licence plate",
                             identifier: "login.plate", focused: focus == .plate
                         ) {
@@ -84,7 +81,7 @@ struct LoginView: View {
                                 .font(.body.monospaced())
                         }
 
-                        field(
+                        FormField(
                             icon: "lock.fill", title: "Password",
                             identifier: "login.password", focused: focus == .password
                         ) {
@@ -120,9 +117,11 @@ struct LoginView: View {
                         .disabled(!model.canSubmit)
                         .accessibilityIdentifier("login.submit")
 
-                        Button("Create an account") { Task { await model.register() } }
+                        // Opens the registration screen rather than submitting this form:
+                        // registration asks for a confirmation this form does not have, and
+                        // gating it on sign-in's validity made it look broken.
+                        Button("Create an account") { showingRegister = true }
                             .buttonStyle(SecondaryButtonStyle())
-                            .disabled(!model.canSubmit)
                             .accessibilityIdentifier("login.register")
                     }
                 }
@@ -137,6 +136,9 @@ struct LoginView: View {
         }
         .animation(.snappy(duration: 0.2), value: model.errorMessage)
         .tint(Theme.Palette.accent)
+        .sheet(isPresented: $showingRegister) {
+            RegisterView(model: RegisterViewModel(environment: environment))
+        }
     }
 
     private var masthead: some View {
@@ -164,30 +166,4 @@ struct LoginView: View {
         .accessibilityElement(children: .combine)
     }
 
-    private func field<Content: View>(
-        icon: String,
-        title: String,
-        identifier: String,
-        focused: Bool,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label(title, systemImage: icon)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Theme.Palette.inkMuted)
-            content()
-                .frame(minHeight: Theme.Metric.tapTarget - 10)
-                .padding(.horizontal, 12)
-                .background(Theme.Palette.canvas, in: .rect(cornerRadius: 10))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(
-                            focused ? Theme.Palette.accent : Theme.Palette.hairline,
-                            lineWidth: focused ? 1.5 : 1
-                        )
-                )
-                .accessibilityIdentifier(identifier)
-        }
-        .animation(.easeOut(duration: 0.15), value: focused)
-    }
 }

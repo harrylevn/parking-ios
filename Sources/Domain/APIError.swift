@@ -9,6 +9,11 @@ import Foundation
 /// session and sign the user out mid-login.
 enum BusinessErrorCode: String, Decodable, Sendable {
     case spaceUnavailable = "SPACE_UNAVAILABLE"
+    /// Registration only: the plate already has an account. Absent from this enum until a
+    /// registration screen existed to hit it, and its absence was not harmless — an unknown
+    /// code fails to decode, so the whole `ErrorResponse` was discarded and a duplicate plate
+    /// surfaced as "the server sent something we couldn't read".
+    case duplicateResource = "DUPLICATE_RESOURCE"
     case alreadyReserved = "ALREADY_RESERVED"
     case alreadyQueued = "ALREADY_QUEUED"
     case duplicateRequest = "DUPLICATE_REQUEST"

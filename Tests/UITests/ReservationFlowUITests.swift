@@ -108,29 +108,40 @@ final class ReservationFlowUITests: XCTestCase {
         return app
     }
 
-    /// Both sign-in actions are disabled until the form is valid, and "Create an account"
-    /// gave no sign of it: a plain SwiftUI button does not dim enough to read as unavailable,
-    /// so the control looked tappable and silently did nothing. Its tappable region was also
-    /// the text's own 20pt line box rather than the 44pt frame drawn around it.
-    func testCreateAnAccountReadsAsUnavailableUntilTheFormIsValid() {
+    /// "Create an account" opens its own screen. It used to submit the sign-in form, which
+    /// meant it was disabled until that form was valid and silently did nothing — and it could
+    /// never collect the password confirmation registration actually needs.
+    func testCreateAnAccountOpensItsOwnScreen() {
         let app = launchApp()
         let register = app.buttons["login.register"]
         XCTAssertTrue(register.waitForExistence(timeout: 10))
 
-        XCTAssertFalse(register.isEnabled, "empty form")
+        // Reachable from an untouched form: it is navigation, not a second submit.
+        XCTAssertTrue(register.isEnabled)
         XCTAssertGreaterThanOrEqual(register.frame.height, 44, "6.3 Default: 44pt touch target")
+        register.tap()
 
-        let plate = app.textFields["login.plate"]
+        XCTAssertTrue(app.textFields["register.plate"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.secureTextFields["register.confirm"].exists, "the field sign-in lacks")
+        XCTAssertFalse(app.buttons["register.submit"].isEnabled, "nothing typed yet")
+    }
+
+    /// The plate rule is stated before it is broken, rather than arriving as a 400 with a
+    /// field map nobody sees. Only the plate is exercised here: iOS puts its Automatic Strong
+    /// Password cover view over a second secure field, so the password rules are pinned in
+    /// `RegisterViewModelTests` where no keyboard is in the way.
+    func testRegistrationStatesThePlateRuleBeforeItIsBroken() {
+        let app = launchApp()
+        app.buttons["login.register"].tap()
+
+        let plate = app.textFields["register.plate"]
+        XCTAssertTrue(plate.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["register.plate.note"].exists, "the rule, stated up front")
+
         plate.tap()
-        plate.typeText("TEST-001")
-        XCTAssertFalse(register.isEnabled, "a plate alone is not enough")
-
-        let password = app.secureTextFields["login.password"]
-        password.tap()
-        password.typeText("probation123")
-        XCTAssertTrue(register.isEnabled, "valid form")
-        // The keyboard is up at this point; the action still has to be reachable.
-        XCTAssertTrue(register.isHittable, "keyboard must not bury the action")
+        plate.typeText("AB")
+        XCTAssertEqual(app.staticTexts["register.plate.note"].label, "Between 3 and 20 characters.")
+        XCTAssertFalse(app.buttons["register.submit"].isEnabled)
     }
 
     func testLoginThenGridThenReserve() {

@@ -210,6 +210,8 @@ extension APIError {
                 return String(localized: "Every space is taken for tomorrow.")
             case .alreadyReserved:
                 return String(localized: "This vehicle already holds a space for tomorrow.")
+            case .duplicateResource:
+                return String(localized: "That plate already has an account. Sign in instead.")
             case .duplicateRequest, .alreadyQueued:
                 return String(localized: "Your attempt is still being processed.")
             case .insufficientBalance:
