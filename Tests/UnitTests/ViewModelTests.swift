@@ -306,4 +306,13 @@ final class LoginViewModelTests: XCTestCase {
 
         XCTAssertEqual(auth.seen, "TEST-009")
     }
+
+    func testWindowSummaryFollowsTheConfiguredHour() {
+        // The demo shifts the backend's window; the login screen must say the same hour.
+        let shifted = LoginViewModel(environment: makeEnvironment(windowHour: 11, account: nil))
+        let early = LoginViewModel(environment: makeEnvironment(windowHour: 9, account: nil))
+
+        XCTAssertEqual(shifted.windowSummary, "80 spaces. Opens at 11:00 for tomorrow.")
+        XCTAssertEqual(early.windowSummary, "80 spaces. Opens at 09:00 for tomorrow.")
+    }
 }

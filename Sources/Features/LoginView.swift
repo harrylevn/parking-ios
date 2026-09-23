@@ -17,6 +17,13 @@ final class LoginViewModel: ObservableObject {
     /// putting its "Save Password?" sheet over the board mid-test.
     var isUITesting: Bool { environment.isUITesting }
 
+    /// Read from the configured window rather than written as 20:00, so a demo run with the
+    /// backend's window shifted does not open on a screen that contradicts the countdown.
+    var windowSummary: String {
+        let hour = environment.window.openingHour
+        return "80 spaces. Opens at \(hour < 10 ? "0" : "")\(hour):00 for tomorrow."
+    }
+
     var canSubmit: Bool {
         licensePlate.count >= 3 && password.count >= 6 && !isBusy
     }
@@ -146,7 +153,7 @@ struct LoginView: View {
                 Text("Parking")
                     .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .foregroundStyle(Theme.Palette.ink)
-                Text("80 spaces. Opens at 20:00 for tomorrow.")
+                Text(model.windowSummary)
                     .font(.subheadline)
                     .foregroundStyle(Theme.Palette.inkMuted)
             }
