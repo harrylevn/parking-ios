@@ -109,9 +109,17 @@ Screens: [`screenshots/`](screenshots/). Captured by `ScreenshotTests`, which dr
 app against the live backend — so they record behaviour rather than a mock-up, and re-running
 them is the demo rehearsal.
 
-One screen after sign-in: the board. The state matrix — loading, empty, offline, error,
-insufficient balance, race lost, success, and *unknown* — is modelled in `GridState` and
-`ReservationOutcome` rather than in booleans, so the compiler enforces that each is handled.
+Sign in, and then the board. The state matrix — loading, empty, offline, error, insufficient
+balance, race lost, success, and *unknown* — is modelled in `GridState` and `ReservationOutcome`
+rather than in booleans, so the compiler enforces that each is handled.
+
+There is also a registration screen, which the brief does not ask for; it exists so accounts can
+be made without curl. It is a plain form, kept off the sign-in screen because a form can only
+submit the fields it has and a password being created should be typed twice. It states the
+plate and password rules the backend enforces rather than letting a 400 explain them, and it
+surfaced one real gap: `DUPLICATE_RESOURCE`, the code for a plate that already has an account,
+was missing from `BusinessErrorCode`, and an unrecognised code makes the whole error body fail
+to decode.
 
 ### 5.1 Why the board does not look like the reference web client
 
@@ -181,8 +189,9 @@ than merely resizing.
 
 ## 6. What building the interface surfaced
 
-Five real defects, none of them visible to the unit tests. That is the argument for the UI test
-existing at all.
+Six real defects, none of them visible to the unit tests, and the last not visible to the UI
+tests either — it needed the app driven against the real backend by hand. That is the argument
+for the rehearsals as much as for the tests.
 
 1. **A card's hairline overlay swallowed every touch inside it.** The `.overlay(...)` carrying
    the border sat above the card's contents, so all 80 grid cells were untappable while
@@ -202,6 +211,15 @@ existing at all.
 5. **`app.screenshot()` ignores interface orientation**, so a correctly-rotated app comes back
    as rotated content in a portrait frame. The evidence that the app was fine was the frame
    assertion, not the picture; the capture now uses `XCUIScreen.main.screenshot()`.
+6. **The stored token was attached to sign-in itself**, which wedged the app permanently. The
+   shared request builder added `Authorization` to every request, `/auth/**` included. That
+   endpoint is `permitAll`, but permitAll means *authentication is not required* — it does not
+   mean a token present in the request is ignored, and Spring's bearer-token filter rejects one
+   it cannot verify with a bare 401 before the authorisation rules are consulted. Tokens last 24
+   hours and the app never restores a session, so every launch went through sign-in carrying a
+   dead token, and the only thing that could replace it was the request it was blocking.
+   Verified at the wire: `POST /auth/login` answers normally with no header and 401 with a stale
+   one. This is the one on this list that would have ended a demo.
 
 ## 7. What I would do differently in production
 
