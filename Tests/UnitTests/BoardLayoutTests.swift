@@ -98,3 +98,38 @@ final class BoardLayoutTests: XCTestCase {
         )
     }
 }
+
+extension BoardLayoutTests {
+
+    /// A 13-inch iPad gives the board roughly 900x1300pt. The cells used to stop growing at a
+    /// flat 64pt ceiling, which left about a third of the card empty below the last row — all
+    /// 80 spaces visible, comfortably above 44pt, and unmistakably unfinished.
+    func testTheBoardUsesTheHeightItIsGivenOnALargeIPad() throws {
+        let area = CGSize(width: 900, height: 1300)
+        let layout = try XCTUnwrap(BoardLayout.fitting(count: 80, in: area))
+
+        XCTAssertGreaterThan(
+            layout.totalHeight, area.height * 0.8,
+            """
+            Board is \(layout.totalHeight)pt tall in \(area.height)pt of space: \
+            \(layout.columns)x\(layout.rows)
+            """
+        )
+        XCTAssertLessThanOrEqual(layout.totalHeight, area.height, "and still fits")
+    }
+
+    /// Growing is not the same as stretching. A cell that is much taller than it is wide reads
+    /// as a slab rather than a parking space, so the ceiling is relative to the cell's width.
+    func testCellsStayRoughlySquareAtEverySize() throws {
+        for area in [boardAreaOn61Inch,
+                     CGSize(width: 480, height: 330),
+                     CGSize(width: 700, height: 900),
+                     CGSize(width: 900, height: 1300)] {
+            let layout = try XCTUnwrap(BoardLayout.fitting(count: 80, in: area))
+            XCTAssertLessThanOrEqual(
+                layout.cellHeight, layout.cellWidth * 1.3,
+                "Cell is \(layout.cellWidth)x\(layout.cellHeight) in \(area)"
+            )
+        }
+    }
+}

@@ -184,6 +184,13 @@ iPad, cells growing rather than the board scrolling. The confirm control is dock
 in portrait, where the thumb is, and becomes a card in the sidebar when wide — same view, two
 chrome styles, so copy and behaviour cannot drift apart.
 
+Cells grow with the screen, but the ceiling on that growth is relative to the cell's own width
+rather than a fixed number of points. It was a flat 64pt, which is invisible on a phone — the
+height available per row is smaller than that anyway — and wrong on a 13-inch iPad, where the
+rows stopped growing with about a third of the card empty beneath them. All 80 spaces were
+visible and comfortably above 44pt, so nothing was *broken*; it simply looked unfinished, which
+on a screen a reviewer will open is much the same thing.
+
 → [ADR-005](architecture.md#adr-005) for the size-class rules and why the control moves rather
 than merely resizing.
 

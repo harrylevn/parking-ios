@@ -32,6 +32,18 @@ struct BoardLayout: Equatable {
         /// The vertical target never drops below 44pt, so a tap stays comfortable even
         /// where the horizontal dimension has to give.
         static let preferredCellHeight: CGFloat = 44
+
+        /// How tall a cell may grow, relative to its own width.
+        ///
+        /// Cells have to stop growing somewhere or a large screen turns 80 tiles into 80
+        /// slabs. The ceiling used to be a flat 64pt, which is invisible on a phone — the
+        /// height available per row is smaller than that anyway — and wrong on a 13-inch
+        /// iPad, where rows stopped growing with about a third of the board left empty
+        /// beneath them. Tying it to the cell's own width keeps the tile roughly square at
+        /// every size, and lets the board actually use the room it is given.
+        static func maxCellHeight(forWidth width: CGFloat) -> CGFloat {
+            max(preferredCellHeight, width * 1.25)
+        }
     }
 
     /// The largest layout that fits `count` cells inside `size`, or `nil` if none does.
@@ -53,7 +65,7 @@ struct BoardLayout: Equatable {
             let candidate = BoardLayout(
                 columns: columns, rows: rows,
                 cellWidth: width.rounded(.down),
-                cellHeight: min(height, 64).rounded(.down),
+                cellHeight: min(height, Metrics.maxCellHeight(forWidth: width)).rounded(.down),
                 spacing: spacing
             )
 
