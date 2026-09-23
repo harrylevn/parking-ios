@@ -24,6 +24,16 @@ dropping from five minutes to thirty seconds changes which tests get written.
 The draft is a good skeleton and a bad final answer — it reliably states what the code does
 and just as reliably misses why.
 
+**A scripted run found what the tests could not.** The first time `/run-demo` launched the
+app against a backend shifted to an 11:00 window, the login screen said "Opens at 20:00".
+`ReservationWindow` carries a comment saying the hour is configuration and never a hardcoded
+20, and everything behind the login screen followed it. The subtitle in `LoginView` was a
+string literal. Forty-five unit tests passed, because none of them had a reason to read that
+sentence. What caught it was the screenshot the skill takes at the end, compared against the
+hour it had just passed in. That is the same lesson as the three SwiftUI bugs below, arriving
+from the other direction: a check that looks at the running app keeps finding things that
+reading the code does not, so it is worth making that check cheap enough to run every time.
+
 ## Where it failed me
 
 **It followed the brief's wrong instruction without noticing.** The brief says to run the
