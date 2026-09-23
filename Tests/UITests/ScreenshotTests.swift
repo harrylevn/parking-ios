@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 /// Drives the real app against the **live** backend and captures each screen as a test
@@ -23,32 +24,81 @@ final class ScreenshotTests: XCTestCase {
             ?? String(Calendar.current.component(.hour, from: Date()))
     }
 
-    private func capture(_ app: XCUIApplication, _ name: String) {
-        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+    private func capture(_ app: XCUIApplication, _ name: String, landscape: Bool = false) {
+        let shot = XCTAttachment(image: upright(XCUIScreen.main.screenshot().image, landscape: landscape))
         shot.name = name
         shot.lifetime = .keepAlways
         add(shot)
     }
 
-    /// Creates the account over HTTP rather than through the registration screen. iOS puts its
-    /// Automatic Strong Password cover view over any pair of secure fields, and nothing the app
-    /// declares dismisses it, so a test cannot type a confirmation. The screen is still
-    /// captured; it just is not driven.
-    private func makeAccount() async throws -> String {
+    /// Rotates a landscape capture the right way up.
+    ///
+    /// Neither `app.screenshot()` nor `XCUIScreen.main.screenshot()` applies interface
+    /// orientation: a correctly rotated app comes back as landscape content inside a
+    /// portrait-shaped image. The app resized properly — the evidence for that is the frame
+    /// assertion, not the picture — but a sideways PNG in the evidence folder reads as a bug
+    /// in the app.
+    ///
+    /// The capture already knows it is landscape — `UIImage.size` reports 874×402 — but the
+    /// rotation lives in `imageOrientation` while the backing buffer stays portrait, and
+    /// `XCTAttachment(image:)` writes the buffer and drops the orientation. Redrawing bakes the
+    /// orientation into the pixels. The caller says which captures are landscape rather than
+    /// the code inferring it, because `XCUIApplication.frame` reports the unrotated frame too.
+    private func upright(_ image: UIImage, landscape: Bool) -> UIImage {
+        guard landscape else { return image }
+        return UIGraphicsImageRenderer(size: image.size).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: image.size))
+        }
+    }
+
+    /// A funded account, created over HTTP rather than through the registration screen.
+    ///
+    /// Over HTTP because iOS puts its Automatic Strong Password cover view over any pair of
+    /// secure fields and nothing the app declares dismisses it, so a test cannot type a
+    /// confirmation. Fresh each run because one reservation per vehicle per day is a backend
+    /// invariant: a fixed plate captures these flows once and then never again that day, and
+    /// the failure is quiet — the board simply comes back with nothing selectable.
+    private func makeFundedAccount() async throws -> String {
         let plate = "TEST-\(Int.random(in: 1000...9999))"
-        guard let url = URL(string: "http://localhost:8080/auth/register") else { return plate }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = Data(#"{"licensePlate":"\#(plate)","password":"probation123"}"#.utf8)
-        _ = try await URLSession.shared.data(for: request)
+        let credentials = #"{"licensePlate":"\#(plate)","password":"probation123"}"#
+
+        guard let register = URL(string: "http://localhost:8080/auth/register"),
+              let deposit = URL(string: "http://localhost:8080/wallet/deposit") else { return plate }
+
+        var signUp = URLRequest(url: register)
+        signUp.httpMethod = "POST"
+        signUp.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        signUp.httpBody = Data(credentials.utf8)
+        let (body, _) = try await URLSession.shared.data(for: signUp)
+
+        guard let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+              let token = json["token"] as? String else { return plate }
+
+        var topUp = URLRequest(url: deposit)
+        topUp.httpMethod = "POST"
+        topUp.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        topUp.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        topUp.httpBody = Data(#"{"amount":50.00}"#.utf8)
+        _ = try await URLSession.shared.data(for: topUp)
+
         return plate
+    }
+
+    private func signIn(_ app: XCUIApplication, as plate: String) {
+        let field = app.textFields["login.plate"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.tap()
+        field.typeText(plate)
+        app.secureTextFields["login.password"].tap()
+        app.secureTextFields["login.password"].typeText("probation123")
+        app.buttons["login.submit"].tap()
+        dismissSavePasswordPromptIfPresent(in: app, timeout: 5)
     }
 
     func testCaptureFlow() async throws {
         try XCTSkipUnless(isEnabled, "Set SCREENSHOTS=1 and start the backend")
 
-        let plate = try await makeAccount()
+        let plate = try await makeFundedAccount()
 
         let app = XCUIApplication()
         app.launchArguments += ["-UITestSkipReauth"]
@@ -66,22 +116,18 @@ final class ScreenshotTests: XCTestCase {
         // A fresh account each run. One reservation per vehicle per day is a backend
         // invariant, so a fixed plate captures this flow once and then never again that day:
         // the board comes up with the space already held and nothing is selectable.
-        let plateField = app.textFields["login.plate"]
-        XCTAssertTrue(plateField.waitForExistence(timeout: 10))
-        plateField.tap()
-        plateField.typeText(plate)
-        app.secureTextFields["login.password"].tap()
-        app.secureTextFields["login.password"].typeText("probation123")
-        app.buttons["login.submit"].tap()
-        dismissSavePasswordPromptIfPresent(in: app, timeout: 5)
+        signIn(app, as: plate)
 
         XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 15), "grid should load")
         capture(app, "03-board")
 
         // A new account holds nothing, so fund it before reserving. This is the one place the
         // rehearsal has to *do* something rather than look at it.
-        app.buttons["dashboard.wallet"].tap()
-        XCTAssertTrue(app.buttons["deposit.submit"].waitForExistence(timeout: 5))
+        // Through the retrying tap: iOS offers to save the password just after sign-in, and
+        // the sheet eats the first tap that follows. Same hazard as in ReservationFlowUITests.
+        tap(app.buttons["dashboard.wallet"], in: app) { app.buttons["deposit.submit"].exists }
+        XCTAssertTrue(app.buttons["deposit.submit"].waitForExistence(timeout: 5),
+                      "the wallet sheet should be open")
         capture(app, "04-deposit")
         app.buttons["deposit.preset.50"].tap()
         app.buttons["deposit.submit"].tap()
@@ -116,24 +162,20 @@ final class ScreenshotTests: XCTestCase {
     /// Landscape and iPad use the side-by-side layout: board on the leading side taking the
     /// full height, everything else in a sidebar. A bottom-docked confirm bar on iPad would
     /// put the action a hand's travel from the board it refers to.
-    func testCaptureWideLayout() throws {
+    func testCaptureWideLayout() async throws {
         try XCTSkipUnless(isEnabled, "Set SCREENSHOTS=1 and start the backend")
+
+        let plate = try await makeFundedAccount()
 
         let app = XCUIApplication()
         app.launchArguments += ["-UITestSkipReauth"]
         app.launchEnvironment["PARKING_WINDOW_HOUR"] = windowHour
         app.launch()
 
-        let plate = app.textFields["login.plate"]
-        XCTAssertTrue(plate.waitForExistence(timeout: 10))
-        plate.tap()
-        plate.typeText("TEST-001")
-        app.secureTextFields["login.password"].tap()
-        app.secureTextFields["login.password"].typeText("probation123")
-        app.buttons["login.submit"].tap()
-        dismissSavePasswordPromptIfPresent(in: app, timeout: 5)
+        signIn(app, as: plate)
 
         XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 15))
+        dismissSavePasswordPromptIfPresent(in: app, timeout: 3)
 
         XCUIDevice.shared.orientation = .landscapeLeft
         // Wait for the window to actually resize, not just for the rotation to be requested —
@@ -142,23 +184,32 @@ final class ScreenshotTests: XCTestCase {
             let frame = XCUIApplication().frame
             return frame.width > frame.height
         }, evaluatedWith: app)
-        wait(for: [rotated], timeout: 10)
+        await fulfillment(of: [rotated], timeout: 10)
         XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 10))
-        capture(app, "11-landscape")
+        capture(app, "11-landscape", landscape: true)
 
+        var selected = false
         for number in 1...80 where app.buttons["space.\(number)"].isEnabled {
             app.buttons["space.\(number)"].tap()
+            selected = true
             break
         }
-        _ = app.buttons["dashboard.confirm"].waitForExistence(timeout: 5)
-        capture(app, "12-landscape-confirm")
+        XCTAssertTrue(selected, "no selectable space — is this account already holding one?")
+
+        // Assert rather than discard the result. Without this the capture silently repeated
+        // the previous screen, and the two landscape files were byte-identical for days.
+        XCTAssertTrue(app.buttons["dashboard.confirm"].waitForExistence(timeout: 5),
+                      "the sidebar confirm panel is the point of this capture")
+        capture(app, "12-landscape-confirm", landscape: true)
 
         XCUIDevice.shared.orientation = .portrait
     }
 
     /// The window-closed state: the countdown hero at full size.
-    func testCaptureCountdown() throws {
+    func testCaptureCountdown() async throws {
         try XCTSkipUnless(isEnabled, "Set SCREENSHOTS=1 and start the backend")
+
+        let plate = try await makeFundedAccount()
 
         let app = XCUIApplication()
         // A window hour just ahead of now forces the closed state regardless of wall clock.
@@ -168,14 +219,7 @@ final class ScreenshotTests: XCTestCase {
         app.launchEnvironment["PARKING_WINDOW_HOUR"] = String(nextHour)
         app.launch()
 
-        let plate = app.textFields["login.plate"]
-        XCTAssertTrue(plate.waitForExistence(timeout: 10))
-        plate.tap()
-        plate.typeText("TEST-001")
-        app.secureTextFields["login.password"].tap()
-        app.secureTextFields["login.password"].typeText("probation123")
-        app.buttons["login.submit"].tap()
-        dismissSavePasswordPromptIfPresent(in: app, timeout: 5)
+        signIn(app, as: plate)
 
         XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 15))
         capture(app, "08-countdown")
