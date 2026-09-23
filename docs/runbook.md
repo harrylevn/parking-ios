@@ -20,12 +20,19 @@ contains a LICENSE and nothing else.
 git clone -b master https://github.com/trint218/parking-reservation.git
 ```
 
-Then, from the repository root:
+Clone it alongside the iOS repo, or set `PARKING_BACKEND` to wherever it lives. Then, from
+the **iOS** repository root:
 
 ```bash
-./scripts/backend-up.sh        # gate ON, window 20:00 — the demo configuration
-./scripts/backend-up.sh 15     # gate ON, window shifted to 15:00 — for testing
-./scripts/backend-up.sh off    # gate bypassed — the shipped default
+make backend                   # gate ON, window 20:00 — the demo configuration
+make backend-now               # gate ON, window = the current hour — open immediately
+make backend-off               # gate bypassed — the shipped default
+```
+
+These wrap `scripts/backend-up.sh`, which also takes an explicit hour:
+
+```bash
+./scripts/backend-up.sh 15     # gate ON, window shifted to 15:00
 ```
 
 The script starts colima, brings up Postgres and Redis, waits for health, and runs the API.
@@ -52,6 +59,8 @@ curl -s localhost:8080/actuator/health     # {"status":"UP"}
 
 ## 3. Reset to a clean grid
 
+`make backend-reset`, or by hand:
+
 ```bash
 docker exec parking-redis redis-cli FLUSHALL
 docker exec parking-postgres psql -U postgres -d parking -c \
@@ -75,13 +84,19 @@ make ci          # everything CI runs
 `Parking.xcodeproj` is generated and **not committed** — `project.yml` is the source of
 truth. Run `make project` after a fresh clone.
 
-To point the app at a shifted window, matching a backend started with
-`./backend-up.sh 15`, set `PARKING_WINDOW_HOUR=15` in the scheme's environment variables.
+To point the app at a shifted window, matching a backend started with `make backend-now` or
+`./scripts/backend-up.sh 15`, set `PARKING_WINDOW_HOUR` to the same hour in the scheme's
+environment variables. The app and the backend must agree, or the countdown points at a
+window the server is not using.
+
+`make` with no target lists every command.
 
 ## 5. Load test
 
 k6 is not preinstalled. `tests/load-stress-test.js` defines `options.scenarios`, so
 `--vus` and `--duration` on the command line are **ignored**:
+
+`make loadtest`, or by hand from the backend repo:
 
 ```bash
 k6 run --env BASE_URL=http://localhost:8080 --env SCENARIO=stress tests/load-stress-test.js

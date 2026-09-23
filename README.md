@@ -17,8 +17,57 @@ brew install xcodegen swiftlint
 make project && make ci
 ```
 
-The backend must be running for the app itself; tests do not need it. See
-[`docs/runbook.md`](docs/runbook.md).
+The backend must be running for the app itself; tests do not need it.
+
+## Commands
+
+`make` on its own lists these. Fuller explanations, and what to do when something is wrong,
+are in [`docs/runbook.md`](docs/runbook.md).
+
+### App
+
+| | |
+|---|---|
+| `make build` | build the app |
+| `make test` | unit tests — no backend needed |
+| `make uitest` | UI tests — no backend needed, they run against in-process fakes |
+| `make lint` | SwiftLint, must be zero violations |
+| `make ci` | everything CI runs: lint, build, unit, UI |
+| `make project` | regenerate `Parking.xcodeproj` from `project.yml` |
+| `make archive` | archive, with the build number from the commit count |
+
+### Backend
+
+Each of these runs in the foreground, so give the backend its own terminal. They assume the
+backend is cloned alongside this repo as `../parking-reservation`, **on its `master` branch** —
+a plain clone lands on `main`, which holds a LICENSE and nothing else. Override the location
+with `PARKING_BACKEND=/path/to/parking-reservation`.
+
+| | |
+|---|---|
+| `make backend` | gate **on**, window 20:00 — the demo configuration |
+| `make backend-now` | gate **on**, window set to the current hour, so it is open immediately |
+| `make backend-off` | gate **bypassed** — the shipped default, and the one that hides bugs |
+| `make backend-reset` | empty the grid and the reservations, keep the accounts |
+| `make backend-health` | is it up? |
+| `make backend-down` | stop Postgres and Redis |
+| `make loadtest` | k6 stress scenario, 1,000 virtual users |
+
+### Opening the window on demand
+
+`make backend` waits until 20:00, which is no use during the day. `make backend-now` starts the
+backend with the window set to the current hour — the gate is genuinely on, it is simply
+already open. **The app has to agree**, so set `PARKING_WINDOW_HOUR` to the same hour in the
+scheme's environment variables, or the countdown will point somewhere else.
+
+Two things worth knowing before trusting a run:
+
+- `make backend-off` bypasses the time gate entirely, and a backend in that state is
+  **indistinguishable from a working one** until you try to reserve outside the window. It is
+  the shipped default, so it is the state you get by accident. Prefer `make backend-now`.
+- `make loadtest` reports a crossed threshold even when the system behaves perfectly, because
+  it counts `409` as a failure. The real pass criterion is `reservation_success == 80`. See
+  `docs/defects.md` D8.
 
 ## Documentation
 
