@@ -206,6 +206,72 @@ final class ScreenshotTests: XCTestCase {
     }
 
     /// The window-closed state: the countdown hero at full size.
+    /// Dark mode, on both the open board and the closed-window countdown.
+    ///
+    /// The appearance is set on the simulator by `make screenshots` rather than forced with
+    /// `preferredColorScheme`, because an override would photograph the override rather than
+    /// the palette the app actually adopts from the system.
+    func testCaptureDark() async throws {
+        try XCTSkipUnless(isEnabled, "Set SCREENSHOTS=1 and start the backend")
+
+        let plate = try await makeFundedAccount()
+
+        let app = XCUIApplication()
+        app.launchArguments += ["-UITestSkipReauth"]
+        app.launchEnvironment["PARKING_WINDOW_HOUR"] = windowHour
+        app.launch()
+
+        signIn(app, as: plate)
+        XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 15))
+        capture(app, "09-board-dark")
+
+        // Relaunch against a window an hour ahead, which is the closed state, so the same
+        // account serves both captures.
+        app.terminate()
+        let nextHour = (Calendar.current.component(.hour, from: Date()) + 1) % 24
+        app.launchEnvironment["PARKING_WINDOW_HOUR"] = String(nextHour)
+        app.launch()
+
+        signIn(app, as: plate)
+        XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 15))
+        capture(app, "10-countdown-dark")
+    }
+
+    /// iPad, which uses the same side-by-side machinery as landscape but at a size class where
+    /// the board gets 6 columns and the sidebar is permanent.
+    func testCaptureIPad() async throws {
+        try XCTSkipUnless(isEnabled, "Set SCREENSHOTS=1 and start the backend")
+
+        let plate = try await makeFundedAccount()
+
+        let app = XCUIApplication()
+        app.launchArguments += ["-UITestSkipReauth"]
+        app.launchEnvironment["PARKING_WINDOW_HOUR"] = windowHour
+        app.launch()
+
+        signIn(app, as: plate)
+        XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 15))
+
+        // Reserve, so the capture shows the held state rather than an untouched board — the
+        // sidebar is where "space N is yours" lives, and that is the point of the layout.
+        var selected = false
+        for number in 1...80 where app.buttons["space.\(number)"].isEnabled {
+            tap(app.buttons["space.\(number)"], in: app) { app.buttons["dashboard.confirm"].exists }
+            selected = true
+            break
+        }
+        XCTAssertTrue(selected, "no selectable space — is this account already holding one?")
+        XCTAssertTrue(app.buttons["dashboard.confirm"].waitForExistence(timeout: 5))
+        app.buttons["dashboard.confirm"].tap()
+
+        let dismiss = app.buttons["outcome.dismiss"]
+        XCTAssertTrue(dismiss.waitForExistence(timeout: 15), "an attempt must always resolve visibly")
+        dismiss.tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)["dashboard.holding"].waitForExistence(timeout: 10))
+        capture(app, "13-ipad")
+    }
+
     func testCaptureCountdown() async throws {
         try XCTSkipUnless(isEnabled, "Set SCREENSHOTS=1 and start the backend")
 

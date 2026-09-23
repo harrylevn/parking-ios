@@ -97,10 +97,27 @@ window the server is not using.
 make screenshots        # needs the backend up: make backend-now
 ```
 
-Runs `ScreenshotTests` against the live backend, exports the attachments from the `.xcresult`
-and writes them into `docs/screenshots/`.
+Runs `ScreenshotTests` against the live backend, exports the attachments from each `.xcresult`
+and writes all thirteen files into `docs/screenshots/`.
 
-Two things this wraps, both of which cost time when done by hand:
+It is three passes, because a screenshot set needs two appearances and two devices and one
+test run is one of each:
+
+| Pass | Device | Appearance | Captures |
+|---|---|---|---|
+| 1 | iPhone 17 Pro | light | 01–08, 11–12 |
+| 2 | iPhone 17 Pro | dark | 09–10 |
+| 3 | iPad Pro 13-inch (M5) | light | 13 |
+
+The appearance is set with `xcrun simctl ui <device> appearance dark` rather than forced in
+the app with `preferredColorScheme`, so what is captured is the palette the app actually
+adopts from the system rather than an override.
+
+The iPad must exist on the **newest** installed runtime, because the destination resolves
+`OS:latest`. An iPad Pro 13-inch (M4) is present here but only on 26.0.1, so naming it fails
+with "no available devices matched the request".
+
+Three things this wraps, all of which cost time when done by hand:
 
 1. **The environment variable needs a `TEST_RUNNER_` prefix.** `xcodebuild` passes only those
    through to the test-runner process. A plain `SCREENSHOTS=1` leaves the suite skipped — and a
@@ -109,6 +126,9 @@ Two things this wraps, both of which cost time when done by hand:
    per vehicle per day is a backend invariant, so a fixed plate captures the flow once and then
    never again that day: the board comes back with the space already held and nothing is
    selectable.
+3. **Landscape captures are rotated upright before attaching.** `UIImage.size` reports the
+   landscape dimensions, but the rotation lives in `imageOrientation` while the backing buffer
+   stays portrait, and `XCTAttachment(image:)` writes the buffer and drops the orientation.
 
 The registration screen is captured but not driven. iOS puts its Automatic Strong Password
 cover view over any pair of secure fields and nothing the app declares dismisses it, so a test

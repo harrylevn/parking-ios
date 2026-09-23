@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Copy the named screenshot attachments out of an xcresult export into docs/screenshots.
+"""Copy the named screenshot attachments out of xcresult exports into docs/screenshots.
+
+Usage: collect-screenshots.py DESTINATION SOURCE [SOURCE ...]
 
 `xcresulttool export attachments` writes opaque filenames plus a manifest that maps them to
-the names the test gave each capture. Only attachments whose name looks like `NN-something`
-are taken, so an incidental attachment never lands in the evidence folder.
+the names the test gave each capture, with an index and a UUID appended. Only attachments
+whose name starts with `NN-something` are taken, so an incidental attachment never lands in
+the evidence folder.
 """
 import json
 import pathlib
@@ -11,23 +14,29 @@ import re
 import shutil
 import sys
 
-source, destination = (pathlib.Path(p) for p in sys.argv[1:3])
-manifest = json.loads((source / "manifest.json").read_text())
+destination = pathlib.Path(sys.argv[1])
+sources = [pathlib.Path(p) for p in sys.argv[2:]]
 destination.mkdir(parents=True, exist_ok=True)
 
-# Exported names carry the capture name plus an index and a UUID:
-# "07-holding_0_9F3C....png". Only the leading NN-name part is wanted.
+# "07-holding_0_9F3C....png" -> "07-holding"
 wanted = re.compile(r"^(\d{2}-[a-z-]+)_")
 copied = []
-for test in manifest:
-    for attachment in test.get("attachments", []):
-        match = wanted.match(attachment.get("suggestedHumanReadableName") or "")
-        if not match:
-            continue
-        exported = source / attachment["exportedFileName"]
-        target = destination / f"{match.group(1)}.png"
-        shutil.copyfile(exported, target)
-        copied.append(target.name)
+
+for source in sources:
+    manifest = source / "manifest.json"
+    if not manifest.exists():
+        print(f"  (no manifest in {source})")
+        continue
+    for test in json.loads(manifest.read_text()):
+        for attachment in test.get("attachments", []):
+            match = wanted.match(attachment.get("suggestedHumanReadableName") or "")
+            if not match:
+                continue
+            shutil.copyfile(
+                source / attachment["exportedFileName"],
+                destination / f"{match.group(1)}.png",
+            )
+            copied.append(f"{match.group(1)}.png")
 
 for name in sorted(copied):
     print(f"  {name}")

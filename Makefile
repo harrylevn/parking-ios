@@ -1,6 +1,8 @@
 SCHEME      := Parking
 PROJECT     := Parking.xcodeproj
-DESTINATION := platform=iOS Simulator,name=iPhone 17 Pro
+SIM_PHONE   := iPhone 17 Pro
+SIM_IPAD    := iPad Pro 13-inch (M5)
+DESTINATION := platform=iOS Simulator,name=$(SIM_PHONE)
 DERIVED     := .build/DerivedData
 
 # The backend repo, cloned alongside this one. Override with PARKING_BACKEND=/path.
@@ -27,6 +29,7 @@ help:
 	@echo '  make backend-off    gate BYPASSED — the shipped default, race code untested'
 	@echo '  make backend-reset  empty the grid and the reservations, keep accounts'
 	@echo '  make backend-health is it up?'
+	@echo '  make screenshots    regenerate docs/screenshots (needs the backend)'
 	@echo '  make backend-down   stop postgres and redis'
 	@echo '  make loadtest       k6 stress scenario, 1000 VUs'
 	@echo ''
@@ -50,24 +53,47 @@ uitest: project
 lint:
 	swiftlint lint --strict
 
-# Regenerate docs/screenshots from the real app against the live backend.
+# Regenerate every file in docs/screenshots from the real app against the live backend.
+#
+# Three passes, because a screenshot set needs two appearances and two devices and a test
+# run is one of each: iPhone light, iPhone dark, then iPad. The appearance is set on the
+# simulator rather than forced in the app, so what is captured is the palette the app
+# actually adopts from the system.
 #
 # The env var needs the TEST_RUNNER_ prefix: xcodebuild passes those through to the test
 # runner process and drops everything else, so a plain SCREENSHOTS=1 leaves the suite
 # skipped — and a skipped suite still reports TEST SUCCEEDED, which is how it can look
 # like it ran for weeks without producing anything.
+SCREENSHOT_RUN = TEST_RUNNER_SCREENSHOTS=1 xcodebuild -project $(PROJECT) -scheme $(SCHEME) \
+	-derivedDataPath $(DERIVED) test
+
 screenshots: project
 	@$(MAKE) backend-health >/dev/null || (echo 'start the backend first: make backend-now'; exit 1)
-	rm -rf $(DERIVED)/screenshots.xcresult
-	TEST_RUNNER_SCREENSHOTS=1 xcodebuild -project $(PROJECT) -scheme $(SCHEME) \
-		-destination '$(DESTINATION)' -derivedDataPath $(DERIVED) \
-		-resultBundlePath $(DERIVED)/screenshots.xcresult \
-		-only-testing:ParkingUITests/ScreenshotTests test
-	rm -rf $(DERIVED)/attachments
-	xcrun xcresulttool export attachments \
-		--path $(DERIVED)/screenshots.xcresult \
-		--output-path $(DERIVED)/attachments
-	python3 scripts/collect-screenshots.py $(DERIVED)/attachments docs/screenshots
+	rm -rf $(DERIVED)/shots
+	xcrun simctl boot '$(SIM_PHONE)' 2>/dev/null || true
+	xcrun simctl ui '$(SIM_PHONE)' appearance light
+	$(SCREENSHOT_RUN) -destination 'platform=iOS Simulator,name=$(SIM_PHONE)' \
+		-resultBundlePath $(DERIVED)/shots/light.xcresult \
+		-only-testing:ParkingUITests/ScreenshotTests \
+		-skip-testing:ParkingUITests/ScreenshotTests/testCaptureDark \
+		-skip-testing:ParkingUITests/ScreenshotTests/testCaptureIPad
+	xcrun simctl ui '$(SIM_PHONE)' appearance dark
+	$(SCREENSHOT_RUN) -destination 'platform=iOS Simulator,name=$(SIM_PHONE)' \
+		-resultBundlePath $(DERIVED)/shots/dark.xcresult \
+		-only-testing:ParkingUITests/ScreenshotTests/testCaptureDark
+	xcrun simctl ui '$(SIM_PHONE)' appearance light
+	xcrun simctl boot '$(SIM_IPAD)' 2>/dev/null || true
+	xcrun simctl ui '$(SIM_IPAD)' appearance light
+	$(SCREENSHOT_RUN) -destination 'platform=iOS Simulator,name=$(SIM_IPAD)' \
+		-resultBundlePath $(DERIVED)/shots/ipad.xcresult \
+		-only-testing:ParkingUITests/ScreenshotTests/testCaptureIPad
+	@for bundle in light dark ipad; do \
+		xcrun xcresulttool export attachments \
+			--path $(DERIVED)/shots/$$bundle.xcresult \
+			--output-path $(DERIVED)/shots/$$bundle-files >/dev/null; \
+	done
+	python3 scripts/collect-screenshots.py docs/screenshots \
+		$(DERIVED)/shots/light-files $(DERIVED)/shots/dark-files $(DERIVED)/shots/ipad-files
 
 # Build number derives from the commit count, never hand-edited (guardrail 6.4).
 archive: project
