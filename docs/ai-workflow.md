@@ -60,6 +60,30 @@ genuinely could not be tapped. Roughly forty minutes went into blaming the tooli
 checking the simpler explanation. The correct instinct with a failing test is to assume the
 test is right.
 
+**It theorised six times before looking at the evidence it already had.** A UI test that was
+green locally failed on CI. The first fix was wrong, and so were the next five: reduce motion,
+clock seeding, dismissing the prompt after login, `textContentType(nil)`, a single retry,
+waiting for the sheet to vanish. Each was plausible, each was a guess, and each cost a CI run.
+
+The actual cause needed no theory at all. The test had been capturing a screenshot into the
+`.xcresult` on every failure from the start; opening it showed iOS's "Save Password?" sheet
+sitting over the board. It swallowed taps **twice** — once appearing, once animating away —
+and the retry guard I had written returned one tap too early.
+
+Two things worth keeping from that. Green locally can mean the environment, not the code: it
+passed on my machine only because I had switched Reduce Motion on by hand, months earlier, for
+something unrelated. And the rule now in `docs/runbook.md` — *open the `.xcresult` attachment
+before forming a hypothesis* — exists because six plausible explanations cost more than one
+look at a screenshot that was already on disk.
+
+**It stated a cost it had never measured.** The record that is now ADR-001 deferred Swift 6
+language mode on the reasoning that the migration would make every future change a
+language-mode question.
+That sounded like engineering judgement and was a guess. When it was finally tested, the
+project built and passed all 45 tests under Swift 6 with no source changes at all. The
+reasoning was not wrong so much as unverified, and an unverified reason presented in the
+confident register of an ADR is hard to distinguish from a real one.
+
 ## What I take from it
 
 The division that worked: **AI for breadth, me for judgement**. It reads more code than I can
