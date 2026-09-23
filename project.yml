@@ -8,7 +8,11 @@ options:
 
 settings:
   base:
-    SWIFT_VERSION: "5.0"
+    # Swift 6 language mode: the stretch beyond 6.1's Default, taken because it
+    # measured free — the project built and tested clean under it with no source
+    # changes. Data-race safety is then a language rule rather than a build setting
+    # somebody could switch off. See ADR-003.
+    SWIFT_VERSION: "6.0"
     # 6.1 Default column: zero build warnings, -strict-concurrency=complete clean,
     # SPM only. Implemented as written rather than swapped.
     SWIFT_STRICT_CONCURRENCY: complete

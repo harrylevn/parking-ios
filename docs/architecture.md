@@ -12,7 +12,7 @@ Where a decision deviates from the brief's Default column, the deviation is name
 |---|---|---|
 | [001](#adr-001) | MVVM with protocol-injected services | Accepted |
 | [002](#adr-002) | No third-party dependencies | Accepted |
-| [003](#adr-003) | Swift 5 language mode with complete strict concurrency | Accepted |
+| [003](#adr-003) | Swift 6 language mode with complete strict concurrency | Accepted |
 | [004](#adr-004) | `ReservationOutcome` carries an `unknown` case | Accepted |
 | [005](#adr-005) | One tap, one attempt, enforced in an actor | Accepted |
 | [006](#adr-006) | Never retry a timed-out reservation; reconcile instead | Accepted |
@@ -84,26 +84,35 @@ why both carry unit tests rather than trust.
 ---
 
 <a name="adr-003"></a>
-## ADR-003 — Swift 5 language mode with complete strict concurrency
+## ADR-003 — Swift 6 language mode with complete strict concurrency
 
 **Status:** Accepted
 
 **Context.** 6.1's Default asks for `-strict-concurrency=complete` clean and zero warnings;
-Swift 6 language mode is offered separately as a stretch.
+Swift 6 language mode is offered separately as a stretch. Note that `SWIFT_VERSION` selects the
+language mode, not the compiler — the toolchain is Swift 6.2 either way.
 
-**Decision.** `SWIFT_VERSION = 5.0`, `SWIFT_STRICT_CONCURRENCY = complete`,
+**Decision.** `SWIFT_VERSION = 6.0`, `SWIFT_STRICT_CONCURRENCY = complete`,
 `SWIFT_TREAT_WARNINGS_AS_ERRORS = YES`.
 
-**Alternatives.** Swift 6 language mode. Deferred rather than rejected: complete strict
-concurrency already surfaces every data-race diagnostic Swift 6 would enforce, but as errors
-we chose to treat as errors rather than as a language-mode obligation. Taking the stretch
-would add no safety here and would make every future dependency-free change a language-mode
-migration question.
+This record originally decided `5.0` and deferred the stretch, on the reasoning that complete
+strict concurrency already surfaces every data-race diagnostic Swift 6 enforces, so the
+language mode would add no safety while making future changes a migration question. That
+prediction was never measured. When it was, the project built and passed all 45 tests under
+`SWIFT_VERSION=6.0` with **no source changes** — passing complete strict concurrency is the
+migration. The stated cost did not exist, so the reasoning no longer supported the decision
+and the decision changed.
+
+**Alternatives.** Staying in Swift 5 mode. Rejected because the safety would then rest on
+`SWIFT_TREAT_WARNINGS_AS_ERRORS`: a contributor who removed that setting would silently
+demote every data-race diagnostic to a warning. Under Swift 6 mode they are errors by language
+rule, independent of how the project is configured.
 
 **Consequences.** The build caught two genuine issues: non-`Sendable` `ISO8601DateFormatter`
 statics, and an attempted `@retroactive` conformance on a same-module type. One
 `nonisolated(unsafe)` survives, on the date formatters, with the reasoning written at the call
-site.
+site. Region-based isolation (SE-0414) is on by default in Swift 6 mode, which makes the
+checker more precise rather than stricter. Reverting is a one-line change if it ever bites.
 
 ---
 

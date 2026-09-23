@@ -30,7 +30,7 @@ Deck format mirrors the backend status update; the speaker notes behind these sl
 - Truthful UX under contention: the app never claims what it cannot prove
 
 **Tech Stack:**
-- Swift 5.9 / SwiftUI, iOS 17 minimum
+- SwiftUI, iOS 17 minimum — **Swift 6 language mode**, the stretch beyond the Default
 - MVVM over three layers — Features / Domain / Data
 - Structured concurrency, `-strict-concurrency=complete`, warnings as errors
 - XcodeGen (`project.yml` is source of truth)
