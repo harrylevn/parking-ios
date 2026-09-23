@@ -222,7 +222,7 @@ existing at all.
 Section 6 scores five modules independently, and the two columns mean different things:
 Guardrail items are non-negotiable, Default items may be swapped if the alternative is
 defended *and* built. Getting a row in the wrong column is therefore a scoring error, not a
-pedantic one — and I made exactly that mistake in §7.2 before correcting it.
+pedantic one — and I made exactly that mistake in §5.2 before correcting it.
 
 The brief's tables are two-column PDF tables, which flatten into a single text stream when
 extracted. Column membership below was recovered from the glyph x-coordinates rather than
