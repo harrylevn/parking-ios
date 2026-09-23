@@ -97,6 +97,28 @@ extension View {
 }
 
 /// Full-width primary action.
+/// The quiet counterpart to `PrimaryButtonStyle`, and it dims when disabled for the same
+/// reason the primary does: a control that looks tappable and silently does nothing is worse
+/// than one that reads as unavailable. SwiftUI's plain button does not dim enough to notice.
+///
+/// `contentShape` matters as much as the dimming. Without it the tappable region is the
+/// text's own line box — measured at 20pt here — rather than the 44pt frame around it, so
+/// the 6.3 Default is missed by a control that looks like it meets it.
+struct SecondaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        let dimmed = isEnabled ? (configuration.isPressed ? 0.55 : 1) : 0.35
+        return configuration.label
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(Theme.Palette.accent.opacity(dimmed))
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: Theme.Metric.tapTarget)
+            .contentShape(.rect)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
 struct PrimaryButtonStyle: ButtonStyle {
     var tint: Color = Theme.Palette.accent
     @Environment(\.isEnabled) private var isEnabled

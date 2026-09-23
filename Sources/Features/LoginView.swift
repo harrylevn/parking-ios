@@ -121,9 +121,7 @@ struct LoginView: View {
                         .accessibilityIdentifier("login.submit")
 
                         Button("Create an account") { Task { await model.register() } }
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(Theme.Palette.accent)
-                            .frame(minHeight: Theme.Metric.tapTarget)
+                            .buttonStyle(SecondaryButtonStyle())
                             .disabled(!model.canSubmit)
                             .accessibilityIdentifier("login.register")
                     }
@@ -133,6 +131,9 @@ struct LoginView: View {
                 .frame(maxWidth: .infinity)
             }
             .scrollBounceBehavior(.basedOnSize)
+            // Both actions sit below the fields, so the keyboard covers them the moment the
+            // password is typed. A swipe has to be able to get them back.
+            .scrollDismissesKeyboard(.interactively)
         }
         .animation(.snappy(duration: 0.2), value: model.errorMessage)
         .tint(Theme.Palette.accent)

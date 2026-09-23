@@ -108,6 +108,31 @@ final class ReservationFlowUITests: XCTestCase {
         return app
     }
 
+    /// Both sign-in actions are disabled until the form is valid, and "Create an account"
+    /// gave no sign of it: a plain SwiftUI button does not dim enough to read as unavailable,
+    /// so the control looked tappable and silently did nothing. Its tappable region was also
+    /// the text's own 20pt line box rather than the 44pt frame drawn around it.
+    func testCreateAnAccountReadsAsUnavailableUntilTheFormIsValid() {
+        let app = launchApp()
+        let register = app.buttons["login.register"]
+        XCTAssertTrue(register.waitForExistence(timeout: 10))
+
+        XCTAssertFalse(register.isEnabled, "empty form")
+        XCTAssertGreaterThanOrEqual(register.frame.height, 44, "6.3 Default: 44pt touch target")
+
+        let plate = app.textFields["login.plate"]
+        plate.tap()
+        plate.typeText("TEST-001")
+        XCTAssertFalse(register.isEnabled, "a plate alone is not enough")
+
+        let password = app.secureTextFields["login.password"]
+        password.tap()
+        password.typeText("probation123")
+        XCTAssertTrue(register.isEnabled, "valid form")
+        // The keyboard is up at this point; the action still has to be reachable.
+        XCTAssertTrue(register.isHittable, "keyboard must not bury the action")
+    }
+
     func testLoginThenGridThenReserve() {
         let app = launchApp()
 
