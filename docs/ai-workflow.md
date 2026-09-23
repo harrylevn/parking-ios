@@ -84,6 +84,14 @@ project built and passed all 45 tests under Swift 6 with no source changes at al
 reasoning was not wrong so much as unverified, and an unverified reason presented in the
 confident register of an ADR is hard to distinguish from a real one.
 
+## Tooling in the repository
+
+`.claude/` holds the Claude Code configuration, and it is committed deliberately. The
+settings deny reads of secrets files, so the privacy limits in `CLAUDE.md` are enforced by
+the tool rather than left to memory. Three skills turn existing process into commands:
+`/gate` runs the merge gates, `/ai-log` drafts entries for this file, and `/run-demo` starts
+the app against a backend whose window hour matches it. None of them writes production code.
+
 ## What I take from it
 
 The division that worked: **AI for breadth, me for judgement**. It reads more code than I can

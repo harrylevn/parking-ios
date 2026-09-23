@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(make lint)",
+      "Bash(make test)",
+      "Bash(make build)",
+      "Bash(make project)",
+      "Bash(make backend-health)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*.p12)",
+      "Read(**/*.cer)",
+      "Read(**/*.mobileprovision)",
+      "Read(**/secrets.xcconfig)",
+      "Edit(**/.env)",
+      "Edit(**/secrets.xcconfig)",
+      "Bash(make backend-reset)",
+      "Bash(git push --force:*)"
+    ]
+  }
+}

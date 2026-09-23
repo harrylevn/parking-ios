@@ -26,3 +26,6 @@ secrets.xcconfig
 # Build output is symlinked outside the cloud-synced Documents folder,
 # because sync xattrs break iOS code signing.
 .build
+
+# Claude Code: team settings and skills are committed; personal overrides are not.
+.claude/settings.local.json
