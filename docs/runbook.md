@@ -91,7 +91,30 @@ window the server is not using.
 
 `make` with no target lists every command.
 
-## 5. Load test
+## 5. Screenshots
+
+```bash
+make screenshots        # needs the backend up: make backend-now
+```
+
+Runs `ScreenshotTests` against the live backend, exports the attachments from the `.xcresult`
+and writes them into `docs/screenshots/`.
+
+Two things this wraps, both of which cost time when done by hand:
+
+1. **The environment variable needs a `TEST_RUNNER_` prefix.** `xcodebuild` passes only those
+   through to the test-runner process. A plain `SCREENSHOTS=1` leaves the suite skipped — and a
+   skipped suite still reports `** TEST SUCCEEDED **`, so it looks like it ran.
+2. **The run creates its own account** over HTTP and funds it through the UI. One reservation
+   per vehicle per day is a backend invariant, so a fixed plate captures the flow once and then
+   never again that day: the board comes back with the space already held and nothing is
+   selectable.
+
+The registration screen is captured but not driven. iOS puts its Automatic Strong Password
+cover view over any pair of secure fields and nothing the app declares dismisses it, so a test
+cannot type a confirmation.
+
+## 6. Load test
 
 k6 is not preinstalled. `tests/load-stress-test.js` defines `options.scenarios`, so
 `--vus` and `--duration` on the command line are **ignored**:
@@ -108,7 +131,7 @@ Two caveats, both in `docs/defects.md` D8: the run reports a crossed `http_req_f
 threshold even when behaving perfectly (409 is counted as a failure), and it reports green
 against a *closed* window. The real pass criterion is `reservation_success == 80`.
 
-## 6. CI — self-hosted runner
+## 7. CI — self-hosted runner
 
 CI on every push is a **guardrail** (6.4). It is not achievable on GitHub's hosted macOS
 runners: the free tier grants ~2,000 minutes a month but bills macOS at **10×**, so ~200
@@ -116,7 +139,7 @@ effective macOS minutes, and this workflow takes ~6 minutes. That is about 12 ru
 whole fortnight. A self-hosted runner is the only way the guardrail is met, which is why the brief puts it in
 the Default column as the expected answer.
 
-### 6.1 Conditions that must hold before registering
+### 7.1 Conditions that must hold before registering
 
 **Repository**
 
@@ -148,7 +171,7 @@ certificate, provisioning profile or App Store credential anywhere in the pipeli
 what keeps guardrail 6.5 ("no secrets, keys or credentialled endpoints in the repo") true of
 CI as well as of the app.
 
-### 6.2 Security conditions — read before running this on your own machine
+### 7.2 Security conditions — read before running this on your own machine
 
 A self-hosted runner executes whatever the workflow says, as your user, on your Mac. That is
 fine here and would not be fine everywhere:
@@ -164,7 +187,7 @@ fine here and would not be fine everywhere:
   dependency could linger. There are no third-party dependencies in this project, which
   narrows that surface to approximately zero.
 
-### 6.3 Registering it
+### 7.3 Registering it
 
 ```bash
 # 1. Create the private repo and push (one-off, from the repo root)
@@ -188,7 +211,7 @@ TOKEN=$(gh api -X POST repos/<owner>/parking-ios/actions/runners/registration-to
 
 The registration token is short-lived (one hour) and is not a secret worth keeping.
 
-### 6.4 Verifying it actually works
+### 7.4 Verifying it actually works
 
 Registration is not the same as CI passing:
 
@@ -200,9 +223,9 @@ gh run watch
 
 The first run is what finds the environment problems: `xcodegen: command not found` means
 condition 8 is unmet, and `Command CodeSign failed` means condition 9 is. Reading the result
-is §6.5.
+is §7.5.
 
-### 6.5 Reading a CI run
+### 7.5 Reading a CI run
 
 Registration is the one-off part. This is the part you do every day.
 
@@ -300,7 +323,7 @@ rerun passed unchanged.
 Worth checking before assuming a real failure, because the symptom is indistinguishable from
 a broken build in every view except that one log file.
 
-### 6.6 Resource contention on a 16 GB machine
+### 7.6 Resource contention on a 16 GB machine
 
 The runner shares the machine with everything else. During this project, running colima
 (6 GB), Xcode, two simulators and a Vite dev server at once was enough for macOS to start
@@ -312,7 +335,7 @@ Practical mitigations, in order of preference: stop colima when the backend is n
 simultaneously. The `concurrency` group in the workflow already cancels superseded runs, so
 rapid pushes do not stack.
 
-### 6.7 If the runner cannot be registered
+### 7.7 If the runner cannot be registered
 
 The guardrail is CI on every push, not a self-hosted runner specifically. If registration is
 blocked — no admin rights, corporate device management — the fallback is a hosted macOS
@@ -320,7 +343,7 @@ runner with the workflow trimmed to lint plus unit tests (~2 minutes), pushing t
 and archive to a nightly schedule. That fits the free tier and keeps *something* on every
 push. It is a worse answer and should be argued for explicitly, not slipped in.
 
-## 7. Demo checklist
+## 8. Demo checklist
 
 1. Backend up with the gate **on** and the window shifted to the current hour.
 2. Clean grid (§3), 1000 synthetic users seeded by a k6 setup run.

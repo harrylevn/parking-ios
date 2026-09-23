@@ -30,8 +30,25 @@ final class ScreenshotTests: XCTestCase {
         add(shot)
     }
 
-    func testCaptureFlow() throws {
+    /// Creates the account over HTTP rather than through the registration screen. iOS puts its
+    /// Automatic Strong Password cover view over any pair of secure fields, and nothing the app
+    /// declares dismisses it, so a test cannot type a confirmation. The screen is still
+    /// captured; it just is not driven.
+    private func makeAccount() async throws -> String {
+        let plate = "TEST-\(Int.random(in: 1000...9999))"
+        guard let url = URL(string: "http://localhost:8080/auth/register") else { return plate }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Data(#"{"licensePlate":"\#(plate)","password":"probation123"}"#.utf8)
+        _ = try await URLSession.shared.data(for: request)
+        return plate
+    }
+
+    func testCaptureFlow() async throws {
         try XCTSkipUnless(isEnabled, "Set SCREENSHOTS=1 and start the backend")
+
+        let plate = try await makeAccount()
 
         let app = XCUIApplication()
         app.launchArguments += ["-UITestSkipReauth"]
@@ -40,18 +57,36 @@ final class ScreenshotTests: XCTestCase {
 
         capture(app, "01-login")
 
-        let plate = app.textFields["login.plate"]
-        XCTAssertTrue(plate.waitForExistence(timeout: 10))
-        plate.tap()
-        plate.typeText("TEST-001")
+        // The registration screen is captured, not driven — see `makeAccount`.
+        app.buttons["login.register"].tap()
+        XCTAssertTrue(app.textFields["register.plate"].waitForExistence(timeout: 5))
+        capture(app, "02-register")
+        app.buttons["register.cancel"].tap()
 
+        // A fresh account each run. One reservation per vehicle per day is a backend
+        // invariant, so a fixed plate captures this flow once and then never again that day:
+        // the board comes up with the space already held and nothing is selectable.
+        let plateField = app.textFields["login.plate"]
+        XCTAssertTrue(plateField.waitForExistence(timeout: 10))
+        plateField.tap()
+        plateField.typeText(plate)
         app.secureTextFields["login.password"].tap()
         app.secureTextFields["login.password"].typeText("probation123")
         app.buttons["login.submit"].tap()
         dismissSavePasswordPromptIfPresent(in: app, timeout: 5)
 
         XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 15), "grid should load")
-        capture(app, "02-board")
+        capture(app, "03-board")
+
+        // A new account holds nothing, so fund it before reserving. This is the one place the
+        // rehearsal has to *do* something rather than look at it.
+        app.buttons["dashboard.wallet"].tap()
+        XCTAssertTrue(app.buttons["deposit.submit"].waitForExistence(timeout: 5))
+        capture(app, "04-deposit")
+        app.buttons["deposit.preset.50"].tap()
+        app.buttons["deposit.submit"].tap()
+
+        XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 10), "back on the board")
 
         // Select a free space to raise the confirm bar.
         for number in 1...80 where app.buttons["space.\(number)"].exists {
@@ -62,26 +97,20 @@ final class ScreenshotTests: XCTestCase {
             }
         }
         XCTAssertTrue(app.buttons["dashboard.confirm"].waitForExistence(timeout: 5))
-        capture(app, "03-confirm")
-
-        // Wallet sheet.
-        app.buttons["dashboard.wallet"].tap()
-        XCTAssertTrue(app.buttons["deposit.submit"].waitForExistence(timeout: 5))
-        capture(app, "04-deposit")
-        app.swipeDown(velocity: .fast)
+        capture(app, "05-confirm")
 
         // Commit, and capture whatever the truth turns out to be.
         if app.buttons["dashboard.confirm"].waitForExistence(timeout: 5) {
             app.buttons["dashboard.confirm"].tap()
             let dismiss = app.buttons["outcome.dismiss"]
             XCTAssertTrue(dismiss.waitForExistence(timeout: 15), "an attempt must always resolve visibly")
-            capture(app, "05-outcome")
+            capture(app, "06-outcome")
             dismiss.tap()
         }
 
         XCTAssertTrue(app.descendants(matching: .any)["dashboard.holding"].waitForExistence(timeout: 10),
                       "after a win the board should show which space is held")
-        capture(app, "06-holding")
+        capture(app, "07-holding")
     }
 
     /// Landscape and iPad use the side-by-side layout: board on the leading side taking the
@@ -115,14 +144,14 @@ final class ScreenshotTests: XCTestCase {
         }, evaluatedWith: app)
         wait(for: [rotated], timeout: 10)
         XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 10))
-        capture(app, "10-landscape")
+        capture(app, "11-landscape")
 
         for number in 1...80 where app.buttons["space.\(number)"].isEnabled {
             app.buttons["space.\(number)"].tap()
             break
         }
         _ = app.buttons["dashboard.confirm"].waitForExistence(timeout: 5)
-        capture(app, "11-landscape-confirm")
+        capture(app, "12-landscape-confirm")
 
         XCUIDevice.shared.orientation = .portrait
     }
@@ -149,6 +178,6 @@ final class ScreenshotTests: XCTestCase {
         dismissSavePasswordPromptIfPresent(in: app, timeout: 5)
 
         XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 15))
-        capture(app, "07-countdown")
+        capture(app, "08-countdown")
     }
 }

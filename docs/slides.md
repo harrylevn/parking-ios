@@ -217,7 +217,7 @@ lint → build → unit tests → UI tests → archive → upload results
 ```
 
 Self-hosted because the free tier does not cover macOS minutes for the fortnight; the
-registration conditions are in [`runbook.md`](runbook.md) §6.
+registration conditions are in [`runbook.md`](runbook.md) §7.
 
 **CI has already earned its place:** it caught a UI test that was green locally only because
 I had switched Reduce Motion on in the simulator by hand.

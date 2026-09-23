@@ -50,6 +50,25 @@ uitest: project
 lint:
 	swiftlint lint --strict
 
+# Regenerate docs/screenshots from the real app against the live backend.
+#
+# The env var needs the TEST_RUNNER_ prefix: xcodebuild passes those through to the test
+# runner process and drops everything else, so a plain SCREENSHOTS=1 leaves the suite
+# skipped — and a skipped suite still reports TEST SUCCEEDED, which is how it can look
+# like it ran for weeks without producing anything.
+screenshots: project
+	@$(MAKE) backend-health >/dev/null || (echo 'start the backend first: make backend-now'; exit 1)
+	rm -rf $(DERIVED)/screenshots.xcresult
+	TEST_RUNNER_SCREENSHOTS=1 xcodebuild -project $(PROJECT) -scheme $(SCHEME) \
+		-destination '$(DESTINATION)' -derivedDataPath $(DERIVED) \
+		-resultBundlePath $(DERIVED)/screenshots.xcresult \
+		-only-testing:ParkingUITests/ScreenshotTests test
+	rm -rf $(DERIVED)/attachments
+	xcrun xcresulttool export attachments \
+		--path $(DERIVED)/screenshots.xcresult \
+		--output-path $(DERIVED)/attachments
+	python3 scripts/collect-screenshots.py $(DERIVED)/attachments docs/screenshots
+
 # Build number derives from the commit count, never hand-edited (guardrail 6.4).
 archive: project
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination 'generic/platform=iOS' \
