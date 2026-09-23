@@ -44,9 +44,13 @@ struct HTTPClient: Sendable {
     }
 
     func post<Body: Encodable & Sendable, Response: Decodable & Sendable>(
-        _ path: String, body: Body, timeout: TimeInterval? = nil, as type: Response.Type = Response.self
+        _ path: String,
+        body: Body,
+        timeout: TimeInterval? = nil,
+        authenticated: Bool = true,
+        as type: Response.Type = Response.self
     ) async throws -> Response {
-        var request = request(path, method: "POST")
+        var request = request(path, method: "POST", authenticated: authenticated)
         request.httpBody = try JSONEncoder().encode(body)
         if let timeout { request.timeoutInterval = timeout }
         return try await send(request, as: type)
@@ -60,12 +64,26 @@ struct HTTPClient: Sendable {
         return token
     }
 
-    private func request(_ path: String, method: String) -> URLRequest {
+    /// Pass `authenticated: false` for the sign-in endpoints, and mean it.
+    ///
+    /// `/auth/**` is `permitAll` on the backend, but permitAll only means *authentication is
+    /// not required* — it does not mean a token present in the request is ignored. Spring's
+    /// bearer-token filter runs whenever an `Authorization` header exists and rejects a token
+    /// it cannot verify with a bare 401, before the authorisation rules are consulted.
+    ///
+    /// So attaching a stale Keychain token to sign-in wedges the app permanently: register
+    /// and login both answer 401, which means the dead token can never be replaced by a live
+    /// one. Verified against the running backend — `POST /auth/register` returns 201 with no
+    /// header and 401 with a bad one.
+    ///
+    /// Internal rather than private so `HTTPClientRequestTests` can assert the header is
+    /// absent; there is no URLProtocol stub in this suite to observe it through `send`.
+    func request(_ path: String, method: String, authenticated: Bool = true) -> URLRequest {
         var request = URLRequest(url: configuration.baseURL.appendingPathComponent(path))
         request.httpMethod = method
         request.timeoutInterval = configuration.requestTimeout
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token = currentToken {
+        if authenticated, let token = currentToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         return request

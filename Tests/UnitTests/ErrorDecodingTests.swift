@@ -66,3 +66,47 @@ final class ErrorDecodingTests: XCTestCase {
         }
     }
 }
+
+/// The sign-in endpoints must go out **without** the stored token.
+///
+/// `/auth/**` is `permitAll` on the backend, but a token that is present and unverifiable is
+/// rejected by the bearer-token filter with a bare 401 before authorisation is consulted. A
+/// stale Keychain token therefore breaks registration and login together, which leaves no way
+/// to replace it — the app is wedged until its Keychain item is cleared by hand.
+final class HTTPClientRequestTests: XCTestCase {
+
+    private func makeClient(storing token: String?) throws -> HTTPClient {
+        let store = InMemoryTokenStore()
+        if let token { try store.save(token) }
+        return HTTPClient(
+            configuration: .localBackend,
+            session: .shared,
+            tokenStore: store,
+            serverClock: ServerClock()
+        )
+    }
+
+    func testAuthEndpointsGoOutWithoutTheStoredToken() throws {
+        let client = try makeClient(storing: "a.stale.token")
+
+        let register = client.request("auth/register", method: "POST", authenticated: false)
+        let login = client.request("auth/login", method: "POST", authenticated: false)
+
+        XCTAssertNil(register.value(forHTTPHeaderField: "Authorization"))
+        XCTAssertNil(login.value(forHTTPHeaderField: "Authorization"))
+    }
+
+    func testEveryOtherRequestStillCarriesTheToken() throws {
+        let client = try makeClient(storing: "a.live.token")
+
+        let spaces = client.request("spaces", method: "GET")
+
+        XCTAssertEqual(spaces.value(forHTTPHeaderField: "Authorization"), "Bearer a.live.token")
+    }
+
+    func testNoTokenMeansNoHeaderRatherThanAnEmptyOne() throws {
+        let client = try makeClient(storing: nil)
+
+        XCTAssertNil(client.request("spaces", method: "GET").value(forHTTPHeaderField: "Authorization"))
+    }
+}

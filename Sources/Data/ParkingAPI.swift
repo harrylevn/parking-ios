@@ -66,8 +66,11 @@ struct AuthService: AuthServicing {
     }
 
     private func authenticate(path: String, licensePlate: String, password: String) async throws -> Account {
+        // Never send the stored token here: a stale one makes the backend reject sign-in
+        // itself, so the token could never be replaced. See `HTTPClient.request`.
         let response: AuthResponseDTO = try await client.post(
-            path, body: AuthRequestDTO(licensePlate: licensePlate, password: password)
+            path, body: AuthRequestDTO(licensePlate: licensePlate, password: password),
+            authenticated: false
         )
         try client.tokenStore.save(response.token)
         return Account(
