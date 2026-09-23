@@ -77,8 +77,8 @@ Two things worth knowing before trusting a run:
   the defect that needs a decision, and the scope points to ratify
 - [`docs/plan.md`](docs/plan.md) — the ten working days, what each one has to deliver, and
   what gets cut first if a day is lost
-- [`docs/architecture.md`](docs/architecture.md) — the decision log: 19 ADRs, including the
-  one that was superseded and the one recorded as an open risk
+- [`docs/architecture.md`](docs/architecture.md) — the decision log: six ADRs, including the
+  reading that was corrected and the one item left as an open risk
 - [`docs/codebase.md`](docs/codebase.md) — what lives where, and the four files worth
   reading first
 - [`docs/design.md`](docs/design.md) — architecture, the decisions the backend's real

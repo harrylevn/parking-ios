@@ -79,7 +79,7 @@ The first four are behind the three decisions in §4.
 
 ## 4. Technical direction
 
-Full reasoning in `docs/design.md`; the decision log is 19 ADRs in `docs/architecture.md`.
+Full reasoning in `docs/design.md`; the decision log is six ADRs in `docs/architecture.md`.
 
 **Architecture.** MVVM in three layers — Features, Domain, Data — with a single composition
 root. Domain imports nothing but Foundation. Every service is a protocol, so every

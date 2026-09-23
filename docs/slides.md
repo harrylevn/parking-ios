@@ -112,10 +112,9 @@ Full defect report with reproduction steps: [`defects.md`](defects.md).
 
 ## 4. Architecture Decisions
 
-Nineteen ADRs in [`architecture.md`](architecture.md), including one superseded and one open
-risk. The four that carry the product:
+Six ADRs in [`architecture.md`](architecture.md). The four that carry the product:
 
-### ADR-001: Three layers, one composition root
+### ADR-001 — Three layers, no dependencies, Swift 6
 **Decision:** Features / Domain / Data, MVVM, every service a protocol
 
 **Why:**
@@ -125,35 +124,48 @@ risk. The four that carry the product:
 
 ---
 
-### ADR-002: Pessimistic reservation, not optimistic UI
-**Decision:** The cell does not change until the server confirms it
+### ADR-002 — Never claim a reservation the client cannot prove
+**Decision:** Pessimistic submit, and a fourth outcome that means "I cannot tell"
 
 **Why:**
-- 80 winners in 1,000 means an optimistic cell is wrong **92% of the time**
-- Rollback stops being the exception and becomes the modal experience
-- Against a p95 of 248 ms the wait costs the user almost nothing
-- Optimistic updates are still used where contention does not apply, such as deposits
+- 80 winners in 1,000 means an optimistic cell is wrong **92% of the time** — rollback becomes
+  the modal experience, not the exception. Against a p95 of 248 ms the wait costs almost nothing
+- No client idempotency key and no read endpoint, so a timed-out reservation is genuinely
+  indeterminate. `ReservationOutcome.unknown` is a designed state, not an error fallback
+- One tap = one attempt, enforced in an actor. A timeout is **never** retried — the client
+  reconciles by plate suffix, and when two plates share a suffix it says so
+- The 3-second timeout is a *correctness* decision: every spurious timeout lands a user in
+  `unknown`, so it sits an order of magnitude above the measured p99 of 368 ms
+
+*Deviates from the 6.2 Default — see §9.1*
 
 ---
 
-### ADR-003: A fourth outcome — `unknown`
-**Decision:** `ReservationOutcome` has four cases, and one of them is "I cannot tell"
+### ADR-003 — Classify errors on the payload, not the HTTP status
+**Decision:** Read the business `code`; check body emptiness before decoding
 
 **Why:**
-- No client idempotency key, no read endpoint → a timed-out reservation is genuinely indeterminate
-- The client reconciles against the grid by plate suffix
-- When two plates share a suffix, it **says so** rather than guessing
-- A designed state, not an error fallback
+- `WINDOW_CLOSED` arrives as **429**, which every conventional retry policy reads as
+  "back off and try again" — useless against a window that opens on a clock, and a
+  self-inflicted thundering herd at 20:00
+- **Two 401 shapes:** bare filter-chain 401 with an empty body, and JSON `AUTH_FAILED`.
+  Decoding every non-2xx as JSON throws on the first; treating every 401 as a dead session
+  signs the user out for a typo — which is what the reference web client does
+- Pinned by tests against bytes captured from the running backend
 
 ---
 
-### ADR-004: Timeout length is a correctness decision
-**Decision:** 3 seconds, an order of magnitude above the measured p99 of 368 ms
+### ADR-004 — Server time and refresh without a push channel
+**Decision:** Anchor the HTTP `Date` header to a monotonic clock; poll at the server's own cadence
 
 **Why:**
-- Every spurious timeout lands a user in the unknown state above
-- One tap means exactly one attempt — a timeout is **never** retried
-- Enforced by an actor, so concurrency cannot defeat it
+- No time endpoint exists, and `Date()` is trivially defeated by changing the device clock —
+  the obvious way to cheat a countdown
+- Skew beyond 30s is surfaced to the user; the window hour is configuration, never a hardcoded 20
+- `/spaces` is Redis-cached at 5s, so polling faster cannot reveal anything newer
+- Publish only on change: writing an identical `@Published` value still fires
+  `objectWillChange`, which invalidated the whole screen at 1 Hz and made the board untappable
+  under UI test
 
 ---
 
@@ -228,7 +240,7 @@ I had switched Reduce Motion on in the simulator by hand.
 
 Working agreement in `CLAUDE.md`; the honest account in [`ai-workflow.md`](ai-workflow.md).
 
-**Where it helped:** boilerplate across 22 files, test scaffolding, keeping 19 ADRs written as
+**Where it helped:** boilerplate across 22 files, test scaffolding, keeping the ADRs written as
 decisions were taken rather than reconstructed afterwards.
 
 **Where it failed, and what it cost:**

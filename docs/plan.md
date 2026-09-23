@@ -199,9 +199,10 @@ improvised on the day.
 
 - **Never trust a document over the running system.** Anything in the brief or the OpenAPI spec
   is verified against observed behaviour before it is allowed to shape a decision.
-- **ADRs are written when the decision is taken**, including the ones later superseded. A
-  reversed decision with its reasoning intact is better evidence of judgement than a log that
-  only ever records the answers that survived.
+- **ADRs are written when the decision is taken**, and a reversed one keeps its reasoning in
+  the record rather than being edited away — that is better evidence of judgement than a log
+  which only ever shows the answers that survived. One record per decision worth arguing, not
+  per mechanism: a log nobody can review in ten minutes does not get reviewed.
 - **CI is green on head at the end of every day.** Not a day-10 activity.
 - **If a day is lost, cut in this order:** the performance trace, then the second locale beyond
   string extraction, then contention feedback. Never cut the three rehearsals, the clean-clone
