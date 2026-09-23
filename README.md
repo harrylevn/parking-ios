@@ -22,8 +22,10 @@ The backend must be running for the app itself; tests do not need it. See
 
 ## Documentation
 
-- [`docs/presentation.md`](docs/presentation.md) — Week-1 checkpoint: status, the defect that
-  needs a decision, and the scope points to ratify
+- [`docs/slides.md`](docs/slides.md) — Week-1 checkpoint deck, in the same format as the
+  backend team's status update
+- [`docs/presentation.md`](docs/presentation.md) — the speaker notes behind that deck: status,
+  the defect that needs a decision, and the scope points to ratify
 - [`docs/plan.md`](docs/plan.md) — the ten working days, what each one has to deliver, and
   what gets cut first if a day is lost
 - [`docs/architecture.md`](docs/architecture.md) — the decision log: 19 ADRs, including the

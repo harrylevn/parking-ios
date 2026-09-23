@@ -4,7 +4,8 @@ Roughly 30 minutes. Current status, technical direction and the decisions taken,
 scope points I would like ratified. No blockers.
 
 This is the source for the slides; the notes under each heading are what I intend to say, not
-what goes on screen.
+what goes on screen. The deck itself is [`slides.md`](slides.md), which follows the same format
+as the backend team's status update.
 
 ---
 
@@ -17,11 +18,11 @@ outcome.
 
 | | |
 |---|---|
-| App code | 2,985 lines of Swift, 29 files, **zero third-party dependencies** |
+| App code | 2,985 lines of Swift, 22 files, **zero third-party dependencies** |
 | Tests | 45 unit, 2 UI, 3 screenshot — all green |
-| Docs | 1,849 lines across 7 documents |
+| Docs | 2,522 lines across 10 documents plus the AI working agreement |
 | CI | Self-hosted runner, green on every push: lint, build, unit, UI, archive |
-| Commits | 15, on a private repo shared with the team |
+| Commits | 19, on a private repo shared with the team |
 
 Working end to end: sign in and register, the 80-space board with plate suffixes, the
 countdown driven by server time, select → confirm → reserve, wallet deposit and balance, the
@@ -140,7 +141,7 @@ a Default means building and demoing the alternative, and **an omission with a r
 not a swap**. If you want the control demonstrated, the honest version is to terminate TLS
 locally with a self-signed certificate, pin its SPKI hash, and show the client refusing a
 connection under a deliberately wrong pin. That is roughly an hour. Your call whether it is
-worth the day-10 budget.
+worth the day-8 slot.
 
 ### 5.4 One test suite deliberately uses the live backend
 
@@ -174,16 +175,17 @@ Both are in `docs/ai-workflow.md` in full.
 
 ---
 
-## 7. Plan for days 3–10
+## 7. Plan for the rest of the fortnight
+
+Full day-by-day in [`plan.md`](plan.md).
 
 | Days | Focus |
 |---|---|
-| 3–4 | The 20:00 moment: clock-skew warning, queue-position feedback, loss-path polish |
-| 5 | **This checkpoint.** Ratify §5, then act on it |
-| 6–7 | Race rehearsal with k6 — won race, lost race, backend killed mid-reservation |
-| 8 | Security module: pinning if ratified, threat note, accessibility audit |
-| 9 | Second locale, motion and haptics, Instruments trace under load |
-| 10 | Demo rehearsal end to end, twice |
+| 6 | The 20:00 moment: clock-skew warning, contention feedback, the loss path |
+| 7 | Accessibility audit, string catalog, second locale |
+| 8 | Security module: pinning if ratified, threat note |
+| 9 | Three rehearsals — won race, lost race, backend killed mid-reservation; Instruments trace |
+| 10 | Clean-clone build, documentation pass, two full demo run-throughs |
 
 **Risks I am carrying:** the 16 GB machine is tight with colima, Xcode and simulators
 together — it has already triggered one out-of-memory kill; and a backend started with the
