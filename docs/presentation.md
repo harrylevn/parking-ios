@@ -20,7 +20,7 @@ outcome.
 |---|---|
 | App code | 2,985 lines of Swift, 22 files, **zero third-party dependencies** |
 | Tests | 45 unit, 2 UI, 3 screenshot — all green |
-| Docs | 2,522 lines across 10 documents plus the AI working agreement |
+| Docs | 2,288 lines across 10 documents plus the AI working agreement |
 | CI | Self-hosted runner, green on every push: lint, build, unit, UI, archive |
 | Commits | 19, on a private repo shared with the team |
 

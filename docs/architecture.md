@@ -3,9 +3,10 @@
 Six records, one per decision that would actually be argued in review. Each gives the context
 that forced it, what was decided, what else was considered, and what it costs.
 
-This is the decision log. [`design.md`](design.md) is the narrative version for a reader who
-wants the argument in prose, and [`codebase.md`](codebase.md) is the map of where things live.
-Where a decision deviates from the brief's Default column, the deviation is named explicitly.
+This is the decision log. [`design.md`](design.md) carries the problem, the interface, the
+defence of each deviation, and the Guardrail/Default compliance matrix; [`codebase.md`](codebase.md)
+is the map of where things live. Where a decision deviates from the brief's Default column, the
+deviation is named explicitly.
 
 | # | Decision | Status |
 |---|---|---|
@@ -182,7 +183,7 @@ The grid polls every 5 seconds from a `Task` owned by the view model and cancell
 **Alternatives.** `Date()` — trivially defeated by changing the device clock, which is the
 obvious way to cheat a countdown. Adding a `/time` endpoint — forbidden, the backend is
 read-only. A faster poll — cannot beat the server's own cache. Push or SSE — unsupported by the
-backend; a written design for that migration is in `design.md` §6.
+backend; a written design for that migration is in `design.md` §7.
 
 **Consequences.** Two limits are surfaced rather than hidden: the `Date` header has one-second
 granularity, so the countdown claims no sub-second precision, and the reading includes one

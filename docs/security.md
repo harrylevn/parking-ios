@@ -95,6 +95,6 @@ rotating refresh token, with server-side revocation on sign-out.
 - Classifies errors on the business `code`, never on HTTP status, so a 429 that means
   "window closed" is not retried as if it were rate limiting.
 - Distinguishes the two 401 shapes, so a mistyped password does not destroy the session.
-- Never claims a reservation it cannot substantiate (`docs/design.md` §3.1).
+- Never claims a reservation it cannot substantiate (`docs/design.md` §3).
 - Never trusts the device clock for the reservation window, and warns when device and server
   disagree by more than 30 seconds.
