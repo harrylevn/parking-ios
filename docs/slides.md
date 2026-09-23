@@ -42,32 +42,70 @@ Deck format mirrors the backend status update; the speaker notes behind these sl
 
 ## 2. Requirements Checklist
 
-Guardrail rows are non-negotiable; Default rows may be swapped if the alternative is
-defended *and* built.
+Column membership recovered from the PDF's glyph coordinates, not from its flattened text —
+the tables are two-column and flatten into one stream when copied, which is how I got a row
+into the wrong column once already.
 
-| Requirement | Col | Status | Implementation |
-|---|---|---|---|
-| Native iOS, SwiftUI, iOS 17 minimum | G | ✅ Built | `project.yml` |
-| Services behind injected protocols, fakeable | G | ✅ Built | `Sources/Domain/Services.swift` |
-| 80-space grid, availability, plate suffix, deposit field, balance | G | ✅ Built | `BoardView`, `DepositSheet` |
-| Countdown from server time, 20:00 not hardcoded | G | ✅ Built | `ServerClock`, hour is configuration |
-| One tap = exactly one attempt; retry cannot double-book | G | ✅ Built | `ReservationCoordinator` (actor) |
-| Both response shapes handled, not one | G | ✅ Built | `HTTPClient.decodeFailure` |
-| All 80 spaces legible on 6.1-inch, no pinch-zoom | G | ✅ Built | 7×12 at 44×43pt, asserted in tests |
-| Full state matrix incl. offline, race lost, unknown | G | ✅ Built | `GridState`, `ReservationOutcome` |
-| Unit tests on domain **and view models** | G | ✅ Built | 46 tests |
-| At least one UI test: login, grid, reserve | G | ✅ Built | `ReservationFlowUITests` |
-| CI on every push: build, lint, unit, UI | G | ✅ Built | Self-hosted runner, green on head |
-| Token in Keychain, justified accessibility class | G | ✅ Built | `KeychainTokenStore` |
-| No secrets in repo or bundle | G | ✅ Built | — |
-| `docs/security.md` threat note | G | ✅ Built | — |
-| AI working agreement + honest account | G | ✅ Built | `CLAUDE.md`, `docs/ai-workflow.md` |
-| Optimistic UI with rollback | D | 🔄 Swapped | Pessimistic submit — see §9.1 |
-| Face ID before reserving | D | 🔄 Adapted | 120s grace period — see §9.2 |
-| Certificate pinning | D | ⏳ Not built | Deliberate, disclosed — see §9.3 |
-| Dynamic Type, VoiceOver, 44pt, contrast | D | ✅ Built | Board scrolls at accessibility sizes |
-| iPad and landscape | D | ✅ Built | — |
-| No hardcoded user-facing strings | D | ⏳ Partial | String catalog scheduled day 7 |
+### Guardrail — non-negotiable
+
+| Module | Item | State |
+|---|---|---|
+| 6.1 | Native iOS, SwiftUI, deployment target iOS 17 | ✅ |
+| 6.1 | Services behind protocols and injected, fakeable in tests | ✅ |
+| 6.2 | 80-space grid: availability, plate suffix, **deposit field**, balance | ✅ |
+| 6.2 | Window opens 20:00, countdown from **server** time, 20:00 not hardcoded | ✅ |
+| 6.2 | One tap = exactly one attempt; retry after timeout cannot double-book | ✅ |
+| 6.2 | **Two** response shapes handled — JSON `ErrorResponse` and the bare 401 | ✅ |
+| 6.3 | Screen and information architecture designed by me, rationale in `design.md` | ✅ |
+| 6.3 | All 80 spaces legible on a 6.1-inch screen without pinch-zoom | ✅ |
+| 6.3 | Full state matrix: loading, empty, error, offline, no balance, race lost, success | ✅ |
+| 6.4 | Unit tests on domain **and view models**, race and retry genuinely tested | ✅ 57 |
+| 6.4 | At least one UI test covering login, grid and reserve | ✅ 4 |
+| 6.4 | CI on every push: build, lint, unit tests, UI tests on a simulator | ✅ |
+| 6.5 | Session token in the Keychain with a justified accessibility class | ✅ |
+| 6.5 | No secrets, keys or credentialled endpoints in the repo or bundle | ✅ |
+| 6.5 | `docs/security.md` threat note: not implemented, production, out of scope | ✅ |
+| 6.5 | AI working agreement committed: conventions and quality gates | ✅ |
+| 6.5 | An honest account of where AI helped and where it failed | ✅ |
+
+**All seventeen met.**
+
+### Default — defensible, swappable if the alternative is built and demoed
+
+| Module | Item | State |
+|---|---|---|
+| 6.1 | Layered architecture, no view reaching networking or persistence | ✅ kept |
+| 6.1 | Structured concurrency only; `@MainActor` explicit; cache and balance actor-isolated | ✅ kept |
+| 6.1 | Zero warnings, `-strict-concurrency=complete`, SPM only, each dependency justified | ✅ kept — zero dependencies |
+| 6.2 | Optimistic UI with visible rollback | 🔄 **swapped** — §9.1 |
+| 6.2 | Grid refresh strategy chosen and defended, no flicker or scroll jump | ✅ kept |
+| 6.3 | HIG, dark mode, no hardcoded strings (String Catalog or equivalent) | ⏳ **partial** — no catalog yet |
+| 6.3 | Dynamic Type to accessibility sizes, VoiceOver, 44pt, contrast | ✅ kept |
+| 6.3 | The 20:00 moment designed deliberately | ✅ kept |
+| 6.4 | Tests against fakes never the live backend; SwiftLint at zero violations | ✅ kept — one disclosed exception, §9.4 |
+| 6.4 | `xcodebuild archive` in CI, build number from the commit, `runbook.md` | ✅ kept |
+| 6.4 | CI on a self-hosted runner | ✅ kept |
+| 6.5 | Face ID / Touch ID before a reservation, correct non-biometric fallback | 🔄 **adapted** — §9.2 |
+| 6.5 | Certificate pinning, bypass gated to debug builds | ⏳ **not built** — §9.3 |
+| 6.5 | A proposal for measuring AI contribution on a mobile repo | ✅ kept |
+| 6.5 | Data-privacy limits for an AI tool in a banking context | ✅ kept |
+
+**Twelve kept, two deviations defended, one not built and disclosed.**
+
+### Stretch — not required
+
+| Module | Item | State |
+|---|---|---|
+| 6.1 | Swift 6 language mode | ✅ built |
+| 6.2 | Visible warning when clock skew exceeds 30 seconds | ✅ built |
+| 6.2 | Written design for moving to push or SSE | ✅ `design.md` §7 |
+| 6.3 | iPad **or** landscape layouts | ✅ both |
+| 6.5 | A reusable Claude Code skill for a mobile task, demonstrated working | ✅ three |
+| 6.2 | k6 race rehearsal: won, lost, backend killed mid-reservation | ⏳ day 9 |
+| 6.2 | Instruments trace of the grid under load | ⏳ day 9 |
+| 6.3 | A second locale populated | ⏳ day 7 |
+| 6.1 | SPM modularisation; TCA | ✗ not pursued |
+| 6.4 | Signed `.ipa` on device; fastlane; snapshot tests; coverage gate | ✗ not pursued |
 
 ---
 
@@ -287,7 +325,7 @@ Full day-by-day in [`plan.md`](plan.md).
 
 | Days | Focus |
 |---|---|
-| 6 | The 20:00 moment — clock-skew warning, contention feedback, the loss path |
+| 6 | The 20:00 moment — countdown states, contention feedback, the loss path |
 | 7 | Accessibility audit, string catalog, second locale |
 | 8 | Security module — pinning if ratified |
 | 9 | Three rehearsals: won race, lost race, backend killed mid-reservation |

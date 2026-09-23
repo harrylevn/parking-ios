@@ -28,9 +28,14 @@ Working end to end: sign in and register, the 80-space board with plate suffixes
 countdown driven by server time, select → confirm → reserve, wallet deposit and balance, the
 full state matrix, iPad and landscape layouts, dark mode.
 
-**Not done yet, and scheduled:** certificate pinning (see §5), a second locale, haptics and
-motion polish, the k6 race rehearsal as a demo script, and the "backend killed
-mid-reservation" rehearsal.
+**Not done yet, and scheduled:** certificate pinning (see §5) — the one Default neither kept
+nor replaced — plus a String Catalog, and then the Stretch items: a populated second locale,
+the k6 race rehearsal as a demo script, the "backend killed mid-reservation" rehearsal, and an
+Instruments trace.
+
+**Stretch items already built**, since the brief does not ask for them: Swift 6 language mode,
+the clock-skew warning, iPad *and* landscape, the push/SSE migration design, and three Claude
+Code skills.
 
 ---
 
@@ -181,7 +186,7 @@ Full day-by-day in [`plan.md`](plan.md).
 
 | Days | Focus |
 |---|---|
-| 6 | The 20:00 moment: clock-skew warning, contention feedback, the loss path |
+| 6 | The 20:00 moment: countdown states, contention feedback, the loss path |
 | 7 | Accessibility audit, string catalog, second locale |
 | 8 | Security module: pinning if ratified, threat note |
 | 9 | Three rehearsals — won race, lost race, backend killed mid-reservation; Instruments trace |

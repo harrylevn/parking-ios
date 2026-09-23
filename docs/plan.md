@@ -114,9 +114,10 @@ This day is the product. Everything else is the frame around it.
 
 - Countdown states at T-60s, T-10s and T-0, and a decision about what the board does at the
   instant the window opens.
-- A clock-skew warning surfaced to the user when the device and the server disagree. Handling
-  skew silently is not enough when the user is watching a countdown and deciding when to tap.
 - Contention feedback during the race, so the wait is legible rather than blank.
+- *(The clock-skew warning listed here originally was already built — `ServerClock` surfaces a
+  skew over 30 seconds and `CountdownHero` renders it. It is a Stretch item in 6.2, not a
+  Default, and re-reading the brief's columns is what established that.)*
 - **Design the loss path deliberately.** The overwhelming majority of users lose; losing has to
   read as an honest outcome of a fair race, not as a failure of the app.
 

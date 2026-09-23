@@ -282,7 +282,7 @@ error.
 | **G** | Screen and information architecture designed by you, rationale in `docs/design.md` | met |
 | **G** | All 80 spaces legible on a 6.1-inch screen without pinch-zoom | met — 7×12 at 44×43pt, asserted in `BoardLayoutTests` |
 | **G** | Full state matrix: loading, empty, error, offline, insufficient balance, race lost, success | met (`GridState`, `ReservationOutcome`) |
-| D | HIG, dark mode, no hardcoded user-facing strings | **partly** — HIG and dark mode kept. SwiftUI's `Text("…")` and `Button("…")` literals are `LocalizedStringKey` and extractable, but components taking a plain `String` parameter bypass that, and there is no string catalogue or second locale yet. Scheduled day 7 |
+| D | HIG, dark mode, no hardcoded user-facing strings (String Catalog or equivalent) | **partly** — HIG and dark mode kept. SwiftUI's `Text("…")` and `Button("…")` literals are `LocalizedStringKey` and extractable, but components taking a plain `String` parameter bypass that, and there is no String Catalog yet. Scheduled day 7. (A *populated* second locale is Stretch, not this row) |
 | D | Dynamic Type to accessibility sizes, VoiceOver labels, 44pt targets, contrast | kept; board scrolls only at accessibility sizes, rather than clipping |
 | D | The 20:00 moment designed deliberately | kept |
 
@@ -310,6 +310,23 @@ error.
 | D | Certificate pinning against the local backend, bypass gated to debug builds | **not built** — see the risk note below |
 | D | A proposal for measuring AI contribution on a mobile repo | met (`CLAUDE.md`) |
 | D | Data-privacy limits for an AI tool in a banking context | met (`CLAUDE.md`) |
+
+### Stretch items, which the brief does not require
+
+Listed because several are done and it would be odd to leave them unclaimed, and because the
+unfinished ones are scheduled rather than abandoned.
+
+| Module | Item | State |
+|---|---|---|
+| 6.1 | Swift 6 language mode | built |
+| 6.2 | A visible warning when clock skew exceeds 30 seconds | built (`CountdownHero`) |
+| 6.2 | A written design for moving to push or SSE | §7 |
+| 6.3 | iPad **or** landscape layouts | both built |
+| 6.5 | A reusable Claude Code skill for a mobile task, demonstrated working | three, in `.claude/skills/` |
+| 6.2 | The k6 race rehearsal, and an Instruments trace under load | day 9 |
+| 6.3 | A second locale populated | day 7 |
+| 6.1 | SPM modularisation, or a unidirectional architecture such as TCA | not pursued |
+| 6.4 | Signed `.ipa` on device, fastlane, snapshot tests, a coverage gate | not pursued |
 
 ### Known risk
 
