@@ -55,7 +55,7 @@ defended *and* built.
 | Both response shapes handled, not one | G | ✅ Built | `HTTPClient.decodeFailure` |
 | All 80 spaces legible on 6.1-inch, no pinch-zoom | G | ✅ Built | 7×12 at 44×43pt, asserted in tests |
 | Full state matrix incl. offline, race lost, unknown | G | ✅ Built | `GridState`, `ReservationOutcome` |
-| Unit tests on domain **and view models** | G | ✅ Built | 45 tests |
+| Unit tests on domain **and view models** | G | ✅ Built | 46 tests |
 | At least one UI test: login, grid, reserve | G | ✅ Built | `ReservationFlowUITests` |
 | CI on every push: build, lint, unit, UI | G | ✅ Built | Self-hosted runner, green on head |
 | Token in Keychain, justified accessibility class | G | ✅ Built | `KeychainTokenStore` |
@@ -119,7 +119,7 @@ Six ADRs in [`architecture.md`](architecture.md). The four that carry the produc
 
 **Why:**
 - Domain imports nothing but Foundation — the race logic is testable without a network
-- Every collaborator is fakeable, so 45 unit tests need no backend
+- Every collaborator is fakeable, so 46 unit tests need no backend
 - `@MainActor` view models, actor-isolated state where contention is real
 
 ---
