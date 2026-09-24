@@ -146,6 +146,27 @@ balance or double booking we see in the app is the client's bug. And **80 of 1,0
 
 Full defect report with reproduction steps: [`defects.md`](defects.md).
 
+### What would remove the ambiguity — for the backend team
+
+The timeout case is not a client bug to be engineered around. It is the Two Generals Problem:
+a client that hears nothing back cannot determine whether its request was processed, and no
+timeout value changes that. There are exactly two mitigations — **make retrying safe**, and
+**make the outcome readable**. The API currently offers neither.
+
+| # | Change | What it buys |
+|---|---|---|
+| 1 | Return the existing reservation **in the 409 body** | A retry after a timeout becomes self-healing — the conflict *is* the answer. Smallest change here by far |
+| 2 | `GET /reservations/me?date=…` | Collapses the unknown state outright: ask, and get id, space, amount and balance. Highest value |
+| 3 | Client-supplied `Idempotency-Key`, storing the **response** and never clearing the key on failure | Turns an ambiguous retry into a deterministic replay. The control a bank expects on every money-moving endpoint |
+| 4 | `PUT /reservations/{date}` | One reservation per vehicle per day is already a natural key, so replays return the same resource |
+| 5 | Read-your-writes on `/spaces` | The 5s cache can serve a grid older than the caller's own write — and that grid is what reconciliation consults |
+
+Two details decide whether (3) actually works: store the **response**, not a dedupe flag, and
+**never clear the key on failure**. Clearing it is precisely what makes today's
+`DUPLICATE_REQUEST` two-sided.
+
+Only these make the question answerable. Everything the client does is mitigation.
+
 ---
 
 ## 4. Architecture Decisions
@@ -157,7 +178,7 @@ Six ADRs in [`architecture.md`](architecture.md). The four that carry the produc
 
 **Why:**
 - Domain imports nothing but Foundation — the race logic is testable without a network
-- Every collaborator is fakeable, so 46 unit tests need no backend
+- Every collaborator is fakeable, so 59 unit tests need no backend
 - `@MainActor` view models, actor-isolated state where contention is real
 
 ---
@@ -238,15 +259,46 @@ T-0    ────────────────────────�
 **The design problem is the 92%.** Losing has to read as the honest outcome of a fair race,
 not as a failure of the app.
 
+### The unknown path, forced rather than argued
+
+`unknown` carries the most design weight of any state and was the least observed, so I made it
+happen on purpose. The backend moved to `:8081`; a proxy on `:8080` forwarded everything
+untouched **except** `POST /reservations`, where it forwarded the request, took the real
+answer, and held it back for six seconds. Nothing in the app changed, and nothing in the
+backend changed.
+
+```
+[proxy] POST /reservations -> 200 in 137ms, holding 6.0s
+```
+
+**The reservation committed in 137 ms. The client gave up at 3 s.** Server state afterwards:
+space 1 held by suffix `434`, balance `90.00`.
+
+What the app showed: *"We're not sure yet — Space 1 appears to be yours. Pull to refresh to
+confirm."* Designed behaviour, and it held up.
+
+**Two defects the run exposed that reading the code did not:**
+
+| # | Defect | Why it matters |
+|---|---|---|
+| 1 | Behind the sheet, the holding card asserts **"Space 1 is yours"** while the sheet in front says it is not sure | Both read the same three-character suffix. The card states as fact what the coordinator refuses to state. And with no read endpoint, *every* holding is inference after a relaunch — the confident wording is only ever earned in the session that saw a `201` |
+| 2 | The wallet header showed **$100**; the server said **$90.00** | $10 moved and the UI never noticed. The balance is also **stronger evidence than the plate suffix** — per-user, so it cannot collide the way three characters across 80 cells can — and reconciliation ignores it today |
+
+Neither is a wrong decision. Both are the same decision not carried all the way: proven state
+and inferred state are rendered identically. Fix is day 6.
+
+*This is also the argument for §3's backend list: the client can only ever narrow the
+ambiguity, never end it.*
+
 ---
 
 ## 6. Testing & CI
 
 | Layer | Count | Runs against |
 |---|---|---|
-| Unit tests | 45 | Fakes only — no backend needed |
-| UI tests | 2 | Simulator, login → grid → reserve |
-| Screenshot tests | 3 | **Live backend, deliberately** — skipped unless `SCREENSHOTS=1` |
+| Unit tests | 59 | Fakes only — no backend needed |
+| UI tests | 4 | Simulator, login → grid → reserve, registration |
+| Screenshot tests | 5 | **Live backend, deliberately** — skipped unless `SCREENSHOTS=1` |
 
 **CI — every push to `main`, self-hosted runner on the development machine:**
 
@@ -326,7 +378,7 @@ Full day-by-day in [`plan.md`](plan.md).
 
 | Days | Focus |
 |---|---|
-| 6 | The 20:00 moment — countdown states, contention feedback, the loss path |
+| 6 | The 20:00 moment — countdown states, contention feedback, the loss path, and the two honest-state defects in §5 |
 | 7 | Accessibility audit, string catalog, second locale |
 | 8 | Security module — pinning if ratified |
 | 9 | Three rehearsals: won race, lost race, backend killed mid-reservation |
@@ -344,6 +396,9 @@ Full day-by-day in [`plan.md`](plan.md).
 1. Do you accept the pessimistic-reservation deviation as built?
 2. Is certificate pinning against a locally-terminated TLS endpoint worth a day-8 slot, or is
    the written design sufficient?
-3. Anything else you want covered at the Week-2 demo that is not already in the plan?
+3. For the backend team: are §3's first three changes — the reservation in the 409 body, a
+   read-back endpoint, and idempotency keys — worth raising? They are what would let the
+   client stop guessing, and (1) is close to free.
+4. Anything else you want covered at the Week-2 demo that is not already in the plan?
 
 ---
