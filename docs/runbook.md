@@ -89,6 +89,18 @@ To point the app at a shifted window, matching a backend started with `make back
 environment variables. The app and the backend must agree, or the countdown points at a
 window the server is not using.
 
+- **Which hour is the backend on?** `make backend-hour`. The backend has no endpoint for it,
+  so the target reads the running JVM's arguments, and reports the gate state too.
+- **From Xcode:** Edit Scheme → Run → Arguments → Environment Variables. Every `make build`,
+  `make test` and `make uitest` regenerates the scheme with `xcodegen`, which **discards
+  that setting** — the app then silently falls back to 20:00. Re-check it after any `make`.
+- **From the command line:** `SIMCTL_CHILD_PARKING_WINDOW_HOUR=<hour> xcrun simctl launch
+  --terminate-running-process <udid> com.vncdc.parking`. A backend restarted on a new hour
+  does not reach an app already running; relaunch it.
+- If they disagree anyway and the app thinks the window is open, the first reservation
+  answers `WINDOW_CLOSED` and the app replaces "Reservations are open" with a mismatch
+  warning. The opposite case (app counting down, server already open) is not detectable.
+
 `make` with no target lists every command.
 
 ## 5. Screenshots
@@ -367,6 +379,6 @@ push. It is a worse answer and should be argued for explicitly, not slipped in.
 
 1. Backend up with the gate **on** and the window shifted to the current hour.
 2. Clean grid (§3), 1000 synthetic users seeded by a k6 setup run.
-3. App on the simulator, `PARKING_WINDOW_HOUR` matching the backend.
+3. App on the simulator, `PARKING_WINDOW_HOUR` matching what `make backend-hour` reports.
 4. Rehearsed: a won race, a lost race, and the backend killed mid-reservation
    (`pkill -f spring-boot:run`) — the app must never show a state that is not true.

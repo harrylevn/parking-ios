@@ -10,7 +10,7 @@ BACKEND     := $(or $(PARKING_BACKEND),$(CURDIR)/../parking-reservation)
 COMPOSE     := $(BACKEND)/backend/docker-compose.yml
 
 .PHONY: project build test uitest lint archive clean ci \
-        backend backend-now backend-off backend-reset backend-health backend-down loadtest help
+        backend backend-now backend-off backend-reset backend-health backend-hour backend-down loadtest help
 
 # Default target: list what there is to run.
 help:
@@ -29,6 +29,7 @@ help:
 	@echo '  make backend-off    gate BYPASSED — the shipped default, race code untested'
 	@echo '  make backend-reset  empty the grid and the reservations, keep accounts'
 	@echo '  make backend-health is it up?'
+	@echo '  make backend-hour   which window hour and gate the running backend has'
 	@echo '  make screenshots    regenerate docs/screenshots (needs the backend)'
 	@echo '  make backend-down   stop postgres and redis'
 	@echo '  make loadtest       k6 stress scenario, 1000 VUs'
@@ -132,6 +133,19 @@ backend-reset:
 
 backend-health:
 	@curl -fsS localhost:8080/actuator/health && echo || echo 'backend is not up'
+
+# The backend exposes no endpoint for its window hour, so read it from the running JVM's
+# arguments. The app must be launched with the same value in PARKING_WINDOW_HOUR.
+backend-hour:
+	@pid=$$(lsof -tnP -iTCP:8080 -sTCP:LISTEN | head -1); \
+	if [ -z "$$pid" ]; then echo 'backend is not up'; exit 1; fi; \
+	args=$$(ps -o command= -p $$pid); \
+	hour=$$(echo "$$args" | grep -oE 'window-hour=[0-9]+' | cut -d= -f2); \
+	gate=$$(echo "$$args" | grep -oE 'bypass-time-check=(true|false)' | cut -d= -f2); \
+	echo "window-hour: $${hour:-20 (default)}"; \
+	if [ "$$gate" = false ]; then echo 'gate: ON'; \
+	else echo 'gate: BYPASSED - every reservation succeeds regardless of the clock'; fi; \
+	echo "launch the app with PARKING_WINDOW_HOUR=$${hour:-20}"
 
 backend-down:
 	docker compose -f $(COMPOSE) down
