@@ -19,7 +19,7 @@ outcome.
 | | |
 |---|---|
 | App code | 2,985 lines of Swift, 22 files, **zero third-party dependencies** |
-| Tests | 46 unit, 2 UI, 3 screenshot — all green |
+| Tests | 59 unit, 4 UI, 5 screenshot — all green |
 | Docs | 2,288 lines across 10 documents plus the AI working agreement |
 | CI | Self-hosted runner, green on every push: lint, build, unit, UI, archive |
 | Commits | 19, on a private repo shared with the team |
@@ -65,8 +65,9 @@ so 92% lose** — which is the single number that shaped the interface.
 ## 3. Defects found
 
 Seven are recorded in `docs/defects.md` with reproduction steps. The backend is read-only, so
-each is a client workaround plus a written report. **None of them need anything from you** —
-they are here because four of them changed the design rather than merely needing a patch.
+each is a client workaround plus a written report. Four of them changed the design rather than
+merely needing a patch. **Only the last subsection below asks anything of you**, and what it
+asks is a conversation with the backend team rather than a decision today.
 
 | | |
 |---|---|
@@ -79,6 +80,30 @@ they are here because four of them changed the design rather than merely needing
 | The repo's k6 stress test | Counts 409 as failure, so it reports red while the system behaves perfectly; and scores 429 as expected, so a run against a closed window reports green with zero reservations |
 
 The first four are behind the three decisions in §4.
+
+### What would remove the ambiguity — for the backend team
+
+The third row is the one worth a conversation, because it is not a client bug to be engineered
+around. It is the Two Generals Problem: a client that hears nothing back cannot determine
+whether its request was processed, and no timeout value changes that. There are exactly two
+mitigations — **make retrying safe**, and **make the outcome readable** — and the API offers
+neither. Ranked by value per effort:
+
+| # | Change | What it buys |
+|---|---|---|
+| 1 | Return the existing reservation **in the 409 body** | A retry after a timeout becomes self-healing: the conflict *is* the answer. By far the smallest change |
+| 2 | `GET /reservations/me?date=…` | Collapses the unknown state outright — ask, and get id, space, amount and balance |
+| 3 | Client-supplied `Idempotency-Key`, storing the **response** and never clearing the key on failure | Turns an ambiguous retry into a deterministic replay; the control a bank expects on every money-moving endpoint |
+| 4 | `PUT /reservations/{date}` | One reservation per vehicle per day is already a natural key, so replays return the same resource |
+| 5 | Read-your-writes on `/spaces` | The 5-second cache can serve a grid older than the caller's own write — and that grid is what the client reconciles against |
+
+Two details decide whether (3) works at all: store the **response**, not a dedupe flag, and
+**never clear the key on failure**. Clearing it is exactly what makes today's
+`DUPLICATE_REQUEST` two-sided.
+
+I am flagging rather than requesting. (1) is close to free and would improve every client the
+backend ever has, but the split is the honest part: the client can only narrow this ambiguity,
+the backend can end it.
 
 ---
 
@@ -109,6 +134,40 @@ magnitude above the measured p99 of 368 ms, because every spurious timeout lands
 that unknown state.
 
 *Classify on `code`, never on HTTP status.* Forced by `WINDOW_CLOSED` arriving as 429.
+
+### The unknown path, forced rather than argued
+
+That first decision carries more weight than anything else in the client, and until this week
+it was the least observed state in the app — so I made it happen deliberately. The backend
+moved to `:8081`, and a proxy on `:8080` forwarded everything untouched **except**
+`POST /reservations`, where it forwarded the request, took the real answer, and held it back
+for six seconds. Nothing in the app changed, and nothing in the backend changed.
+
+```
+[proxy] POST /reservations -> 200 in 137ms, holding 6.0s
+```
+
+**The reservation committed in 137 ms; the client gave up at 3 s.** Afterwards the server held
+space 1 against plate suffix `434`, with a balance of `90.00`. The app said: *"We're not sure
+yet — Space 1 appears to be yours. Pull to refresh to confirm."* That is the designed
+behaviour, and it held.
+
+It also exposed two defects that reading the code had not:
+
+- **The app contradicts itself in one frame.** Behind that sheet, the holding card asserts
+  "Space 1 is yours". Both read the same three-character suffix, so the card states as fact
+  what the coordinator explicitly refuses to state. It is worse than a wording slip: with no
+  read endpoint, *every* holding is inference after a relaunch, and the confident wording is
+  only ever earned in the session that actually saw a `201`.
+- **The balance went stale** — $100 on screen against `90.00` on the server. Ten dollars moved
+  and the interface never noticed. The balance is also **stronger evidence than the plate
+  suffix**, because it is per-user and cannot collide the way three characters across 80 cells
+  can, and reconciliation ignores it today.
+
+Neither is a wrong decision; both are the same decision not carried all the way, in that proven
+state and inferred state are rendered identically. The fix is day 6. The wider point is the one
+in §3: forcing the state was worth more than re-reading the code, and no amount of client work
+would have removed the ambiguity that produced it.
 
 ---
 
@@ -206,14 +265,15 @@ Full day-by-day in [`plan.md`](plan.md).
 
 | Days | Focus |
 |---|---|
-| 6 | The 20:00 moment: countdown states, contention feedback, the loss path |
+| 6 | The 20:00 moment: countdown states, contention feedback, the loss path, and the two honest-state defects in §4 |
 | 7 | Accessibility audit, string catalog, second locale |
 | 8 | Security module: pinning if ratified, threat note |
 | 9 | Three rehearsals — won race, lost race, backend killed mid-reservation; Instruments trace |
 | 10 | Clean-clone build, documentation pass, two full demo run-throughs |
 
 **Risks I am carrying:** the 16 GB machine is tight with colima, Xcode and simulators
-together — it has already triggered one out-of-memory kill; and a backend started with the
+together — it has now triggered two out-of-memory kills, the second during ordinary work
+rather than under load; and a backend started with the
 gate bypassed looks identical to one with it on until you reserve outside the window, so the
 rehearsal asserts a `WINDOW_CLOSED` response before the race is shown.
 
@@ -224,4 +284,6 @@ rehearsal asserts a `WINDOW_CLOSED` response before the race is shown.
 1. Do you accept the pessimistic-reservation deviation as built?
 2. Is certificate pinning against a locally-terminated TLS endpoint worth a day-10 slot, or
    is the written design sufficient?
-3. Anything else you want covered at the Week-2 demo that is not already in the plan?
+3. Are §3's first three items — the reservation in the 409 body, a read-back endpoint, and
+   idempotency keys — worth raising with the backend team? Item (1) is close to free.
+4. Anything else you want covered at the Week-2 demo that is not already in the plan?

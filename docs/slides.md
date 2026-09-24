@@ -385,7 +385,8 @@ Full day-by-day in [`plan.md`](plan.md).
 | 10 | Clean-clone build, doc pass, two full demo run-throughs |
 
 **Risks I am carrying:**
-- 16 GB machine is tight with colima, Xcode and simulators together — already one OOM kill
+- 16 GB machine is tight with colima, Xcode and simulators together — two OOM kills now, the
+  second during ordinary work rather than under load
 - A backend started with the gate bypassed looks identical to one with it on until you
   reserve outside the window, so every rehearsal asserts `WINDOW_CLOSED` first
 
