@@ -51,4 +51,6 @@ enum ReservationOutcome: Equatable, Sendable {
     case lost(BusinessErrorCode)
     case unknown(reason: String)
     case rejected(APIError)
+    /// The user declined or failed re-authentication. The request was never sent.
+    case notConfirmed
 }

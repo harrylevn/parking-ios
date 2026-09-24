@@ -20,7 +20,7 @@ final class GridViewModelTests: XCTestCase {
     /// nothing true to say about the board while it cannot reach the server.
     func testTransportFailureBecomesOfflineState() async {
         let environment = makeEnvironment(
-            spaces: StubSpaces(result: .failure(.transport(message: "down", isTimeout: false)))
+            spaces: StubSpaces(result: .failure(.transport(message: "down", failure: .notSent)))
         )
         let model = GridViewModel(environment: environment)
 
@@ -108,6 +108,52 @@ final class GridViewModelTests: XCTestCase {
 
         XCTAssertEqual(model.outcome, .lost(.spaceUnavailable))
         XCTAssertEqual(model.balance, 100, "A lost race must not move money")
+    }
+
+    /// The forced-timeout rehearsal: the reservation committed server-side, the client gave
+    /// up, and the header kept showing $100 against the server's $90. Only a win carries an
+    /// authoritative balance, so anything else must re-read it.
+    func testUnknownOutcomeRefetchesTheBalanceRatherThanShowingAStaleOne() async {
+        let model = GridViewModel(environment: makeEnvironment(
+            wallet: StubWallet(balanceResult: .success(90)),
+            reservations: StubReservations(result: .failure(.transport(message: "", failure: .timedOut)))
+        ))
+
+        await model.reserve(space: 12)
+
+        guard case .unknown = model.outcome else {
+            return XCTFail("Expected unknown, got \(String(describing: model.outcome))")
+        }
+        XCTAssertEqual(model.balance, 90, "The server's balance, not the pre-attempt one")
+    }
+
+    /// If the balance cannot be read either, keep the last known value rather than inventing
+    /// one — the offline board is already telling the user nothing on screen is fresh.
+    func testBalanceFetchFailureLeavesTheLastKnownBalance() async {
+        let down = APIError.transport(message: "", failure: .notSent)
+        let model = GridViewModel(environment: makeEnvironment(
+            wallet: StubWallet(balanceResult: .failure(down)),
+            reservations: StubReservations(result: .failure(.transport(message: "", failure: .timedOut)))
+        ))
+
+        await model.reserve(space: 12)
+
+        XCTAssertEqual(model.balance, 100)
+    }
+
+    /// Cancelling Face ID is the user's own choice: no sheet, no error, and the selection
+    /// survives so they can confirm again.
+    func testDeclinedReauthenticationShowsNothingAndKeepsTheSelection() async {
+        let model = GridViewModel(environment: makeEnvironment(
+            reauth: CountingReauthenticator(succeeds: false)
+        ))
+        model.selectedSpace = 12
+
+        await model.reserve(space: 12)
+
+        XCTAssertNil(model.outcome, "A cancelled prompt must not present an outcome sheet")
+        XCTAssertEqual(model.selectedSpace, 12)
+        XCTAssertFalse(model.isReserving)
     }
 
     func testCountdownIsHiddenUntilServerTimeArrives() async {

@@ -150,20 +150,41 @@ final class GridViewModel: ObservableObject {
         defer { isReserving = false }
 
         let result = await environment.coordinator.attempt(preferredSpace: space, plate: plate)
-        outcome = result
 
         switch result {
         case .won(let reservation):
+            outcome = result
             balance = reservation.newBalance
+            environment.account?.balance = balance
             selectedSpace = nil
             Haptics.play(.success)
         case .lost:
+            outcome = result
             Haptics.play(.warning)
+            await refreshBalance()
         case .unknown, .rejected:
+            outcome = result
             Haptics.play(.error)
+            // Only a win returns an authoritative balance. After anything else, $10 may or
+            // may not have left the wallet — a timed-out attempt that actually committed
+            // would otherwise leave the header showing money the user no longer has.
+            await refreshBalance()
+        case .notConfirmed:
+            // The user cancelled the prompt; nothing was sent. No sheet: telling someone what
+            // they just chose to do is noise. The selection stays so they can try again.
+            return
         }
 
         await refresh()
+    }
+
+    /// Replaces the displayed balance with the server's. A failure leaves the old value in
+    /// place: the grid will already be showing its offline state, which is the signal that
+    /// nothing on screen is fresh.
+    private func refreshBalance() async {
+        guard let latest = try? await environment.wallet.balance() else { return }
+        balance = latest
+        environment.account?.balance = latest
     }
 
     func deposit(_ amount: Decimal) async {
@@ -196,10 +217,12 @@ extension APIError {
         switch self {
         case .unauthenticated:
             return String(localized: "Your session expired. Please sign in again.")
-        case .transport(_, let isTimeout):
-            return isTimeout
-                ? String(localized: "The request timed out before we heard back.")
-                : String(localized: "Can't reach the server.")
+        case .transport(_, let failure):
+            switch failure {
+            case .timedOut: return String(localized: "The request timed out before we heard back.")
+            case .interrupted: return String(localized: "The connection dropped before we heard back.")
+            case .notSent: return String(localized: "Can't reach the server.")
+            }
         case .malformedResponse:
             return String(localized: "The server sent something we couldn't read.")
         case .business(let response):

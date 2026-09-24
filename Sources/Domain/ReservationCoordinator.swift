@@ -43,7 +43,10 @@ actor ReservationCoordinator {
         do {
             try await reauth.authenticate(reason: "Confirm your parking reservation")
         } catch {
-            return .rejected(.transport(message: "Re-authentication failed", isTimeout: false))
+            // Not a transport error, though it used to be dressed as one — which showed a user
+            // who had just cancelled Face ID "Can't reach the server". Nothing was sent, so
+            // nothing is unknown and nothing was charged.
+            return .notConfirmed
         }
 
         do {
@@ -58,11 +61,21 @@ actor ReservationCoordinator {
 
     private func interpret(_ error: APIError, plate: String) async -> ReservationOutcome {
         switch error {
-        case .transport(_, isTimeout: true):
+        case .transport(_, .timedOut):
             // The request may have landed. Reconcile rather than guess or retry.
             return await reconcile(
                 plate: plate,
                 fallbackReason: "The network timed out and we could not confirm the result."
+            )
+
+        case .transport(_, .interrupted):
+            // The backend dying mid-request lands here, not as a timeout: its socket closes
+            // and URLSession fails at once. The commit may already have happened, so this is
+            // exactly as indeterminate as a timeout and must not be reported as a failure.
+            return await reconcile(
+                plate: plate,
+                fallbackReason: "The connection dropped before we heard back, "
+                    + "so we could not confirm the result."
             )
 
         case .business(let response):
@@ -119,6 +132,11 @@ actor ReservationCoordinator {
         // A space matching our suffix is strong evidence, but the reservation id, amount
         // and new balance are unknown, so this is reported as a confirmed-by-grid state
         // rather than fabricating a `Reservation` the server never returned.
-        return .unknown(reason: "Space \(match.number) appears to be yours. Pull to refresh to confirm.")
+        // No "refresh to confirm": no endpoint can confirm it. `GET /spaces` is the only
+        // evidence there is, and it has just been read.
+        return .unknown(
+            reason: "Space \(match.number) now shows your plate ending, so it is probably yours, "
+                + "but the server never sent a receipt."
+        )
     }
 }

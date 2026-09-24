@@ -37,6 +37,21 @@ struct ErrorResponse: Decodable, Sendable, Equatable {
     let validationErrors: [String: String]?
 }
 
+/// Whether a failed request could have reached the server.
+///
+/// A timeout is not the only indeterminate failure. Killing the backend mid-request closes
+/// its socket, and URLSession reports that at once as `networkConnectionLost` — the request
+/// may already have been committed, exactly as after a timeout. So the question the client
+/// needs answered is not "did it time out" but "can it have arrived".
+enum TransportFailure: Sendable, Equatable {
+    /// Failed before the request left the device (no route, host unreachable). Nothing
+    /// can have happened server-side.
+    case notSent
+    case timedOut
+    /// Failed after the request may have been sent: the connection dropped mid-flight.
+    case interrupted
+}
+
 /// Every way a call can fail, as the client must distinguish them.
 enum APIError: Error, Sendable, Equatable {
     /// A decoded `ErrorResponse` body.
@@ -48,9 +63,10 @@ enum APIError: Error, Sendable, Equatable {
     /// This, and only this, means "the session is dead".
     case unauthenticated
 
-    /// Transport failed. `isTimeout` matters: after a timeout on a reservation the
-    /// outcome is genuinely unknown and must be reconciled, never blindly retried.
-    case transport(message: String, isTimeout: Bool)
+    /// Transport failed. `failure` matters: unless the request provably never left the
+    /// device, the outcome of a reservation is genuinely unknown and must be reconciled,
+    /// never blindly retried.
+    case transport(message: String, failure: TransportFailure)
 
     /// A 2xx body that did not decode, or a non-2xx with an unrecognised shape.
     case malformedResponse(String)
@@ -73,10 +89,10 @@ enum APIError: Error, Sendable, Equatable {
     /// clock, not on backoff, and hammering it is both useless and rude.
     var isSafelyRetryable: Bool {
         switch self {
-        case .transport(_, let isTimeout):
-            // A timeout on a *mutating* call is not retryable; the caller decides,
-            // because only the caller knows whether the request had side effects.
-            return !isTimeout
+        case .transport(_, let failure):
+            // Only a request that never left the device is safe to repeat. An interrupted
+            // one may have been processed, so for a mutating call a retry could double-act.
+            return failure == .notSent
         case .business(let response):
             return response.code == .lockTimeout
         case .unauthenticated, .malformedResponse:

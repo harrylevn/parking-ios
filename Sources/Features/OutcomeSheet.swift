@@ -98,8 +98,21 @@ struct OutcomeSheet: View {
                 tint: Theme.Palette.warning,
                 title: "We're not sure yet",
                 message: reason,
-                detail: "We'd rather say we don't know than tell you something that might be wrong.",
-                action: "Refresh and check"
+                // "Got it", not "Refresh": dismissing refreshes nothing, and the board and
+                // balance already re-fetched when this sheet appeared and keep polling.
+                detail: "We'd rather say we don't know than tell you something that might be wrong. "
+                    + "The board keeps updating.",
+                action: "Got it"
+            )
+
+        case .notConfirmed:
+            // Not presented by GridViewModel, which drops it silently; handled so the switch
+            // stays exhaustive and a future caller cannot render a blank sheet.
+            return Style(
+                icon: "faceid", tint: Theme.Palette.inkMuted,
+                title: "Not reserved",
+                message: "You didn't confirm it was you, so nothing was sent and nothing was charged.",
+                detail: nil, action: "Close"
             )
 
         case .rejected(let error):
@@ -197,6 +210,7 @@ extension ReservationOutcome: Identifiable {
         case .lost(let code): return "lost-\(code.rawValue)"
         case .unknown(let reason): return "unknown-\(reason)"
         case .rejected: return "rejected"
+        case .notConfirmed: return "not-confirmed"
         }
     }
 }

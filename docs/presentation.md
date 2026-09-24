@@ -19,7 +19,7 @@ outcome.
 | | |
 |---|---|
 | App code | 2,985 lines of Swift, 22 files, **zero third-party dependencies** |
-| Tests | 59 unit, 4 UI, 5 screenshot — all green |
+| Tests | 71 unit, 4 UI, 5 screenshot — all green |
 | Docs | 2,288 lines across 10 documents plus the AI working agreement |
 | CI | Self-hosted runner, green on every push: lint, build, unit, UI, archive |
 | Commits | 19, on a private repo shared with the team |
@@ -28,8 +28,10 @@ Working end to end: sign in and register, the 80-space board with plate suffixes
 countdown driven by server time, select → confirm → reserve, wallet deposit and balance, the
 full state matrix, iPad and landscape layouts, dark mode.
 
-**Not done yet, and scheduled:** certificate pinning (see §5) — the one Default neither kept
-nor replaced — plus a String Catalog, and then the Stretch items: a populated second locale,
+**Not built, and not scheduled unless you ask for it:** certificate pinning (see §5.3) — the
+one Default neither kept nor replaced.
+
+**Not done yet, and scheduled:** a String Catalog, and then the Stretch items: a populated second locale,
 the k6 race rehearsal as a demo script, the "backend killed mid-reservation" rehearsal, and an
 Instruments trace.
 
@@ -165,7 +167,16 @@ It also exposed two defects that reading the code had not:
   can, and reconciliation ignores it today.
 
 Neither is a wrong decision; both are the same decision not carried all the way, in that proven
-state and inferred state are rendered identically. The fix is day 6. The wider point is the one
+state and inferred state are rendered identically. The balance half is already fixed: after any
+attempt that did not return an authoritative balance, the app re-fetches it. The holding-card
+wording is day 6.
+
+A review of the same path found a third, in code rather than on screen: only a *timeout* was
+reconciled. Killing the backend mid-request closes its socket, which URLSession reports at once
+as `networkConnectionLost` — the app would have said "Couldn't reserve" about a reservation that
+may have committed. Transport failures are now classified by whether the request can have
+arrived, and everything but a provably-unsent request is reconciled. The day-9 kill rehearsal
+is what will show it holding. The wider point is the one
 in §3: forcing the state was worth more than re-reading the code, and no amount of client work
 would have removed the ambiguity that produced it.
 
@@ -222,10 +233,11 @@ what production would use and why this is out of scope.
 
 I am flagging it rather than presenting it as a defended swap, because the brief says swapping
 a Default means building and demoing the alternative, and **an omission with a rationale is
-not a swap**. If you want the control demonstrated, the honest version is to terminate TLS
-locally with a self-signed certificate, pin its SPKI hash, and show the client refusing a
-connection under a deliberately wrong pin. That is roughly an hour. Your call whether it is
-worth the day-8 slot.
+not a swap**. I am listing it as a known gap and not planning time for it: the fortnight is
+better spent on the race and its honest states. If you want the control demonstrated, the
+version worth building is to terminate TLS locally with a self-signed certificate, pin its
+SPKI hash, and show the client refusing a connection under a deliberately wrong pin — but
+only if this checkpoint asks for it.
 
 ### 5.4 One test suite deliberately uses the live backend
 
@@ -282,8 +294,8 @@ rehearsal asserts a `WINDOW_CLOSED` response before the race is shown.
 ## Questions for you
 
 1. Do you accept the pessimistic-reservation deviation as built?
-2. Is certificate pinning against a locally-terminated TLS endpoint worth a day-10 slot, or
-   is the written design sufficient?
+2. Certificate pinning is listed as a known gap, not planned. Is the written risk note in
+   `security.md` sufficient, or do you want it built?
 3. Are §3's first three items — the reservation in the 409 body, a read-back endpoint, and
    idempotency keys — worth raising with the backend team? Item (1) is close to free.
 4. Anything else you want covered at the Week-2 demo that is not already in the plan?

@@ -8,7 +8,15 @@ struct APIConfiguration: Sendable {
     var requestTimeout: TimeInterval = 10
     var reservationTimeout: TimeInterval = 3
 
-    static let localBackend = APIConfiguration(baseURL: URL(string: "http://localhost:8080")!)
+    static let localBackend: APIConfiguration = {
+        // A literal that cannot fail to parse, but `!` is banned outside fixtures (CLAUDE.md
+        // gate 4). The explicit trap says what went wrong if someone edits it badly, and
+        // `testLocalBackendURLParses` fails in CI before any build could ship with it.
+        guard let url = URL(string: "http://localhost:8080") else {
+            preconditionFailure("localBackend base URL literal is malformed")
+        }
+        return APIConfiguration(baseURL: url)
+    }()
 }
 
 /// Thin async/await HTTP layer. No completion handlers, no semaphores.
@@ -99,7 +107,7 @@ struct HTTPClient: Sendable {
         } catch let error as URLError {
             throw APIError.transport(
                 message: error.localizedDescription,
-                isTimeout: error.code == .timedOut
+                failure: Self.transportFailure(for: error.code)
             )
         }
 
@@ -121,6 +129,25 @@ struct HTTPClient: Sendable {
             return try Self.decoder.decode(Response.self, from: data)
         } catch {
             throw APIError.malformedResponse("Could not decode \(Response.self): \(error)")
+        }
+    }
+
+    /// Classify a URLError by whether the request can have reached the server.
+    ///
+    /// An allowlist of provably-unsent codes, with everything else treated as interrupted.
+    /// The asymmetry is deliberate: misclassifying an unsent request as interrupted costs one
+    /// reconciliation and an honest "we're not sure"; the reverse tells a user who may have
+    /// just paid $10 that the reservation failed.
+    static func transportFailure(for code: URLError.Code) -> TransportFailure {
+        switch code {
+        case .timedOut:
+            return .timedOut
+        case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed, .notConnectedToInternet,
+             .dataNotAllowed, .internationalRoamingOff, .badURL, .unsupportedURL,
+             .appTransportSecurityRequiresSecureConnection:
+            return .notSent
+        default:
+            return .interrupted
         }
     }
 

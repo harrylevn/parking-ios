@@ -20,9 +20,9 @@ struct StubSpaces: SpacesServicing {
 }
 
 struct StubWallet: WalletServicing {
-    var balanceResult: Decimal = 100
+    var balanceResult: Result<Decimal, APIError> = .success(100)
     var depositResult: Result<Decimal, APIError> = .success(150)
-    func balance() async throws -> Decimal { balanceResult }
+    func balance() async throws -> Decimal { try balanceResult.get() }
     func deposit(amount: Decimal) async throws -> Decimal { try depositResult.get() }
 }
 
@@ -39,6 +39,7 @@ func makeEnvironment(
     spaces: SpacesServicing = StubSpaces(result: .success(grid(taken: []))),
     wallet: WalletServicing = StubWallet(),
     reservations: ReservationServicing = StubReservations(result: .failure(.unauthenticated)),
+    reauth: Reauthenticating = AlwaysAllowReauthenticator(),
     windowHour: Int = 0,
     account: Account? = Account(userId: 1, licensePlate: "TEST-001", balance: 100)
 ) -> AppEnvironment {
@@ -49,7 +50,7 @@ func makeEnvironment(
         reservations: reservations,
         tokenStore: InMemoryTokenStore(),
         serverClock: ServerClock(),
-        reauth: AlwaysAllowReauthenticator(),
+        reauth: reauth,
         window: ReservationWindow(openingHour: windowHour, timeZone: .gmt)
     )
     environment.account = account

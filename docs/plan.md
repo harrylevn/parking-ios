@@ -163,7 +163,8 @@ improvised on the day.
 
 - **Won race** and **lost race**, with the load tool repurposed as a demo driver rather than a
   load test, putting the demo user reliably on each side of the outcome.
-- **Backend killed mid-reservation**: the timeout, the unknown outcome, reconciliation against
+- **Backend killed mid-reservation**: the dropped connection (a kill surfaces as
+  `networkConnectionLost`, not a timeout), the unknown outcome, reconciliation against
   the grid, and the case where two plates share a suffix and the client says plainly that it
   cannot tell. This is the hardest thing to demo and the most persuasive if it lands.
 - Assert a closed-window response before each rehearsal. A backend started with the gate

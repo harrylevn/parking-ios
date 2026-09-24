@@ -120,7 +120,7 @@ final class ReservationCoordinatorTests: XCTestCase {
     /// A timeout is not retried: the outcome is unknown and must be reconciled.
     func testTimeoutReconcilesFromGridWhenSuffixIsUnique() async {
         let coordinator = makeCoordinator(
-            reservations: FakeReservationService(.fail(.transport(message: "timed out", isTimeout: true))),
+            reservations: FakeReservationService(.fail(.transport(message: "timed out", failure: .timedOut))),
             spaces: FakeSpacesService(stubbed: grid([
                 ParkingSpace(number: 7, isAvailable: false, plateLast3: "001"),
                 ParkingSpace(number: 8, isAvailable: true, plateLast3: nil)
@@ -139,7 +139,7 @@ final class ReservationCoordinatorTests: XCTestCase {
     /// refuse to claim either space.
     func testTimeoutWithSuffixCollisionRefusesToClaimASpace() async {
         let coordinator = makeCoordinator(
-            reservations: FakeReservationService(.fail(.transport(message: "timed out", isTimeout: true))),
+            reservations: FakeReservationService(.fail(.transport(message: "timed out", failure: .timedOut))),
             spaces: FakeSpacesService(stubbed: grid([
                 ParkingSpace(number: 7, isAvailable: false, plateLast3: "001"),
                 ParkingSpace(number: 8, isAvailable: false, plateLast3: "001")
@@ -231,8 +231,64 @@ final class ReservationCoordinatorTests: XCTestCase {
 
         let calls = await service.calls()
         XCTAssertEqual(calls, 0, "A denied authorisation must not spend money")
-        guard case .rejected = outcome else {
-            return XCTFail("Expected a rejection, got \(outcome)")
+        // Its own outcome, not a transport error: it used to surface as "Can't reach the server".
+        XCTAssertEqual(outcome, .notConfirmed)
+    }
+
+    // MARK: - Dropped connections (the backend killed mid-reservation)
+
+    /// A kill closes the socket and surfaces as `networkConnectionLost`, not a timeout. The
+    /// commit may already have happened, so it must reconcile exactly as a timeout does.
+    func testDroppedConnectionReconcilesRatherThanReportingFailure() async {
+        let coordinator = makeCoordinator(
+            reservations: FakeReservationService(.fail(.transport(message: "lost", failure: .interrupted))),
+            spaces: FakeSpacesService(stubbed: grid([
+                ParkingSpace(number: 7, isAvailable: false, plateLast3: "001")
+            ]))
+        )
+
+        let outcome = await coordinator.attempt(preferredSpace: 7, plate: "TEST-001")
+
+        guard case .unknown(let reason) = outcome else {
+            return XCTFail("A dropped connection must never be reported as a failure, got \(outcome)")
         }
+        XCTAssertTrue(reason.contains("7"), "Should point at the space that appears to be ours")
+    }
+
+    /// The demo case as it really happens: the backend is still dead, so the reconciling
+    /// `GET /spaces` fails too. The only true thing left to say is "we don't know".
+    func testDroppedConnectionWithBackendStillDownIsUnknownNotRejected() async {
+        let coordinator = makeCoordinator(
+            reservations: FakeReservationService(.fail(.transport(message: "lost", failure: .interrupted))),
+            spaces: FailingSpacesService()
+        )
+
+        let outcome = await coordinator.attempt(preferredSpace: 7, plate: "TEST-001")
+
+        guard case .unknown(let reason) = outcome else {
+            return XCTFail("Expected unknown, got \(outcome)")
+        }
+        XCTAssertTrue(reason.contains("could not confirm"), "Must admit it cannot tell: \(reason)")
+    }
+
+    /// A request that provably never left the device cannot have booked anything, so it is a
+    /// plain failure — reconciling it would turn a certain answer into a vague one.
+    func testUnsentRequestIsRejectedWithoutReconciliation() async {
+        let coordinator = makeCoordinator(
+            reservations: FakeReservationService(.fail(.transport(message: "refused", failure: .notSent))),
+            spaces: FakeSpacesService(stubbed: grid([
+                ParkingSpace(number: 7, isAvailable: false, plateLast3: "001")
+            ]))
+        )
+
+        let outcome = await coordinator.attempt(preferredSpace: 7, plate: "TEST-001")
+
+        XCTAssertEqual(outcome, .rejected(.transport(message: "refused", failure: .notSent)))
+    }
+}
+
+struct FailingSpacesService: SpacesServicing {
+    func grid() async throws -> SpaceGrid {
+        throw APIError.transport(message: "refused", failure: .notSent)
     }
 }

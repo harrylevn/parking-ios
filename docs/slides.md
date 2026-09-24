@@ -178,7 +178,7 @@ Six ADRs in [`architecture.md`](architecture.md). The four that carry the produc
 
 **Why:**
 - Domain imports nothing but Foundation — the race logic is testable without a network
-- Every collaborator is fakeable, so 59 unit tests need no backend
+- Every collaborator is fakeable, so 71 unit tests need no backend
 - `@MainActor` view models, actor-isolated state where contention is real
 
 ---
@@ -285,7 +285,13 @@ confirm."* Designed behaviour, and it held up.
 | 2 | The wallet header showed **$100**; the server said **$90.00** | $10 moved and the UI never noticed. The balance is also **stronger evidence than the plate suffix** — per-user, so it cannot collide the way three characters across 80 cells can — and reconciliation ignores it today |
 
 Neither is a wrong decision. Both are the same decision not carried all the way: proven state
-and inferred state are rendered identically. Fix is day 6.
+and inferred state are rendered identically. **#2 is fixed** — the balance is re-fetched after
+any attempt that did not return one. #1 is day 6.
+
+**A third, found in review:** only a *timeout* was reconciled. Killing the backend mid-request
+surfaces as `networkConnectionLost`, not a timeout, so the app would have said "Couldn't
+reserve" about a reservation that may have committed. Now every failure except a provably-unsent
+request is reconciled; the day-9 kill rehearsal will show it.
 
 *This is also the argument for §3's backend list: the client can only ever narrow the
 ambiguity, never end it.*
@@ -296,7 +302,7 @@ ambiguity, never end it.*
 
 | Layer | Count | Runs against |
 |---|---|---|
-| Unit tests | 59 | Fakes only — no backend needed |
+| Unit tests | 71 | Fakes only — no backend needed |
 | UI tests | 4 | Simulator, login → grid → reserve, registration |
 | Screenshot tests | 5 | **Live backend, deliberately** — skipped unless `SCREENSHOTS=1` |
 
@@ -362,9 +368,9 @@ The backend is `http://localhost:8080` with no TLS anywhere in the exercise, so 
 nothing to pin. I am flagging this rather than presenting it as a defended swap, because
 **an omission with a rationale is not a swap**.
 
-The honest version: terminate TLS locally with a self-signed certificate, pin its SPKI hash,
-and show the client refusing a connection under a deliberately wrong pin. Roughly an hour.
-Your call whether it is worth a day-8 slot.
+Listed as a known gap; **no time planned for it** unless this checkpoint asks. The version
+worth building would terminate TLS locally with a self-signed certificate, pin its SPKI hash,
+and show the client refusing a connection under a deliberately wrong pin.
 
 ### 9.4 One test suite deliberately uses the live backend
 `ScreenshotTests`. Skipped unless `SCREENSHOTS=1`, so CI never runs it and the
@@ -395,8 +401,8 @@ Full day-by-day in [`plan.md`](plan.md).
 ## Questions For You
 
 1. Do you accept the pessimistic-reservation deviation as built?
-2. Is certificate pinning against a locally-terminated TLS endpoint worth a day-8 slot, or is
-   the written design sufficient?
+2. Certificate pinning is listed as a known gap, not planned. Is the written risk note in
+   `security.md` sufficient, or do you want it built?
 3. For the backend team: are §3's first three changes — the reservation in the 409 body, a
    read-back endpoint, and idempotency keys — worth raising? They are what would let the
    client stop guessing, and (1) is close to free.

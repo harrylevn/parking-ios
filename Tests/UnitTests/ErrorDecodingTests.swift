@@ -126,3 +126,38 @@ extension ErrorDecodingTests {
         XCTAssertFalse(error.requiresReauthentication)
     }
 }
+
+/// Transport failures are classified by whether the request can have reached the server,
+/// because that — not "was it a timeout" — decides whether a reservation outcome is unknown.
+final class TransportFailureTests: XCTestCase {
+
+    /// The backend killed mid-request. The case that used to be misread as a plain failure.
+    func testDroppedConnectionIsInterruptedNotUnsent() {
+        XCTAssertEqual(HTTPClient.transportFailure(for: .networkConnectionLost), .interrupted)
+    }
+
+    func testTimeoutIsItsOwnCase() {
+        XCTAssertEqual(HTTPClient.transportFailure(for: .timedOut), .timedOut)
+    }
+
+    /// The backend already down before the tap: nothing left the device.
+    func testRefusedConnectionIsUnsent() {
+        XCTAssertEqual(HTTPClient.transportFailure(for: .cannotConnectToHost), .notSent)
+        XCTAssertEqual(HTTPClient.transportFailure(for: .notConnectedToInternet), .notSent)
+    }
+
+    /// Anything not on the provably-unsent allowlist must be treated as possibly delivered.
+    func testUnlistedCodeDefaultsToInterrupted() {
+        XCTAssertEqual(HTTPClient.transportFailure(for: .badServerResponse), .interrupted)
+    }
+
+    func testOnlyAnUnsentRequestIsSafelyRetryable() {
+        XCTAssertTrue(APIError.transport(message: "", failure: .notSent).isSafelyRetryable)
+        XCTAssertFalse(APIError.transport(message: "", failure: .interrupted).isSafelyRetryable)
+        XCTAssertFalse(APIError.transport(message: "", failure: .timedOut).isSafelyRetryable)
+    }
+
+    func testLocalBackendURLParses() {
+        XCTAssertEqual(APIConfiguration.localBackend.baseURL.absoluteString, "http://localhost:8080")
+    }
+}
