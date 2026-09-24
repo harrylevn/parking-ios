@@ -27,13 +27,30 @@ reserves outside the window. This sequence prevents both.
 
 ## 2. App
 
+Run `make build`, then this as **one** Bash call, because shell variables do not survive
+between calls:
+
 ```bash
-make build
-xcrun simctl boot "iPhone 17 Pro" 2>/dev/null || true   # already booted is fine
+# Resolve one iPhone 17 Pro by UDID, preferring one already booted. The trailing ` \(`
+# excludes "iPhone 17 Pro Max".
+UUID_RE='[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}'
+UDID=$(xcrun simctl list devices booted | grep -E '^ +iPhone 17 Pro \(' | head -1 | grep -oE "$UUID_RE")
+[ -n "$UDID" ] || UDID=$(xcrun simctl list devices available | grep -E '^ +iPhone 17 Pro \(' | head -1 | grep -oE "$UUID_RE")
+[ -n "$UDID" ] || { echo "no iPhone 17 Pro simulator installed"; exit 1; }
+echo "UDID=$UDID"
+
+xcrun simctl boot "$UDID" 2>/dev/null || true   # already booted is fine
 open -a Simulator
-xcrun simctl install booted .build/DerivedData/Build/Products/Debug-iphonesimulator/Parking.app
-SIMCTL_CHILD_PARKING_WINDOW_HOUR=<hour> xcrun simctl launch --terminate-running-process booted com.vncdc.parking
+xcrun simctl install "$UDID" .build/DerivedData/Build/Products/Debug-iphonesimulator/Parking.app
+SIMCTL_CHILD_PARKING_WINDOW_HOUR=<hour> xcrun simctl launch --terminate-running-process "$UDID" com.vncdc.parking
+sleep 3; xcrun simctl io "$UDID" screenshot <scratchpad>/run-demo.png
 ```
+
+**Never target `booted`.** When several simulators are booted, which is normal after
+`make screenshots` (it boots the iPhone and the iPad), `booted` picks one of them
+unpredictably. It has picked the iPad, so the app launched there and the screenshot was of
+the wrong device. Every command above uses the same UDID so install, launch and screenshot
+all hit the same simulator.
 
 `SIMCTL_CHILD_` passes the variable into the app's environment. That makes
 `AppEnvironment.live` read the same hour the backend was given, without editing the scheme.
@@ -43,8 +60,11 @@ and the point of this skill is the real stack.
 
 ## 3. Confirm
 
-Take `xcrun simctl io booted screenshot <scratchpad>/run-demo.png` and read it. Report:
+Read the screenshot the block above wrote. If it is not phone-shaped (for example
+2064×2752 is the iPad), the wrong device was targeted: stop and report it rather than
+describing the screen. Report:
 - backend state (gate on, window hour)
+- the simulator name and UDID the app was launched on
 - the hour passed to the app
 - what the screen shows
 
