@@ -33,15 +33,20 @@ passcode is the automatic fallback — a user without biometrics, or locked out 
 attempts, can still reserve. The biometrics-only policy would lock those users out of the
 product entirely.
 
-A 120-second grace period applies. The reasoning is in `docs/design.md` §4: a modal in the
-critical path of a race decided in milliseconds makes the security control the reason users
-lose. Re-authentication still gates the session's first reservation, which is where its value
-is.
+**Every attempt prompts.** There is no grace period and no session-scoped exemption: a
+reservation debits $10, and the control exists to evidence consent to *this* transaction
+rather than to one authorised earlier. An earlier build carried a 120-second window, argued
+from the race; `docs/design.md` §4 records why that argument was withdrawn.
+
+Each attempt builds a fresh `LAContext`. A context held across attempts would reintroduce the
+same exemption through `touchIDAuthenticationAllowableReuseDuration`, which is the form a
+reviewer is least likely to spot.
 
 On a device with no passcode configured there is nothing to authenticate against, and this is
-treated as a pass. That is a deliberate simplification for a simulator demo; in production it
-would be a hard block with an onboarding message, because a device with no passcode has no
-Keychain protection worth the name either.
+treated as a pass. With the grace period gone this is the **only remaining gap** in the
+control. It is a deliberate simplification for a simulator demo; in production it would be a
+hard block with an onboarding message, because a device with no passcode has no Keychain
+protection worth the name either.
 
 ## Transport
 

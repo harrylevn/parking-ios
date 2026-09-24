@@ -85,12 +85,12 @@ into the wrong column once already.
 | 6.4 | Tests against fakes never the live backend; SwiftLint at zero violations | ✅ kept — one disclosed exception, §9.4 |
 | 6.4 | `xcodebuild archive` in CI, build number from the commit, `runbook.md` | ✅ kept |
 | 6.4 | CI on a self-hosted runner | ✅ kept |
-| 6.5 | Face ID / Touch ID before a reservation, correct non-biometric fallback | 🔄 **adapted** — §9.2 |
+| 6.5 | Face ID / Touch ID before a reservation, correct non-biometric fallback | ✅ kept — every attempt prompts |
 | 6.5 | Certificate pinning, bypass gated to debug builds | ⏳ **not built** — §9.3 |
 | 6.5 | A proposal for measuring AI contribution on a mobile repo | ✅ kept |
 | 6.5 | Data-privacy limits for an AI tool in a banking context | ✅ kept |
 
-**Twelve kept, two deviations defended, one not built and disclosed.**
+**Thirteen kept, one deviation defended, one not built and disclosed.**
 
 ### Stretch — not required
 
@@ -221,7 +221,7 @@ T-0    ────────────────────────�
        ▼
        [User taps one space — exactly one attempt]
        │
-       │   1. Biometric re-auth (120s grace)
+       │   1. Biometric re-auth — every attempt, no grace
        │   2. Balance checked before submit
        │   3. POST /reservations, 3s timeout
        │   4. Classify on `code`, never on HTTP status
@@ -267,7 +267,7 @@ I had switched Reduce Motion on in the simulator by hand.
 | Control | State |
 |---|---|
 | Session token in the Keychain | `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — justified in `security.md` |
-| Biometric re-auth before reserving | Built, 120s grace period, `.deviceOwnerAuthentication` fallback |
+| Biometric re-auth before reserving | Built, **every attempt**, `.deviceOwnerAuthentication` fallback |
 | No secrets in repo or bundle | Verified — nothing credentialled is committed |
 | Certificate pinning | **Not built** — disclosed in §9.3 |
 | Threat note | What is not implemented, what production would do, why out of scope |
@@ -300,9 +300,10 @@ The brief puts trade-off ratification at this checkpoint rather than in a Slack 
 ### 9.1 Pessimistic reservation instead of optimistic UI — **built**
 Wrong 92% of the time is not a rollback, it is the modal experience. Reasoning in ADR-002.
 
-### 9.2 Biometric re-auth with a 120-second grace period — **built**
-A modal in the critical path of a race decided in milliseconds would make the security
-control the reason users lose. Re-auth still gates the session's first reservation.
+### 9.2 Biometric re-auth — **built as written**, after I withdrew an argument
+It first shipped with a 120-second grace period, defended from the race. Withdrawn: step-up
+auth evidences consent to *this* transaction, not to one given two minutes ago, and the
+exemption was free to anyone holding the unlocked handset. Every attempt prompts.
 
 ### 9.3 Certificate pinning — **not built, and I want to be explicit**
 The backend is `http://localhost:8080` with no TLS anywhere in the exercise, so there is
@@ -340,7 +341,7 @@ Full day-by-day in [`plan.md`](plan.md).
 
 ## Questions For You
 
-1. Do you accept the pessimistic-reservation and grace-period deviations as built?
+1. Do you accept the pessimistic-reservation deviation as built?
 2. Is certificate pinning against a locally-terminated TLS endpoint worth a day-8 slot, or is
    the written design sufficient?
 3. Anything else you want covered at the Week-2 demo that is not already in the plan?

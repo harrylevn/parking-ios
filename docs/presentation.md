@@ -114,8 +114,9 @@ that unknown state.
 
 ## 5. Scope points I would like ratified
 
-The brief says trade-off ratification belongs here rather than in a Slack thread. Two deviations
-to accept, one Default I have deliberately not built, and one disclosure.
+The brief says trade-off ratification belongs here rather than in a Slack thread. One deviation
+to accept, one argument I withdrew, one Default I have deliberately not built, and one
+disclosure.
 
 ### 5.1 Pessimistic reservation instead of optimistic UI — built
 
@@ -127,13 +128,32 @@ user almost nothing.
 
 Optimistic updates are used where contention does not apply, such as deposits.
 
-### 5.2 Biometric re-authentication with a 120-second grace period — built
+### 5.2 Biometric re-authentication — built as written, after I withdrew an argument
 
-The Default asks for Face ID before a reservation is submitted. Implemented, with a grace
-period, because a modal in the critical path of a race decided in milliseconds would make the
-security control the reason users lose. Re-authentication still gates the session's first
-reservation. Fallback is `.deviceOwnerAuthentication`, so a user without biometrics uses the
-passcode rather than being locked out.
+The Default asks for Face ID before a reservation is submitted. It is built exactly that way:
+**every attempt prompts**, retries after losing included. Fallback is
+`.deviceOwnerAuthentication`, so a user without biometrics uses the passcode rather than being
+locked out.
+
+This is not what I first shipped, and the change is worth a minute of the checkpoint because
+the reasoning is the point. The first version carried a 120-second grace period, defended from
+the race: a prompt in the critical path of a contest decided in milliseconds costs seconds,
+and because one reservation per vehicle per day is a backend invariant, nearly every
+re-attempt is a retry after losing — so the prompt looked like a tax on the common path that
+bought no security.
+
+The flaw is in what that weighs. Step-up authentication here is not a proportionality control
+keyed to $10; it exists to evidence that the account holder consented to *this* transaction.
+A session-scoped exemption destroys that evidence, and costs an attacker holding the unlocked
+handset nothing. `CLAUDE.md` claims a banking bar for this repository, and the one action that
+moves money was where that claim was not being met.
+
+The race cost is accepted rather than designed around, and it is not yet measured on device —
+that is a day-9 Instruments item, not a number I am willing to assert from a simulator.
+`ReservationCoordinatorTests` pins three attempts to three authorisations. That guards the
+coordinator's contract; it does not guard the concrete `BiometricReauthenticator`, which now
+holds no state to test. The residual risk is a stored `LAContext` — it has a reuse window of
+its own — and it is held off by a comment, not by an assertion.
 
 ### 5.3 Certificate pinning — not built, and I want to be explicit about it
 
@@ -201,7 +221,7 @@ rehearsal asserts a `WINDOW_CLOSED` response before the race is shown.
 
 ## Questions for you
 
-1. Do you accept the pessimistic-reservation and grace-period deviations as built?
+1. Do you accept the pessimistic-reservation deviation as built?
 2. Is certificate pinning against a locally-terminated TLS endpoint worth a day-10 slot, or
    is the written design sufficient?
 3. Anything else you want covered at the Week-2 demo that is not already in the plan?

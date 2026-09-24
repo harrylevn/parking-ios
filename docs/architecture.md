@@ -15,7 +15,7 @@ deviation is named explicitly.
 | [003](#adr-003) | Classify errors on the payload, not the HTTP status | Accepted |
 | [004](#adr-004) | Server time and refresh without a push channel | Accepted |
 | [005](#adr-005) | Fit all 80 cells, and adapt when there is room | Accepted — supersedes an earlier reading |
-| [006](#adr-006) | Keychain, biometric grace period, and the pinning gap | Accepted — one item **not built** |
+| [006](#adr-006) | Keychain, biometric re-authentication, and the pinning gap | Accepted — one item **not built** |
 
 > These six were consolidated from nineteen finer-grained records. The finer records were
 > mostly one mechanism each, which made the log tedious to review and hid which decisions were
@@ -248,9 +248,9 @@ at all.
 ---
 
 <a name="adr-006"></a>
-## ADR-006 — Keychain, biometric grace period, and the pinning gap
+## ADR-006 — Keychain, biometric re-authentication, and the pinning gap
 
-**Status:** Accepted — **one item deviates from the 6.5 Default column, and one is not built**
+**Status:** Accepted — **one item is not built; a biometric deviation was reversed**
 
 **Context.** 6.5 makes the session token in the Keychain "with a justified accessibility class"
 a Guardrail, and asks in the Default column for biometric re-authentication before a reservation
@@ -261,9 +261,11 @@ and for certificate pinning against the local backend.
 *Keychain:* `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, with writes as delete-then-add
 rather than `SecItemUpdate`.
 
-*Biometrics:* re-authentication is required, with a **120-second grace period** after a
-successful check. The policy is `.deviceOwnerAuthentication`, not the biometrics-only variant,
-so the device passcode is the automatic fallback.
+*Biometrics:* re-authentication is required **before every attempt**, with no grace period and
+no session-scoped exemption. The policy is `.deviceOwnerAuthentication`, not the biometrics-only
+variant, so the device passcode is the automatic fallback. Each attempt builds a fresh
+`LAContext`, because a stored one reintroduces the same exemption through
+`touchIDAuthenticationAllowableReuseDuration`.
 
 *Pinning:* **not implemented.** `security.md` documents the threat, what production would use —
 a `URLSessionDelegate` validating the leaf's SPKI hash against a pinned set with at least one
@@ -273,10 +275,30 @@ of scope against an `http://localhost:8080` backend with no TLS anywhere in the 
 **Alternatives.** `AfterFirstUnlock` for the token — correct for apps doing background refresh,
 which this one does not; it would leave the token readable from first unlock until reboot.
 Omitting `ThisDeviceOnly` — the token would ride encrypted backups and iCloud Keychain onto
-other devices, which a bearer token authorising payments should not do. A biometric prompt on
-every attempt, as the Default is written — a modal in the critical path of a race decided in
-milliseconds would make the security control the reason users lose; no re-auth at all abandons
-the requirement rather than adapting it.
+other devices, which a bearer token authorising payments should not do.
+
+**A biometric grace period, which this record previously accepted and now reverses.** The
+original decision exempted any attempt within 120 seconds of a successful check, reasoning that
+a modal in the critical path of a race decided in milliseconds would make the security control
+the reason users lose — and that since one reservation per vehicle per day is a backend
+invariant, the attempts it covered were overwhelmingly retries after losing, where no second
+charge is possible anyway.
+
+That reasoning is about cost, and it never established what the control is for. Step-up
+authentication on a payment is not a proportionality measure keyed to the amount; it produces
+the evidence that the account holder authorised *this* debit. A session-scoped exemption
+removes that evidence for every attempt after the first, and it is free to anyone holding the
+handset while it is unlocked — the party it should be most expensive for. The repository's own
+`CLAUDE.md` asserts a banking bar; the exemption sat on the only action that moves money.
+
+The race cost is therefore accepted rather than engineered around. It has **not** been measured
+on device, and a simulator figure would flatter it, so the measurement is carried as a day-9
+Instruments item rather than quoted here. If it proves decisive, the alternative that satisfies
+both constraints is capturing the authorisation *before* the window opens — arming a choice
+during the countdown — which keeps per-transaction consent while moving the prompt out of the
+race. That is a feature, not a tuning parameter, and it is not built.
+
+Rejected outright: no re-auth at all, which abandons the requirement rather than adapting it.
 
 **The pinning gap is a risk, not a clean deviation.** The brief allows a Default to be swapped
 "provided your alternative stays inside the guardrails, you defend the trade-off in
@@ -290,9 +312,13 @@ asks for.
 
 **Consequences.** The user signs in again after a device migration, which is the right trade in
 a banking context; delete-then-add matters because `SecItemUpdate` would silently retain a
-previously stored accessibility class. The biometric security value is retained where it exists
-— nobody reserves without authenticating at least once per session — while the race stays
-winnable; on a device with no passcode there is nothing to authenticate against, and that is
-treated as a pass, where production would hard-block. Pinning remains the one Default neither
-kept nor replaced with something built, and it is carried openly as an open risk rather than
-presented as a defended swap.
+previously stored accessibility class. Every reservation attempt now costs a biometric prompt,
+including retries after losing, which is a real and unmeasured handicap in the 20:00 race
+against a web client carrying no such control — that cost is disclosed rather than hidden.
+`ReservationCoordinatorTests` asserts three attempts produce three authorisations, which pins
+the coordinator's contract but not the concrete evaluator — that one is stateless by
+construction rather than by assertion. On a device with no passcode there is nothing to
+authenticate against, and that is treated as a pass, where production would hard-block; with
+the grace period gone it is the only remaining gap in the control. Pinning remains the one
+Default neither kept nor replaced with something built, and it is carried openly as an open
+risk rather than presented as a defended swap.

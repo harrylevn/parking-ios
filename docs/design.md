@@ -68,7 +68,7 @@ know yet" is the only true thing the app can say.
 
 ## 4. Deviations from the brief's Default column
 
-### Deviation 1 — pessimistic reservation, optimistic elsewhere
+### Deviation — pessimistic reservation, optimistic elsewhere
 
 The brief permits optimistic UI with visible rollback. I am **not** applying it to the
 reservation itself.
@@ -82,15 +82,36 @@ you do not hold is exactly the wrong instinct.
 Optimistic updates are used where the success rate justifies them — deposits, which do not
 contend.
 
-### Deviation 2 — re-authentication has a grace period, not per-tap
+### Not a deviation — re-authentication, and an argument I withdrew
 
-The Default column puts Face ID before a reservation is submitted. Implemented, with a
-**120-second grace period** after a successful check.
+The Default column puts Face ID before a reservation is submitted. It is built as written:
+**every attempt prompts**, retries after losing included.
 
-A biometric prompt inside the critical path of a race decided in milliseconds costs the user
-seconds. Requiring it on every tap would make the security control the reason users lose. The
-grace period keeps re-authentication in front of the session's first reservation — which is
-where it has security value — without putting a modal in the middle of the race.
+It did not start there. The first implementation carried a 120-second grace period, defended
+from the race — a biometric prompt in the critical path of a contest decided in milliseconds
+costs seconds, and since one reservation per vehicle per day is a backend invariant, nearly
+every re-attempt is a retry after losing. On those grounds the prompt looked like a tax on the
+common path that bought no security.
+
+That argument weighs the wrong thing, and this document is the right place to say so rather
+than quietly ship the better version. Step-up authentication in a banking context is not a
+proportionality control keyed to the amount at risk; it exists to produce evidence that the
+account holder consented to *this* transaction. A session-scoped exemption destroys exactly
+that evidence, and it is free to anyone holding the unlocked handset — the wrong party to make
+it cheap for. `CLAUDE.md` opens by claiming a banking bar for this repository; an exemption on
+the one action that moves money was the clearest place that claim was not being met.
+
+The race cost is real, and it is now accepted rather than designed around. It is also not yet
+measured on device; a simulator figure would flatter it, so the measurement is a day-9
+Instruments item rather than a number quoted here.
+
+What is tested is the *contract*: `ReservationCoordinatorTests` asserts three attempts produce
+three authorisations, so nothing can start caching consent between the tap and the request.
+What is **not** tested is the concrete `BiometricReauthenticator`, because with the grace
+period gone it holds no state — the guarantee there rests on a stateless struct and a fresh
+`LAContext` per call, not on an assertion. That matters because `LAContext` carries a reuse
+window of its own in `touchIDAuthenticationAllowableReuseDuration`, so a context stored across
+attempts would be the same exemption in a form no test currently catches.
 
 Fallback is `.deviceOwnerAuthentication`, not the biometrics-only policy, so a user without
 Face ID or locked out after failed attempts falls back to the passcode rather than being
@@ -306,7 +327,7 @@ error.
 | **G** | `docs/security.md` threat note: what is not implemented, what production would do, why out of scope | met |
 | **G** | AI working agreement committed: conventions and quality gates AI code must clear | met (`CLAUDE.md`) |
 | **G** | An honest account of where AI helped and where it failed | met — `docs/ai-workflow.md` was referenced but missing until this audit |
-| D | Face ID / Touch ID re-auth before a reservation, correct non-biometric fallback | kept, with a 120s grace period defended in §4 |
+| D | Face ID / Touch ID re-auth before a reservation, correct non-biometric fallback | kept as written — every attempt prompts; `.deviceOwnerAuthentication` fallback |
 | D | Certificate pinning against the local backend, bypass gated to debug builds | **not built** — see the risk note below |
 | D | A proposal for measuring AI contribution on a mobile repo | met (`CLAUDE.md`) |
 | D | Data-privacy limits for an AI tool in a banking context | met (`CLAUDE.md`) |

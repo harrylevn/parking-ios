@@ -35,6 +35,23 @@ struct FakeSpacesService: SpacesServicing {
     func grid() async throws -> SpaceGrid { stubbed }
 }
 
+/// Counts prompts so the per-attempt guarantee is asserted rather than assumed.
+actor CountingReauthenticator: Reauthenticating {
+    struct Denied: Error {}
+
+    private let succeeds: Bool
+    private(set) var prompts = 0
+
+    init(succeeds: Bool = true) { self.succeeds = succeeds }
+
+    func authenticate(reason: String) async throws {
+        prompts += 1
+        if !succeeds { throw Denied() }
+    }
+
+    func count() -> Int { prompts }
+}
+
 // MARK: - Tests
 
 final class ReservationCoordinatorTests: XCTestCase {
@@ -173,5 +190,49 @@ final class ReservationCoordinatorTests: XCTestCase {
         let outcome = await coordinator.attempt(preferredSpace: 12, plate: "TEST-001")
 
         XCTAssertEqual(outcome, .lost(.alreadyReserved))
+    }
+
+    // MARK: - Re-authentication (6.5 Default, kept as written)
+
+    /// Every attempt that can move money prompts — including the retries after losing, which
+    /// are the common case at 20:00. An earlier build exempted anything within 120 seconds of
+    /// a successful check; this test is what stops that returning, whether as an explicit
+    /// grace period or as a reused `LAContext`.
+    func testEveryAttemptReAuthenticates() async {
+        let reauth = CountingReauthenticator()
+        let error = APIError.business(ErrorResponse(
+            status: 409, error: "Conflict", message: "Space #9 is not available",
+            code: .spaceUnavailable, timestamp: .distantPast, path: "/reservations",
+            validationErrors: nil
+        ))
+        let coordinator = ReservationCoordinator(
+            reservations: FakeReservationService(.fail(error)),
+            spaces: FakeSpacesService(stubbed: grid([])), reauth: reauth
+        )
+
+        for space in [9, 10, 11] {
+            _ = await coordinator.attempt(preferredSpace: space, plate: "TEST-001")
+        }
+
+        let prompts = await reauth.count()
+        XCTAssertEqual(prompts, 3, "Three attempts must mean three authorisations, not one")
+    }
+
+    /// A refused prompt must stop before the request is sent: no charge, and no ambiguity
+    /// about whether one happened.
+    func testRefusedReAuthenticationNeverReachesTheNetwork() async {
+        let service = FakeReservationService(.succeed(winner))
+        let coordinator = ReservationCoordinator(
+            reservations: service, spaces: FakeSpacesService(stubbed: grid([])),
+            reauth: CountingReauthenticator(succeeds: false)
+        )
+
+        let outcome = await coordinator.attempt(preferredSpace: 7, plate: "TEST-001")
+
+        let calls = await service.calls()
+        XCTAssertEqual(calls, 0, "A denied authorisation must not spend money")
+        guard case .rejected = outcome else {
+            return XCTFail("Expected a rejection, got \(outcome)")
+        }
     }
 }
