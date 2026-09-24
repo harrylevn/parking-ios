@@ -35,7 +35,14 @@ struct DashboardView: View {
         ZStack(alignment: .bottom) {
             Theme.Palette.canvas.ignoresSafeArea()
 
-            if isWide { wideLayout } else { compactLayout }
+            // Pinned to the top explicitly. The ZStack is bottom-aligned so the confirm bar docks
+            // at the bottom, and a loaded board hides that by filling the height. The offline,
+            // empty and error cards are short, and without this the whole column sank to the
+            // bottom of the screen, header and countdown included.
+            Group {
+                if isWide { wideLayout } else { compactLayout }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             if let selected = model.selectedSpace, model.mySpace == nil, !isWide {
                 confirmBar(selected)
@@ -86,7 +93,8 @@ struct DashboardView: View {
                     isOpen: model.isWindowOpen,
                     hasServerTime: model.hasServerTime,
                     isSkewed: model.isClockSkewed,
-                    availableSpaces: model.state.grid?.availableSpaces ?? 0,
+                    availableSpaces: model.state.grid?.availableSpaces,
+                    isHourMismatched: model.isWindowHourMismatched,
                     isCompact: true,
                     isFramed: false
                 )
@@ -124,7 +132,8 @@ struct DashboardView: View {
                         isOpen: model.isWindowOpen,
                         hasServerTime: model.hasServerTime,
                         isSkewed: model.isClockSkewed,
-                        availableSpaces: model.state.grid?.availableSpaces ?? 0,
+                        availableSpaces: model.state.grid?.availableSpaces,
+                        isHourMismatched: model.isWindowHourMismatched,
                         isCompact: false
                     )
                     if let space = model.mySpace {
@@ -171,10 +180,14 @@ struct DashboardView: View {
                 message: "The lot has no spaces for tomorrow."
             )
         case .offline:
+            // Not "You're offline": this state covers every transport failure, and the usual
+            // cause in practice is the server being down while the phone is fine. Blaming the
+            // user's connection would be a claim the app cannot make.
             StatusCard(
-                icon: "wifi.slash", tint: Theme.Palette.warning,
-                title: "You're offline",
-                message: "Showing nothing rather than something that might not be true."
+                icon: "network.slash", tint: Theme.Palette.warning,
+                title: "Can't reach the server",
+                message: "Your connection or the server may be down. Retrying every few seconds; "
+                    + "the board stays hidden rather than showing spaces that might be wrong."
             )
         case .failed(let message):
             StatusCard(

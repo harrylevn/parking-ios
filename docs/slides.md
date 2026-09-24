@@ -178,7 +178,7 @@ Six ADRs in [`architecture.md`](architecture.md). The four that carry the produc
 
 **Why:**
 - Domain imports nothing but Foundation — the race logic is testable without a network
-- Every collaborator is fakeable, so 71 unit tests need no backend
+- Every collaborator is fakeable, so 73 unit tests need no backend
 - `@MainActor` view models, actor-isolated state where contention is real
 
 ---
@@ -302,7 +302,7 @@ ambiguity, never end it.*
 
 | Layer | Count | Runs against |
 |---|---|---|
-| Unit tests | 71 | Fakes only — no backend needed |
+| Unit tests | 73 | Fakes only — no backend needed |
 | UI tests | 4 | Simulator, login → grid → reserve, registration |
 | Screenshot tests | 5 | **Live backend, deliberately** — skipped unless `SCREENSHOTS=1` |
 

@@ -14,7 +14,13 @@ struct CountdownHero: View {
     let isOpen: Bool
     let hasServerTime: Bool
     let isSkewed: Bool
-    let availableSpaces: Int
+    /// `nil` when there is no board to count from (loading, offline, error). Deliberately not
+    /// defaulted to 0: that rendered "No spaces left for tomorrow" while the server was
+    /// unreachable, stating the lot was full when the app had no idea.
+    let availableSpaces: Int?
+    /// The server has contradicted this app's opening hour. Replaces the "open" banner rather
+    /// than sitting beside it: the app must stop asserting a state the server just denied.
+    var isHourMismatched: Bool = false
     /// Collapses the hero to a slim banner once the window is open, handing the screen back
     /// to the board — which is what the 6.3 guardrail needs the space for.
     var isCompact: Bool = false
@@ -36,6 +42,8 @@ struct CountdownHero: View {
 
             if !hasServerTime {
                 waiting
+            } else if isOpen, isHourMismatched {
+                mismatchBanner
             } else if isOpen {
                 openBanner
             } else if isCompact {
@@ -74,18 +82,41 @@ struct CountdownHero: View {
                 Text("Reservations are open")
                     .font(.headline)
                     .foregroundStyle(Theme.Palette.ink)
-                Text(availableSpaces == 0
-                     ? "No spaces left for tomorrow"
-                     : "\(availableSpaces) spaces still free")
-                    .font(.caption)
-                    .foregroundStyle(Theme.Palette.inkMuted)
-                    .contentTransition(.numericText())
+                if let availableSpaces {
+                    Text(availableSpaces == 0
+                         ? "No spaces left for tomorrow"
+                         : "\(availableSpaces) spaces still free")
+                        .font(.caption)
+                        .foregroundStyle(Theme.Palette.inkMuted)
+                        .contentTransition(.numericText())
+                }
             }
 
             Spacer(minLength: 0)
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("grid.windowOpen")
+    }
+
+    private var mismatchBanner: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.title3)
+                .foregroundStyle(Theme.Palette.warning)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("The server says reservations aren't open yet")
+                    .font(.headline)
+                    .foregroundStyle(Theme.Palette.ink)
+                Text("This app's opening time doesn't match the server's, so it can't show a countdown.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Palette.inkMuted)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("grid.windowHourMismatch")
     }
 
     /// One line rather than three, for when the board needs the height.

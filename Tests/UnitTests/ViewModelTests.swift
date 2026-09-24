@@ -184,6 +184,53 @@ final class GridViewModelTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(model.countdown), 36_000, accuracy: 2)
     }
 
+    // MARK: - Window-hour mismatch
+
+    private static let windowClosed = APIError.business(ErrorResponse(
+        status: 429, error: "", message: "", code: .windowClosed,
+        timestamp: .distantPast, path: "", validationErrors: nil
+    ))
+
+    private func anchoredAtTenAM(_ environment: AppEnvironment) async throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .gmt
+        let tenAM = try XCTUnwrap(calendar.date(
+            from: DateComponents(year: 2026, month: 9, day: 22, hour: 10, minute: 0, second: 0)
+        ))
+        await environment.serverClock.ingest(serverDate: tenAM)
+    }
+
+    /// The demo-day failure: the app was launched for one hour and the backend for another.
+    /// The server refusing a window the app believes is open is the only evidence there is.
+    func testWindowClosedWhileTheAppBelievesItOpenFlagsAMismatch() async throws {
+        let environment = makeEnvironment(
+            reservations: StubReservations(result: .failure(Self.windowClosed)), windowHour: 6
+        )
+        try await anchoredAtTenAM(environment)
+        let model = GridViewModel(environment: environment)
+        await model.tickClock()
+        XCTAssertTrue(model.isWindowOpen, "Precondition: 10:00 is past a 06:00 opening")
+
+        await model.reserve(space: 12)
+
+        XCTAssertTrue(model.isWindowHourMismatched)
+    }
+
+    /// App and server agree the window is shut: an ordinary WINDOW_CLOSED, not a mismatch.
+    func testWindowClosedWhileTheAppAgreesItIsShutIsNotAMismatch() async throws {
+        let environment = makeEnvironment(
+            reservations: StubReservations(result: .failure(Self.windowClosed)), windowHour: 20
+        )
+        try await anchoredAtTenAM(environment)
+        let model = GridViewModel(environment: environment)
+        await model.tickClock()
+
+        await model.reserve(space: 12)
+
+        XCTAssertEqual(model.outcome, .lost(.windowClosed))
+        XCTAssertFalse(model.isWindowHourMismatched)
+    }
+
     func testDepositUpdatesBalance() async {
         let model = GridViewModel(environment: makeEnvironment(
             wallet: StubWallet(depositResult: .success(175))

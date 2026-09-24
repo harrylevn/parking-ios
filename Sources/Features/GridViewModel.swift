@@ -27,6 +27,10 @@ final class GridViewModel: ObservableObject {
     @Published private(set) var countdown: TimeInterval?
     @Published private(set) var isWindowOpen = false
     @Published private(set) var isClockSkewed = false
+    /// The server answered `WINDOW_CLOSED` while this app believed the window was open, so the
+    /// app's configured opening hour disagrees with the backend's. The backend exposes no way
+    /// to read its hour, so this is the only point at which the disagreement is observable.
+    @Published private(set) var isWindowHourMismatched = false
     @Published private(set) var hasServerTime = false
     @Published private(set) var balance: Decimal = 0
     @Published private(set) var depositError: String?
@@ -154,12 +158,16 @@ final class GridViewModel: ObservableObject {
         switch result {
         case .won(let reservation):
             outcome = result
+            isWindowHourMismatched = false
             balance = reservation.newBalance
             environment.account?.balance = balance
             selectedSpace = nil
             Haptics.play(.success)
-        case .lost:
+        case .lost(let code):
             outcome = result
+            // Only one direction is detectable. An app that thinks the window is still shut
+            // never sends the request, so it cannot learn the server opened early.
+            if code == .windowClosed, isWindowOpen { isWindowHourMismatched = true }
             Haptics.play(.warning)
             await refreshBalance()
         case .unknown, .rejected:
