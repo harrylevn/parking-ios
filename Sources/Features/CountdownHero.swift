@@ -18,6 +18,9 @@ struct CountdownHero: View {
     /// defaulted to 0: that rendered "No spaces left for tomorrow" while the server was
     /// unreachable, stating the lot was full when the app had no idea.
     let availableSpaces: Int?
+    /// Seconds since the count above was fetched, once that is long enough to matter; see
+    /// `GridViewModel.staleGridAge`.
+    var staleGridAge: Int?
     /// The server has contradicted this app's opening hour. Replaces the "open" banner rather
     /// than sitting beside it: the app must stop asserting a state the server just denied.
     var isHourMismatched: Bool = false
@@ -26,6 +29,16 @@ struct CountdownHero: View {
     var isCompact: Bool = false
     /// False when the hero shares a card with the stat strip.
     var isFramed: Bool = true
+
+    private var phase: CountdownPhase {
+        CountdownPhase(countdown: countdown, isOpen: isOpen, hasServerTime: hasServerTime)
+    }
+
+    /// The last ten seconds take the accent. Colour is a second channel, never the only one:
+    /// the words change too, and VoiceOver is told separately.
+    private var clockTint: Color {
+        phase == .finalSeconds ? Theme.Palette.accent : Theme.Palette.ink
+    }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -83,9 +96,7 @@ struct CountdownHero: View {
                     .font(.headline)
                     .foregroundStyle(Theme.Palette.ink)
                 if let availableSpaces {
-                    Text(availableSpaces == 0
-                         ? "No spaces left for tomorrow"
-                         : "\(availableSpaces) spaces still free")
+                    Text(spacesLine(availableSpaces))
                         .font(.caption)
                         .foregroundStyle(Theme.Palette.inkMuted)
                         .contentTransition(.numericText())
@@ -96,6 +107,37 @@ struct CountdownHero: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("grid.windowOpen")
+    }
+
+    /// The count is the last poll's, never a live figure, and it says so. Once polls stop
+    /// landing it carries its age, because under a 20:00 race a number that was true ten
+    /// seconds ago is a claim about a lot that no longer exists. A full lot needs no
+    /// qualifier: spaces are not handed back once taken.
+    private func spacesLine(_ available: Int) -> String {
+        if available == 0 { return String(localized: "No spaces left for tomorrow") }
+        if let staleGridAge {
+            return String(localized: "\(available) free as of \(staleGridAge)s ago")
+        }
+        return String(localized: "\(available) free at last check")
+    }
+
+    /// Short enough to share one line with the clock in the compact layout — that row's
+    /// height is part of what the 6.1-inch board is measured against, so the phases change
+    /// the words and never the line count.
+    private var compactLead: String {
+        switch phase {
+        case .finalMinute: return String(localized: "Pick a space · opens in")
+        case .finalSeconds: return String(localized: "Opening in")
+        default: return String(localized: "Opens in")
+        }
+    }
+
+    private var heroLead: String {
+        switch phase {
+        case .finalMinute: return String(localized: "Pick a space now. Reservations open in")
+        case .finalSeconds: return String(localized: "Get ready. Reservations open in")
+        default: return String(localized: "Reservations open in")
+        }
     }
 
     private var mismatchBanner: some View {
@@ -125,13 +167,14 @@ struct CountdownHero: View {
             Image(systemName: "clock.fill")
                 .font(.footnote)
                 .foregroundStyle(Theme.Palette.accent)
-            Text("Opens in")
+            Text(compactLead)
                 .font(.subheadline)
                 .foregroundStyle(Theme.Palette.inkMuted)
+                .lineLimit(1)
             Text(clockString)
                 .font(.system(.title3, design: .rounded).weight(.bold))
                 .monospacedDigit()
-                .foregroundStyle(Theme.Palette.ink)
+                .foregroundStyle(clockTint)
                 .contentTransition(.numericText(countsDown: true))
             Spacer(minLength: 0)
         }
@@ -147,7 +190,7 @@ struct CountdownHero: View {
 
     private var closedHero: some View {
         VStack(spacing: 10) {
-            Text("Reservations open in")
+            Text(heroLead)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.Palette.inkMuted)
 
@@ -159,7 +202,7 @@ struct CountdownHero: View {
                             .foregroundStyle(Theme.Palette.inkMuted)
                             .offset(y: -2)
                     }
-                    TimeSegment(value: segment.value, caption: segment.caption)
+                    TimeSegment(value: segment.value, caption: segment.caption, tint: clockTint)
                 }
             }
             // The Date header has one-second granularity and carries a network leg of
@@ -189,13 +232,14 @@ struct CountdownHero: View {
 private struct TimeSegment: View {
     let value: Int
     let caption: String
+    let tint: Color
 
     var body: some View {
         VStack(spacing: 2) {
             Text(String(format: "%02d", value))
                 .font(.system(size: 42, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(Theme.Palette.ink)
+                .foregroundStyle(tint)
                 .contentTransition(.numericText(countsDown: true))
                 .animation(.snappy(duration: 0.2), value: value)
             Text(caption)

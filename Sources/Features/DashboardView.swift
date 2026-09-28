@@ -56,6 +56,13 @@ struct DashboardView: View {
         .task { model.startPolling() }
         .onDisappear { model.stopPolling() }
         .onReceive(tick) { _ in Task { await model.tickClock() } }
+        // Announced on entering a phase, not on every tick: a spoken countdown each second
+        // would bury everything else VoiceOver has to say. Leaving `.waiting` is not an
+        // event — launching into an open window is not the window opening.
+        .onChange(of: model.countdownPhase) { old, new in
+            guard old != .waiting, let announcement = new.announcement else { return }
+            AccessibilityNotification.Announcement(announcement).post()
+        }
         .onChange(of: model.outcome) { _, outcome in
             if let outcome { activeSheet = .outcome(outcome) }
         }
@@ -101,6 +108,7 @@ struct DashboardView: View {
                     hasServerTime: model.hasServerTime,
                     isSkewed: model.isClockSkewed,
                     availableSpaces: model.state.grid?.availableSpaces,
+                    staleGridAge: model.staleGridAge,
                     isHourMismatched: model.isWindowHourMismatched,
                     isCompact: true,
                     isFramed: false
@@ -146,6 +154,7 @@ struct DashboardView: View {
                         hasServerTime: model.hasServerTime,
                         isSkewed: model.isClockSkewed,
                         availableSpaces: model.state.grid?.availableSpaces,
+                        staleGridAge: model.staleGridAge,
                         isHourMismatched: model.isWindowHourMismatched,
                         isCompact: false
                     )
@@ -243,6 +252,7 @@ struct DashboardView: View {
             isWindowOpen: model.isWindowOpen,
             availableSpaces: model.state.grid?.availableSpaces,
             isReserving: model.isReserving,
+            reservingSince: model.reservingSince,
             style: style,
             onCancel: selected.map { _ in { withAnimation(.snappy) { model.selectedSpace = nil } } },
             onConfirm: { Task { await model.reserve(space: selected) } }

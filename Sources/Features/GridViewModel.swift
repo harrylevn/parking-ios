@@ -42,6 +42,35 @@ final class GridViewModel: ObservableObject {
     @Published private(set) var depositError: String?
     @Published var selectedSpace: Int?
 
+    /// When the attempt in flight was sent, for the elapsed time on the button.
+    ///
+    /// Device time, the one place on this screen it is right. SwiftUI's timer text counts
+    /// against the device clock, so a start taken from the server clock would display the
+    /// skew as elapsed time. A duration is skew-free as long as both ends use the same clock,
+    /// and nothing is decided on it.
+    @Published private(set) var reservingSince: Date?
+
+    /// How old the board's free-space count is, in whole seconds — but only once it is old
+    /// enough to matter. `nil` means fresh: within two poll intervals of server time.
+    ///
+    /// Bucketed rather than published every second. A per-second age would invalidate the
+    /// whole screen for as long as the window is open, which is the same never-settling
+    /// view hierarchy `updateClock` exists to avoid. In normal running a poll lands every
+    /// five seconds and this never leaves `nil`; it only starts counting when polls are
+    /// failing or hanging, which under a 20:00 race is exactly when a count stops being true.
+    @Published private(set) var staleGridAge: Int?
+
+    /// Fresh enough to state without an age: two poll intervals, so one late poll does not
+    /// flap the label.
+    static let staleGridThreshold: TimeInterval = 10
+
+    /// Server time of the last successful `/spaces` response.
+    private var gridFetchedAt: Date?
+    /// The window has been seen shut with a server reading. The refresh at the opening fires
+    /// only on that transition, not on a launch into an already-open window, where the
+    /// ordinary first poll is already on its way.
+    private var hasSeenWindowClosed = false
+
     private let environment: AppEnvironment
     private var pollTask: Task<Void, Never>?
 
@@ -74,6 +103,10 @@ final class GridViewModel: ObservableObject {
         isWindowOpen && mySpace == nil && !isReserving
     }
 
+    var countdownPhase: CountdownPhase {
+        CountdownPhase(countdown: countdown, isOpen: isWindowOpen, hasServerTime: hasServerTime)
+    }
+
     /// Structured concurrency: the loop is owned by a task that is cancelled on view
     /// teardown, so nothing keeps polling behind a dismissed screen.
     func startPolling() {
@@ -104,6 +137,9 @@ final class GridViewModel: ObservableObject {
             //     only the cells that actually changed.
             let next: GridState = grid.spaces.isEmpty ? .empty : .loaded(grid)
             if state != next { state = next }
+            gridFetchedAt = await environment.serverClock.now()
+            if staleGridAge != nil { staleGridAge = nil }
+            dropSelectionIfTaken(in: grid)
         } catch let error as APIError {
             switch error {
             case .unauthenticated:
@@ -144,6 +180,9 @@ final class GridViewModel: ObservableObject {
 
         let open = environment.window.isOpen(at: now)
         if isWindowOpen != open { isWindowOpen = open }
+        if !open { hasSeenWindowClosed = true }
+
+        updateGridAge(at: now)
 
         // Whole seconds only: the Date header has one-second granularity, so anything finer
         // would be invented precision — and it keeps this to one update per second at most.
@@ -152,12 +191,51 @@ final class GridViewModel: ObservableObject {
 
         let skewed = await environment.serverClock.isSkewSignificant()
         if isClockSkewed != skewed { isClockSkewed = skewed }
+
+        // The board is refetched the moment the window opens rather than on the next poll.
+        // Measured, the lot can change hands in well under the five seconds a poll might be
+        // away (p95 248 ms under 1000 users), and a pre-selected space is only worth
+        // confirming if the board it was picked from is current. One request, not a faster
+        // poll: `/spaces` sits behind a 5-second Redis TTL, so polling harder cannot show
+        // anything newer. This fires on the 1 Hz tick, so it lands up to a second after the
+        // opening — the Date header's own granularity, so nothing finer was available.
+        if open, hasSeenWindowClosed {
+            hasSeenWindowClosed = false
+            await refresh()
+        }
+    }
+
+    private func updateGridAge(at now: Date) {
+        guard isWindowOpen, let fetchedAt = gridFetchedAt else {
+            if staleGridAge != nil { staleGridAge = nil }
+            return
+        }
+        let age = now.timeIntervalSince(fetchedAt)
+        let next = age > Self.staleGridThreshold ? Int(age) : nil
+        if staleGridAge != next { staleGridAge = next }
+    }
+
+    /// A selection is a request for one particular row. Once the board shows that row taken,
+    /// confirming it can only return `SPACE_UNAVAILABLE`, after a biometric prompt that
+    /// implied it might not — so it is dropped and the bar falls back to "any free space",
+    /// which is the attempt most likely to succeed after a loss. This is also what makes
+    /// picking a space before the opening safe: the board refreshed at the opening decides
+    /// whether that pick still stands.
+    private func dropSelectionIfTaken(in grid: SpaceGrid) {
+        guard let selected = selectedSpace,
+              let space = grid.spaces.first(where: { $0.number == selected }),
+              !space.isAvailable else { return }
+        selectedSpace = nil
     }
 
     func reserve(space: Int?) async {
         guard !isReserving, !plate.isEmpty else { return }
         isReserving = true
-        defer { isReserving = false }
+        reservingSince = Date()
+        defer {
+            isReserving = false
+            reservingSince = nil
+        }
 
         let result = await environment.coordinator.attempt(preferredSpace: space, plate: plate)
 

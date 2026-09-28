@@ -27,6 +27,9 @@ struct ConfirmBar: View {
     /// selected, that space now belongs to somebody else.
     let availableSpaces: Int?
     let isReserving: Bool
+    /// When the attempt in flight left, so the wait shows as time passing rather than a
+    /// spinner that looks the same at one second as at three.
+    var reservingSince: Date?
     let style: Style
     let onCancel: (() -> Void)?
     let onConfirm: () -> Void
@@ -66,7 +69,18 @@ struct ConfirmBar: View {
                     HStack(spacing: 8) {
                         ProgressView().tint(.white)
                         Text("Reserving…")
+                        // The system renders this timer itself, so it ticks without
+                        // republishing anything from the view model.
+                        if let reservingSince {
+                            Text(reservingSince, style: .timer)
+                                .monospacedDigit()
+                        }
                     }
+                } else if !isWindowOpen, let spaceNumber {
+                    // Picked ahead of the opening. Says what will happen and what will not:
+                    // nothing is sent until the window opens *and* this is tapped, because
+                    // one tap is one attempt and an attempt that fires itself is not a tap.
+                    Text("Space \(spaceNumber) picked · tap here once open")
                 } else if !isWindowOpen {
                     Text("Opens later today")
                 } else if isLotFull {
@@ -95,6 +109,12 @@ struct ConfirmBar: View {
     }
 
     private var hint: String {
+        if isReserving {
+            return "Waiting for the server to answer. Nothing more is sent while this runs."
+        }
+        if !isWindowOpen, spaceNumber != nil {
+            return "The button turns on when reservations open. Nothing is sent before you tap it."
+        }
         if isLotFull {
             return "Every space for tomorrow is taken. The board refreshes every few seconds."
         }
