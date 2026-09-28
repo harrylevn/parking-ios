@@ -110,11 +110,34 @@ final class AppEnvironment: ObservableObject {
         // `Date` header and the UI would sit on "Checking server time…" forever. Seeded
         // synchronously, so the first render is already the final layout — see ServerClock.
         let clock = ServerClock(seededWith: Date())
+
+        // `-UITestOutcome` drives the reserve result. Only the transport failure is stubbed;
+        // which of the three uncertain outcomes appears is then decided by the real
+        // coordinator reading the real grid, so these screens are reconciled rather than
+        // posed. Test-only, like `-UITestSkipReauth`, and reachable only from `uiTesting()`.
+        let mode = StubReservationService.Mode.fromLaunchArguments(ProcessInfo.processInfo.arguments)
+        // Staged rather than fixed. A grid that already carried our plate would mean the app
+        // held the space *before* the tap, so it would show the holding banner and never offer
+        // to reserve at all — which is exactly how the first version of this test failed. The
+        // spaces appear only once the attempt has been made, which is also what really
+        // happens: the reservation lands and the reply is what goes missing.
+        //
+        // `noEvidence` stages nothing, the common shape of that outcome — the board shows
+        // nothing either way. The rarer "grid unreadable too" route to the same sheet is
+        // covered by `ReservationCoordinatorTests`; failing the initial load here would leave
+        // the board offline with no space to tap.
+        let appearing: [Int] = switch mode {
+        case .wins, .noEvidence: []
+        case .probablyHeld: [7]
+        case .ambiguous: [7, 19]
+        }
+        let staged = StagedGrid(appearingAfterAttempt: appearing)
+
         return AppEnvironment(
             auth: StubAuthService(tokenStore: tokenStore),
-            spaces: StubSpacesService(),
+            spaces: StubSpacesService(staged: staged),
             wallet: StubWalletService(),
-            reservations: StubReservationService(),
+            reservations: StubReservationService(mode: mode, staged: staged),
             tokenStore: tokenStore,
             serverClock: clock,
             reauth: AlwaysAllowReauthenticator(),
@@ -149,9 +172,19 @@ private struct StubSpacesService: SpacesServicing {
     /// no-op diffing in `GridViewModel.refresh()` and keep the view permanently redrawing.
     private static let date = Date()
 
+    let staged: StagedGrid
+
     func grid() async throws -> SpaceGrid {
-        let spaces = (1...80).map {
-            ParkingSpace(number: $0, isAvailable: $0 % 4 != 0, plateLast3: $0 % 4 == 0 ? "042" : nil)
+        let heldByUs = await staged.heldByUs
+        let spaces = (1...80).map { number -> ParkingSpace in
+            if heldByUs.contains(number) {
+                return ParkingSpace(number: number, isAvailable: false, plateLast3: "001")
+            }
+            return ParkingSpace(
+                number: number,
+                isAvailable: number % 4 != 0,
+                plateLast3: number % 4 == 0 ? "042" : nil
+            )
         }
         return SpaceGrid(
             date: Self.date, totalSpaces: 80,
@@ -168,10 +201,61 @@ private struct StubWalletService: WalletServicing {
 }
 
 private struct StubReservationService: ReservationServicing {
+    /// What the stub should do, selected by `-UITestOutcome <case>`.
+    ///
+    /// The uncertain outcomes are the app's signature states and the hardest to reach: they
+    /// need a reply that never arrives, which no stub produced, so until now they could only
+    /// be seen by standing a delaying proxy in front of the real backend. That is worth doing
+    /// for a demo and far too slow for a test, so the transport failure is injected here
+    /// instead and the real `ReservationCoordinator` reconciles it exactly as it would in
+    /// production — the outcome is computed, not stubbed.
+    enum Mode: String {
+        case wins
+        /// Times out, and the grid then shows our plate on exactly one space.
+        case probablyHeld
+        /// Times out, and two spaces carry our suffix.
+        case ambiguous
+        /// Times out, and the grid is unreadable too, so nothing can be inferred.
+        case noEvidence
+
+        static func fromLaunchArguments(_ arguments: [String]) -> Mode {
+            guard let index = arguments.firstIndex(of: "-UITestOutcome"),
+                  arguments.indices.contains(index + 1),
+                  let mode = Mode(rawValue: arguments[index + 1]) else { return .wins }
+            return mode
+        }
+    }
+
+    let mode: Mode
+    let staged: StagedGrid
+
     func reserve(preferredSpace: Int?) async throws -> Reservation {
-        Reservation(
+        guard mode == .wins else {
+            // The reservation "lands" and then the reply is lost, so the grid the coordinator
+            // reconciles against is the one that exists after a successful commit.
+            await staged.attemptLanded()
+            throw APIError.transport(message: "stubbed timeout", failure: .timedOut)
+        }
+        return Reservation(
             id: 1, spaceNumber: preferredSpace ?? 1, date: Date(), amountPaid: 10,
             newBalance: 90, queuePosition: 1, totalProcessingMs: 12
         )
+    }
+}
+
+/// Lets the stubbed grid change after the stubbed attempt.
+///
+/// Shared between the spaces and reservation stubs so the UI tests can stage the situation
+/// the uncertain sheets exist for: the reservation committed, and only the reply went missing.
+private actor StagedGrid {
+    private let appearingAfterAttempt: [Int]
+    private(set) var heldByUs: [Int] = []
+
+    init(appearingAfterAttempt: [Int]) {
+        self.appearingAfterAttempt = appearingAfterAttempt
+    }
+
+    func attemptLanded() {
+        heldByUs = appearingAfterAttempt
     }
 }

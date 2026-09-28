@@ -35,7 +35,7 @@ actor ReservationCoordinator {
     /// Attempt a reservation. A second call while one is in flight is refused, not queued.
     func attempt(preferredSpace: Int?, plate: String) async -> ReservationOutcome {
         guard !attemptInFlight else {
-            return .unknown(reason: "An attempt is already in progress.")
+            return .unknown(.noEvidence(cause: .alreadyInFlight))
         }
         attemptInFlight = true
         defer { attemptInFlight = false }
@@ -63,29 +63,19 @@ actor ReservationCoordinator {
         switch error {
         case .transport(_, .timedOut):
             // The request may have landed. Reconcile rather than guess or retry.
-            return await reconcile(
-                plate: plate,
-                fallbackReason: "The network timed out and we could not confirm the result."
-            )
+            return await reconcile(plate: plate, cause: .timedOut)
 
         case .transport(_, .interrupted):
             // The backend dying mid-request lands here, not as a timeout: its socket closes
             // and URLSession fails at once. The commit may already have happened, so this is
             // exactly as indeterminate as a timeout and must not be reported as a failure.
-            return await reconcile(
-                plate: plate,
-                fallbackReason: "The connection dropped before we heard back, "
-                    + "so we could not confirm the result."
-            )
+            return await reconcile(plate: plate, cause: .connectionDropped)
 
         case .business(let response):
             switch response.code {
             case .duplicateRequest, .alreadyQueued:
                 // Ambiguous by construction: in flight, or already succeeded. Reconcile.
-                return await reconcile(
-                    plate: plate,
-                    fallbackReason: "A reservation attempt is already being processed."
-                )
+                return await reconcile(plate: plate, cause: .alreadyInFlight)
 
             case .alreadyReserved:
                 // Unambiguous: the database's unique (user, date) constraint fired, so a
@@ -112,21 +102,21 @@ actor ReservationCoordinator {
     ///
     /// Returns `unknown` unless exactly one space matches. Two matches means a suffix
     /// collision and the app cannot tell which is ours, so it must not claim either.
-    private func reconcile(plate: String, fallbackReason: String) async -> ReservationOutcome {
+    private func reconcile(
+        plate: String, cause: Uncertainty.Cause
+    ) async -> ReservationOutcome {
         let suffix = String(plate.suffix(3))
         guard let grid = try? await spaces.grid() else {
-            return .unknown(reason: fallbackReason)
+            return .unknown(.noEvidence(cause: cause))
         }
 
         let matches = grid.spaces.filter { !$0.isAvailable && $0.plateLast3 == suffix }
 
         guard matches.count == 1, let match = matches.first else {
             if matches.count > 1 {
-                return .unknown(
-                    reason: "Another plate ends in \(suffix), so we cannot confirm which space is yours."
-                )
+                return .unknown(.ambiguous(suffix: suffix))
             }
-            return .unknown(reason: fallbackReason)
+            return .unknown(.noEvidence(cause: cause))
         }
 
         // A space matching our suffix is strong evidence, but the reservation id, amount
@@ -134,9 +124,6 @@ actor ReservationCoordinator {
         // rather than fabricating a `Reservation` the server never returned.
         // No "refresh to confirm": no endpoint can confirm it. `GET /spaces` is the only
         // evidence there is, and it has just been read.
-        return .unknown(
-            reason: "Space \(match.number) now shows your plate ending, so it is probably yours, "
-                + "but the server never sent a receipt."
-        )
+        return .unknown(.probablyHeld(space: match.number))
     }
 }

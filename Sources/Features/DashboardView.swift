@@ -110,7 +110,7 @@ struct DashboardView: View {
             .card(padding: 12)
 
             if let space = model.mySpace {
-                HoldingBanner(spaceNumber: space)
+                HoldingBanner(spaceNumber: space, isConfirmed: model.hasConfirmedReservation)
             }
 
             board
@@ -144,7 +144,7 @@ struct DashboardView: View {
                         isCompact: false
                     )
                     if let space = model.mySpace {
-                        HoldingBanner(spaceNumber: space)
+                        HoldingBanner(spaceNumber: space, isConfirmed: model.hasConfirmedReservation)
                     }
                     if model.mySpace == nil, model.state.grid != nil {
                         confirmPanel(model.selectedSpace)
@@ -236,19 +236,30 @@ struct DashboardView: View {
 }
 // MARK: - Supporting views
 
+/// Says a space is held, and is careful about how strongly.
+///
+/// `mySpace` is matched on the last three plate characters, which is evidence and not proof —
+/// so the banner may only state possession outright when the server actually returned a
+/// receipt. Without one it hedges, matching the outcome sheet word for word. The two
+/// disagreeing was visible on a single screen: the sheet said "Space 7 looks like yours … the
+/// server never sent a receipt" while the banner behind it said "Space 7 is yours".
 private struct HoldingBanner: View {
     let spaceNumber: Int
+    /// True only when a reservation came back with an id, an amount and a balance.
+    let isConfirmed: Bool
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: "checkmark.seal.fill")
+            Image(systemName: isConfirmed ? "checkmark.seal.fill" : "checkmark.seal")
                 .font(.title3)
                 .foregroundStyle(Theme.Palette.mine)
             VStack(alignment: .leading, spacing: 1) {
-                Text("Space \(spaceNumber) is yours")
+                Text(isConfirmed ? "Space \(spaceNumber) is yours" : "Space \(spaceNumber) looks like yours")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.Palette.ink)
-                Text("One reservation per vehicle per day")
+                Text(isConfirmed
+                     ? "One reservation per vehicle per day"
+                     : "Showing your plate, but never confirmed by the server")
                     .font(.caption)
                     .foregroundStyle(Theme.Palette.inkMuted)
             }

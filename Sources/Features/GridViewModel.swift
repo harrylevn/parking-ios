@@ -33,6 +33,12 @@ final class GridViewModel: ObservableObject {
     @Published private(set) var isWindowHourMismatched = false
     @Published private(set) var hasServerTime = false
     @Published private(set) var balance: Decimal = 0
+
+    /// True once the server has returned an actual reservation — an id, an amount and a new
+    /// balance. `mySpace` alone is not enough: it is a three-character plate match, which is
+    /// evidence, so without this the board stated possession as fact on the same screen where
+    /// the outcome sheet was saying the server never confirmed it.
+    @Published private(set) var hasConfirmedReservation = false
     @Published private(set) var depositError: String?
     @Published var selectedSpace: Int?
 
@@ -158,6 +164,7 @@ final class GridViewModel: ObservableObject {
         switch result {
         case .won(let reservation):
             outcome = result
+            hasConfirmedReservation = true
             isWindowHourMismatched = false
             balance = reservation.newBalance
             environment.account?.balance = balance
@@ -238,6 +245,9 @@ final class GridViewModel: ObservableObject {
 
     func signOut() {
         stopPolling()
+        // Receipts do not survive the session that earned them: a different plate signing in
+        // must not inherit "confirmed" and have the board claim a space on its behalf.
+        hasConfirmedReservation = false
         environment.signOut()
     }
 }

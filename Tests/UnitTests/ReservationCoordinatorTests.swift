@@ -129,10 +129,11 @@ final class ReservationCoordinatorTests: XCTestCase {
 
         let outcome = await coordinator.attempt(preferredSpace: 7, plate: "TEST-001")
 
-        guard case .unknown(let reason) = outcome else {
-            return XCTFail("A timeout must never be reported as a win, got \(outcome)")
-        }
-        XCTAssertTrue(reason.contains("7"), "Should point at the space that appears to be ours")
+        XCTAssertEqual(
+            outcome, .unknown(.probablyHeld(space: 7)),
+            "A timeout must never be reported as a win, and must point at the space that "
+                + "appears to be ours: \(outcome)"
+        )
     }
 
     /// Suffix collision: two plates end in the same three characters, so the app must
@@ -148,10 +149,10 @@ final class ReservationCoordinatorTests: XCTestCase {
 
         let outcome = await coordinator.attempt(preferredSpace: 7, plate: "TEST-001")
 
-        guard case .unknown(let reason) = outcome else {
-            return XCTFail("Expected unknown, got \(outcome)")
-        }
-        XCTAssertTrue(reason.contains("cannot confirm"), "Must admit it cannot tell: \(reason)")
+        XCTAssertEqual(
+            outcome, .unknown(.ambiguous(suffix: "001")),
+            "Two plates share the suffix, so neither space may be claimed: \(outcome)"
+        )
     }
 
     /// DUPLICATE_REQUEST is ambiguous by construction and must reconcile, not be shown raw.
@@ -249,10 +250,11 @@ final class ReservationCoordinatorTests: XCTestCase {
 
         let outcome = await coordinator.attempt(preferredSpace: 7, plate: "TEST-001")
 
-        guard case .unknown(let reason) = outcome else {
-            return XCTFail("A dropped connection must never be reported as a failure, got \(outcome)")
-        }
-        XCTAssertTrue(reason.contains("7"), "Should point at the space that appears to be ours")
+        XCTAssertEqual(
+            outcome, .unknown(.probablyHeld(space: 7)),
+            "A dropped connection must never be reported as a failure, and must point at the "
+                + "space that appears to be ours: \(outcome)"
+        )
     }
 
     /// The demo case as it really happens: the backend is still dead, so the reconciling
@@ -265,10 +267,10 @@ final class ReservationCoordinatorTests: XCTestCase {
 
         let outcome = await coordinator.attempt(preferredSpace: 7, plate: "TEST-001")
 
-        guard case .unknown(let reason) = outcome else {
-            return XCTFail("Expected unknown, got \(outcome)")
-        }
-        XCTAssertTrue(reason.contains("could not confirm"), "Must admit it cannot tell: \(reason)")
+        XCTAssertEqual(
+            outcome, .unknown(.noEvidence(cause: .connectionDropped)),
+            "With the grid unreadable too there is no evidence either way: \(outcome)"
+        )
     }
 
     /// A request that provably never left the device cannot have booked anything, so it is a

@@ -242,8 +242,11 @@ in `docs/defects.md` exercised the named-space path only.
 
 92% of users lose. `OutcomeSheet` therefore gives losing the same care as winning: it names
 what happened, never blames the user, and always offers a next action ("Pick another space").
-The fourth state — *"We're not sure yet"* — is the one most clients would not have, and it
-exists because §3 means there are genuinely outcomes the client cannot resolve.
+The fourth state is the one most clients would not have, and it exists because §3 means there
+are genuinely outcomes the client cannot resolve. It is **three** sheets rather than one: the
+space probably is yours, two plates share your suffix, or nothing is known either way. It was
+one sheet headed *"We're not sure yet"* until the week-1 checkpoint reported it as distressing
+and hard to follow — see §5.6.
 
 ### 5.5 iPad and landscape
 
@@ -263,6 +266,52 @@ on a screen a reviewer will open is much the same thing.
 
 → [ADR-005](architecture.md#adr-005) for the size-class rules and why the control moves rather
 than merely resizing.
+
+### 5.6 The uncertainty copy, rewritten after the checkpoint
+
+The week-1 review said the *"We're not sure yet"* sheet made users uncomfortable and was hard
+to understand, and asked for wording that sits better — while agreeing the underlying honesty
+is right and should be pushed at the backend too. Both halves of that are acted on here.
+
+Reading the old sheet back, only one of its three problems was wording:
+
+| Problem | Why it reads badly |
+|---|---|
+| One sheet for three situations | A user whose space almost certainly *was* theirs got the same warning icon and the same "we're not sure" as one with nothing to go on |
+| It answered the wrong question | The user is asking "did I get a space, and did it take my $10?" — the old copy answered "does the app know?", and never mentioned the money |
+| It explained our design philosophy | *"We'd rather say we don't know than tell you something that might be wrong"* is a sentence for this document, said to someone worried about $10 |
+
+So the fix is mostly structural. `ReservationOutcome.unknown` now carries an `Uncertainty`
+naming which situation holds, and each gets its own sheet:
+
+| Situation | Title | Leads with |
+|---|---|---|
+| One space carries our suffix | "Space *N* looks like yours" | the good news, without claiming a receipt exists |
+| Two spaces carry it | "Can't tell which space" | what is ambiguous, and that it may be neither |
+| No evidence either way | "Still checking" | what was sent, then both branches and what to watch for |
+
+Three rules the new copy follows, which the old broke:
+
+1. **Lead with what is known**, not with what is not. "Your request was sent, but the reply
+   didn't arrive in time" is a fact the user can act on; "we could not confirm the result" only
+   restates the title.
+2. **Answer the money question.** Every sheet now says where the $10 stands. The balance in the
+   header is re-fetched when the sheet appears, so pointing at it is true rather than soothing.
+3. **End with what to watch for, not with our epistemics.** "If it went through, your space
+   appears on the board in a few seconds and $10 leaves your balance. If the board doesn't
+   change, nothing was reserved and nothing was charged." Both branches are stated because both
+   are true: a failed reservation charges nothing, and the board polls every five seconds.
+
+What did *not* change is the refusal to claim a reservation the client cannot substantiate.
+That was the right part of the old sheet, and softening it would trade a distressing screen for
+a dishonest one. The ambiguity itself is the backend's to remove, not the copy's — the five
+API changes that would end it are in [`presentation.md`](presentation.md) §3, and returning the
+existing reservation in the 409 body would delete two of these three sheets outright.
+
+Domain no longer holds any of this wording. The reason strings used to be built in
+`ReservationCoordinator`, which put user-facing English in the layer that imports only
+Foundation and out of reach of a String Catalog; `Uncertainty` is data, and the sentences live
+in `OutcomeSheet` with the rest of the copy.
 
 ## 6. What building the interface surfaced
 

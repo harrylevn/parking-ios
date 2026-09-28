@@ -206,3 +206,88 @@ final class ReservationFlowUITests: XCTestCase {
         XCTAssertFalse(taken.isEnabled, "a taken space must not be interactive")
     }
 }
+
+/// The three uncertain outcomes, driven end to end.
+///
+/// These are the app's signature states and were the least observed: reaching one needs a
+/// reply that never arrives, which until now meant standing a delaying proxy in front of the
+/// real backend by hand. `-UITestOutcome` injects the transport failure instead, and the real
+/// `ReservationCoordinator` reconciles against the real grid — so what these assert is that
+/// the right *situation* is detected and the right sheet is shown, not that a stub returned a
+/// string. The week-1 checkpoint reported the old single sheet as distressing; these pin the
+/// three that replaced it.
+@MainActor
+final class UncertainOutcomeUITests: XCTestCase {
+
+    private func reserveSpaceOne(outcome: String) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments += ["-UITestMode", "-UITestSkipReauth", "-UITestOutcome", outcome]
+        app.launch()
+
+        let plate = app.textFields["login.plate"]
+        XCTAssertTrue(plate.waitForExistence(timeout: 10))
+        plate.tap()
+        plate.typeText("TEST-001")
+        let password = app.secureTextFields["login.password"]
+        password.tap()
+        password.typeText("probation123")
+        app.buttons["login.submit"].tap()
+
+        let firstFree = app.buttons["space.1"]
+        XCTAssertTrue(firstFree.waitForExistence(timeout: 10), "grid should appear after sign in")
+        tap(firstFree, in: app) { firstFree.waitForSelected(timeout: 2) }
+
+        let confirm = app.buttons["dashboard.confirm"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        let dismiss = app.buttons["outcome.dismiss"]
+        tap(confirm, in: app) { dismiss.waitForExistence(timeout: 8) }
+        XCTAssertTrue(dismiss.exists, "an attempt must always resolve visibly")
+
+        // Kept as an attachment: these three sheets are the hardest screens in the app to
+        // reach by hand, and the week-2 walkthrough shows them rather than describing them.
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = "outcome-\(outcome)"
+        shot.lifetime = .keepAlways
+        add(shot)
+
+        return app
+    }
+
+    /// One space carries our suffix, so the sheet may point at it — while still not claiming
+    /// a receipt exists. This is the case the old copy served worst: near-certain good news
+    /// under a heading that said we did not know.
+    func testProbableHoldNamesTheSpaceWithoutClaimingAReceipt() {
+        let app = reserveSpaceOne(outcome: "probablyHeld")
+
+        XCTAssertTrue(app.staticTexts["Space 7 looks like yours"].exists, "should name the space")
+        XCTAssertTrue(
+            app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'never sent a receipt'"))
+                .firstMatch.exists,
+            "must not read as a confirmation"
+        )
+    }
+
+    /// Two plates share our suffix, so neither space may be named.
+    func testSuffixCollisionRefusesToNameASpace() {
+        let app = reserveSpaceOne(outcome: "ambiguous")
+
+        XCTAssertTrue(app.staticTexts["Can't tell which space"].exists)
+        XCTAssertFalse(
+            app.staticTexts["Space 7 looks like yours"].exists,
+            "a colliding suffix must never be reported as a held space"
+        )
+    }
+
+    /// Nothing to go on. The sheet says what was sent and what to watch for, and — the part
+    /// the checkpoint said was missing — where the money stands.
+    func testNoEvidenceSaysWhatToWatchForAndWhatHappensToTheMoney() {
+        let app = reserveSpaceOne(outcome: "noEvidence")
+
+        XCTAssertTrue(app.staticTexts["Still checking"].exists)
+        XCTAssertTrue(
+            app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'nothing was charged'"))
+                .firstMatch.exists,
+            "the money question must be answered on the sheet"
+        )
+    }
+}
