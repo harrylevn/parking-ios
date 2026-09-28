@@ -41,8 +41,11 @@ struct Reservation: Equatable, Sendable {
     let spaceNumber: Int
     let date: Date
     let amountPaid: Decimal
-    let newBalance: Decimal
-    /// Server-side contention telemetry, surfaced in the demo rather than hidden.
+    /// `nil` when the reservation was read back with `GET /reservations/me`, which does not
+    /// return a balance. The caller then asks the wallet rather than guess one.
+    let newBalance: Decimal?
+    /// Server-side contention telemetry, surfaced in the demo rather than hidden. `nil` on a
+    /// replay or a read-back: those describe an attempt that is not being repeated.
     let queuePosition: Int64?
     let totalProcessingMs: Int64?
 }
@@ -55,10 +58,11 @@ struct Account: Equatable, Sendable {
 
 /// What the client can truthfully say about a reservation attempt.
 ///
-/// `unknown` exists because the backend makes it unavoidable: idempotency is keyed
-/// server-side on (userId, date) with no client-supplied key and no `GET /reservations`
-/// to reconcile against, so a timeout leaves a genuinely indeterminate outcome. The UI
-/// must be able to say "we don't know yet" rather than guess.
+/// `unknown` is now narrow. A repeat of the tap's Idempotency-Key gets the first request's
+/// outcome, and `GET /reservations/me` reads back what committed, so an outcome stays
+/// unknown only while the server cannot be reached, or while it is still processing the
+/// request when the retries run out. The UI must still be able to say "we don't know yet"
+/// rather than guess.
 enum ReservationOutcome: Equatable, Sendable {
     case won(Reservation)
     case lost(BusinessErrorCode)
@@ -80,7 +84,8 @@ enum ReservationOutcome: Equatable, Sendable {
 /// in `OutcomeSheet` next to the rest of it.
 enum Uncertainty: Equatable, Sendable {
     /// Exactly one space now carries our plate suffix. Strong evidence, but the server never
-    /// sent an id, an amount or a balance, so it is not proof.
+    /// sent an id, an amount or a balance, so it is not proof. Reached only when
+    /// `GET /reservations/me` could not be read, so the board was the last evidence left.
     case probablyHeld(space: Int)
 
     /// More than one space carries our suffix — three characters across 80 cells collide.

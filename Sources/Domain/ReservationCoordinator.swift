@@ -2,32 +2,66 @@ import Foundation
 
 /// Decides what the app may truthfully claim about a reservation attempt.
 ///
-/// This exists because of a specific property of the backend. Idempotency is keyed
-/// **server-side** on `(userId, date)`; there is no client-supplied idempotency key, and
-/// there is no `GET /reservations`. So:
+/// Each tap gets one Idempotency-Key, and the backend answers every repeat of that key with
+/// the first request's outcome: its success, its failure, or `IDEMPOTENCY_IN_PROGRESS` while
+/// it runs. That changes what a lost reply means. Before, a timeout was unknowable, because
+/// retrying got `DUPLICATE_REQUEST` for both "still running" and "already succeeded", so the
+/// coordinator never retried and reconciled against the board. Now a repeat of the same key
+/// is safe and informative, so the coordinator asks again. See ADR-007.
 ///
-///  * One tap issues exactly one attempt. The guardrail "one tap, one attempt" is enforced
-///    here rather than in the view, so it is testable and cannot be defeated by a double tap.
-///  * After a network timeout the outcome is genuinely unknown: the request may have
-///    succeeded, or may still be queued. Retrying returns `DUPLICATE_REQUEST`, which is
-///    equally ambiguous, because the server clears the idempotency key on failure.
-///  * The only reconciliation surface is `GET /spaces`, matched on `plateLast3` — three
-///    characters, so collisions are possible. That makes it evidence, never proof.
+///  * One tap is still exactly one attempt. The repeats carry the tap's key, so the server
+///    treats them as the same attempt, never a second one; and a second tap while one is in
+///    flight is refused here, where it is testable and a double tap cannot defeat it.
+///  * If the repeats run out, `GET /reservations/me` reads back what committed. A found
+///    reservation is authoritative.
+///  * Only if that cannot be read either does the board get consulted, matched on
+///    `plateLast3`: three characters, so it is evidence, never proof.
 ///
-/// The rule this type enforces: **never claim a reservation the client cannot substantiate.**
-/// Where the truth is unknown, `ReservationOutcome.unknown` is returned and the UI says so.
+/// The rule this type enforces is unchanged: **never claim a reservation the client cannot
+/// substantiate.** Where the truth is still unknown, `ReservationOutcome.unknown` says so.
 actor ReservationCoordinator {
+    /// How many times one tap may send its key, and how long to wait between sends.
+    struct RetryPolicy: Sendable {
+        /// Including the first send. `1` means never repeat, which is the only safe setting
+        /// against a backend that ignores Idempotency-Key: there, a repeat after a failure
+        /// the client never heard about is a genuine second attempt.
+        let maxAttempts: Int
+        /// The server's `Retry-After` for `IDEMPOTENCY_IN_PROGRESS` is 1 s. Used for every
+        /// repeat rather than parsed from the header, because the header reaches only the
+        /// in-progress case, and a timeout needs a pause just as much.
+        let delay: Duration
+
+        /// Four sends a second apart: a 3 s reservation timeout makes the worst case about
+        /// 15 s of "Reserving…", which the elapsed timer on the button keeps legible. More
+        /// would add load in the one minute the server can least afford it.
+        static let standard = RetryPolicy(maxAttempts: 4, delay: .seconds(1))
+        static let never = RetryPolicy(maxAttempts: 1, delay: .zero)
+    }
+
     private let reservations: ReservationServicing
     private let spaces: SpacesServicing
     private let reauth: Reauthenticating
+    private let policy: RetryPolicy
+    private let makeKey: @Sendable () -> UUID
+    private let sleep: @Sendable (Duration) async -> Void
 
     /// Guards the "one tap, one attempt" guardrail across concurrent callers.
     private var attemptInFlight = false
 
-    init(reservations: ReservationServicing, spaces: SpacesServicing, reauth: Reauthenticating) {
+    init(
+        reservations: ReservationServicing,
+        spaces: SpacesServicing,
+        reauth: Reauthenticating,
+        policy: RetryPolicy = .standard,
+        makeKey: @escaping @Sendable () -> UUID = { UUID() },
+        sleep: @escaping @Sendable (Duration) async -> Void = { try? await Task.sleep(for: $0) }
+    ) {
         self.reservations = reservations
         self.spaces = spaces
         self.reauth = reauth
+        self.policy = policy
+        self.makeKey = makeKey
+        self.sleep = sleep
     }
 
     var isAttemptInFlight: Bool { attemptInFlight }
@@ -49,52 +83,117 @@ actor ReservationCoordinator {
             return .notConfirmed
         }
 
-        do {
-            let reservation = try await reservations.reserve(preferredSpace: preferredSpace)
-            return .won(reservation)
-        } catch let error as APIError {
-            return await interpret(error, plate: plate)
-        } catch {
-            return .rejected(.malformedResponse(String(describing: error)))
-        }
+        // One key per tap, made after the prompt: a declined prompt sends nothing, so it
+        // needs no key, and the next tap is a new intent with a new one.
+        return await send(key: makeKey(), preferredSpace: preferredSpace, plate: plate)
     }
 
-    private func interpret(_ error: APIError, plate: String) async -> ReservationOutcome {
+    /// Sends the tap's key until the outcome is known or the policy runs out.
+    private func send(key: UUID, preferredSpace: Int?, plate: String) async -> ReservationOutcome {
+        // Set once any send may have reached the server. From then on, no later failure can
+        // be reported as "nothing happened": the earlier send may have committed.
+        var pending: Uncertainty.Cause?
+
+        for sendIndex in 0..<max(policy.maxAttempts, 1) {
+            if sendIndex > 0 { await sleep(policy.delay) }
+            let failure: APIError
+            do {
+                let reservation = try await reservations.reserve(
+                    preferredSpace: preferredSpace, idempotencyKey: key
+                )
+                return .won(reservation)
+            } catch {
+                failure = error as? APIError ?? .malformedResponse(String(describing: error))
+            }
+
+            switch classify(failure) {
+            case .final(let outcome):
+                return outcome
+            case .indeterminate(let cause):
+                pending = cause
+            case .ambiguous:
+                // Another attempt for the day: repeating our key will not change the answer,
+                // so go straight to asking what committed.
+                return await resolve(cause: .alreadyInFlight, plate: plate)
+            case .failed:
+                guard let pending else { return .rejected(failure) }
+                return await resolve(cause: pending, plate: plate)
+            }
+        }
+
+        return await resolve(cause: pending ?? .timedOut, plate: plate)
+    }
+
+    private enum Classification {
+        /// A definite outcome for this tap. Replays included: a replayed failure is the true
+        /// outcome of the first send.
+        case final(ReservationOutcome)
+        /// This send may have reached the server and its outcome is not known. Repeat the key.
+        case indeterminate(Uncertainty.Cause)
+        /// Something else for the same day is running or has succeeded. Repeating our key
+        /// cannot tell which.
+        case ambiguous
+        /// Not an outcome. Final only if no earlier send may have landed.
+        case failed
+    }
+
+    private func classify(_ error: APIError) -> Classification {
         switch error {
         case .transport(_, .timedOut):
-            // The request may have landed. Reconcile rather than guess or retry.
-            return await reconcile(plate: plate, cause: .timedOut)
+            return .indeterminate(.timedOut)
 
         case .transport(_, .interrupted):
             // The backend dying mid-request lands here, not as a timeout: its socket closes
-            // and URLSession fails at once. The commit may already have happened, so this is
-            // exactly as indeterminate as a timeout and must not be reported as a failure.
-            return await reconcile(plate: plate, cause: .connectionDropped)
+            // and URLSession fails at once. The commit may already have happened.
+            return .indeterminate(.connectionDropped)
 
         case .business(let response):
             switch response.code {
+            case .idempotencyInProgress:
+                // Our own key, still running. The one 409 that means "ask again".
+                return .indeterminate(.alreadyInFlight)
+
             case .duplicateRequest, .alreadyQueued:
-                // Ambiguous by construction: in flight, or already succeeded. Reconcile.
-                return await reconcile(plate: plate, cause: .alreadyInFlight)
+                // With a key, these are about another attempt for the same user and day, such
+                // as an earlier tap whose outcome this device never learned.
+                return .ambiguous
 
             case .alreadyReserved:
                 // Unambiguous: the database's unique (user, date) constraint fired, so a
-                // reservation definitely exists. Surfaces only when Redis and Postgres
-                // disagree, which makes it the one trustworthy "you already hold one".
-                return .lost(.alreadyReserved)
+                // reservation definitely exists. With a key it is not ours — our own row would
+                // have been replayed as a success — so it is an earlier tap's.
+                return .final(.lost(.alreadyReserved))
 
             case .spaceUnavailable, .lotFull, .insufficientBalance,
                  .windowClosed, .validationError, .lockTimeout:
-                return .lost(response.code)
+                return .final(.lost(response.code))
 
-            case .authFailed, .internalError, .duplicateResource:
-                // `duplicateResource` is a registration code and cannot reach a reservation;
-                // it is listed rather than defaulted so a new code has to be thought about.
-                return .rejected(error)
+            case .authFailed, .internalError, .duplicateResource,
+                 .idempotencyKeyReused, .idempotencyKeyInvalid, .reservationNotFound:
+                // The key codes are client bugs, and the rest cannot come from this endpoint.
+                // Listed rather than defaulted so a new code has to be thought about.
+                return .failed
             }
 
         case .unauthenticated, .malformedResponse, .transport:
-            return .rejected(error)
+            // `.transport(_, .notSent)` included: on a first send it proves nothing happened,
+            // but on a repeat the first send may still have landed.
+            return .failed
+        }
+    }
+
+    /// Ask what committed: the server first, the board only if the server cannot say.
+    private func resolve(cause: Uncertainty.Cause, plate: String) async -> ReservationOutcome {
+        do {
+            if let held = try await reservations.mine() {
+                // Authoritative: the row exists. It carries no balance, so the caller fetches it.
+                return .won(held)
+            }
+            // Nothing committed yet. Not "you lost": a send of ours may still be queued.
+            return .unknown(.noEvidence(cause: cause))
+        } catch {
+            // Unreachable, or a backend without the endpoint. The board is the last evidence.
+            return await reconcile(plate: plate, cause: cause)
         }
     }
 
@@ -122,8 +221,6 @@ actor ReservationCoordinator {
         // A space matching our suffix is strong evidence, but the reservation id, amount
         // and new balance are unknown, so this is reported as a confirmed-by-grid state
         // rather than fabricating a `Reservation` the server never returned.
-        // No "refresh to confirm": no endpoint can confirm it. `GET /spaces` is the only
-        // evidence there is, and it has just been read.
         return .unknown(.probablyHeld(space: match.number))
     }
 }

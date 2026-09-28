@@ -45,6 +45,7 @@ final class AppEnvironment: ObservableObject {
         serverClock: ServerClock,
         reauth: Reauthenticating,
         window: ReservationWindow,
+        retryPolicy: ReservationCoordinator.RetryPolicy = .standard,
         isUITesting: Bool = false
     ) {
         self.auth = auth
@@ -57,7 +58,7 @@ final class AppEnvironment: ObservableObject {
         self.isUITesting = isUITesting
         self.reauth = reauth
         self.coordinator = ReservationCoordinator(
-            reservations: reservations, spaces: spaces, reauth: reauth
+            reservations: reservations, spaces: spaces, reauth: reauth, policy: retryPolicy
         )
     }
 
@@ -73,7 +74,14 @@ final class AppEnvironment: ObservableObject {
         )
         // The window hour is configuration, not a constant: the demo runs with
         // app.reservation.window-hour shifted, and hardcoding 20 would break it.
-        let hour = Int(ProcessInfo.processInfo.environment["PARKING_WINDOW_HOUR"] ?? "") ?? 20
+        let environment = ProcessInfo.processInfo.environment
+        let hour = Int(environment["PARKING_WINDOW_HOUR"] ?? "") ?? 20
+        // Repeating a key is safe only against a backend that honours Idempotency-Key. One
+        // that ignores it runs a repeat as a second attempt whenever the first failed without
+        // the client hearing, so `PARKING_IDEMPOTENCY_KEYS=0` turns repeats off for running
+        // against the backend's master branch. See ADR-007.
+        let retryPolicy: ReservationCoordinator.RetryPolicy =
+            environment["PARKING_IDEMPOTENCY_KEYS"] == "0" ? .never : .standard
         return AppEnvironment(
             auth: AuthService(client: client),
             spaces: SpacesService(client: client),
@@ -82,7 +90,8 @@ final class AppEnvironment: ObservableObject {
             tokenStore: tokenStore,
             serverClock: serverClock,
             reauth: Self.reauthenticator(),
-            window: ReservationWindow(openingHour: hour)
+            window: ReservationWindow(openingHour: hour),
+            retryPolicy: retryPolicy
         )
     }
 
@@ -142,6 +151,11 @@ final class AppEnvironment: ObservableObject {
             serverClock: clock,
             reauth: AlwaysAllowReauthenticator(),
             window: ReservationWindow(openingHour: 0),
+            // The repeats still happen, so the flow under test is the real one; they just
+            // do not wait a second each.
+            retryPolicy: .init(
+                maxAttempts: ReservationCoordinator.RetryPolicy.standard.maxAttempts, delay: .zero
+            ),
             isUITesting: true
         )
     }
@@ -229,7 +243,7 @@ private struct StubReservationService: ReservationServicing {
     let mode: Mode
     let staged: StagedGrid
 
-    func reserve(preferredSpace: Int?) async throws -> Reservation {
+    func reserve(preferredSpace: Int?, idempotencyKey: UUID) async throws -> Reservation {
         guard mode == .wins else {
             // The reservation "lands" and then the reply is lost, so the grid the coordinator
             // reconciles against is the one that exists after a successful commit.
@@ -240,6 +254,13 @@ private struct StubReservationService: ReservationServicing {
             id: 1, spaceNumber: preferredSpace ?? 1, date: Date(), amountPaid: 10,
             newBalance: 90, queuePosition: 1, totalProcessingMs: 12
         )
+    }
+
+    /// Unreachable, as it would be with the backend down. That sends the coordinator on to
+    /// the board, which is where the staged uncertain outcomes are decided; a stub that
+    /// answered here would make those screens impossible to reach.
+    func mine() async throws -> Reservation? {
+        throw APIError.transport(message: "stubbed read-back", failure: .notSent)
     }
 }
 

@@ -20,9 +20,14 @@ protocol WalletServicing: Sendable {
 }
 
 protocol ReservationServicing: Sendable {
-    /// One call, one attempt. Never retries internally: after a timeout the outcome is
-    /// indeterminate (see `ReservationOutcome.unknown`) and only reconciliation can settle it.
-    func reserve(preferredSpace: Int?) async throws -> Reservation
+    /// One call, one request. Never retries internally; `ReservationCoordinator` decides
+    /// whether to repeat it, and a repeat carries the same `idempotencyKey`, so the server
+    /// answers it with the first request's outcome rather than running a second attempt.
+    func reserve(preferredSpace: Int?, idempotencyKey: UUID) async throws -> Reservation
+
+    /// The caller's committed reservation for tomorrow, or `nil` if the server holds none.
+    /// `nil` is final only once no request of ours is still being processed.
+    func mine() async throws -> Reservation?
 }
 
 protocol TokenStoring: Sendable {

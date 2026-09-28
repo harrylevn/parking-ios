@@ -38,6 +38,13 @@ private struct ReservationResponseDTO: Decodable, Sendable {
     let totalProcessingMs: Int64?
 }
 
+private struct MyReservationResponseDTO: Decodable, Sendable {
+    let reservationId: Int64
+    let spaceNumber: Int
+    let reservationDate: Date
+    let amountPaid: Decimal
+}
+
 private struct SpaceDTO: Decodable, Sendable {
     let spaceNumber: Int
     let available: Bool
@@ -123,13 +130,16 @@ struct WalletService: WalletServicing {
 }
 
 struct ReservationService: ReservationServicing {
+    static let idempotencyKeyHeader = "Idempotency-Key"
+
     let client: HTTPClient
 
-    func reserve(preferredSpace: Int?) async throws -> Reservation {
+    func reserve(preferredSpace: Int?, idempotencyKey: UUID) async throws -> Reservation {
         let response: ReservationResponseDTO = try await client.post(
             "reservations",
             body: ReservationRequestDTO(preferredSpaceNumber: preferredSpace),
-            timeout: client.configuration.reservationTimeout
+            timeout: client.configuration.reservationTimeout,
+            headers: [Self.idempotencyKeyHeader: idempotencyKey.uuidString]
         )
         return Reservation(
             id: response.reservationId,
@@ -140,5 +150,25 @@ struct ReservationService: ReservationServicing {
             queuePosition: response.queuePosition,
             totalProcessingMs: response.totalProcessingMs
         )
+    }
+
+    /// No `date` parameter: the server defaults to its own tomorrow, which is the date a
+    /// reservation made now is for. Sending the device's date would reintroduce the device
+    /// clock the countdown is careful never to trust.
+    func mine() async throws -> Reservation? {
+        do {
+            let response: MyReservationResponseDTO = try await client.get("reservations/me")
+            return Reservation(
+                id: response.reservationId,
+                spaceNumber: response.spaceNumber,
+                date: response.reservationDate,
+                amountPaid: response.amountPaid,
+                newBalance: nil,
+                queuePosition: nil,
+                totalProcessingMs: nil
+            )
+        } catch let error as APIError where error.businessCode == .reservationNotFound {
+            return nil
+        }
     }
 }

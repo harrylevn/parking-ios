@@ -250,8 +250,14 @@ final class GridViewModel: ObservableObject {
             outcome = result
             hasConfirmedReservation = true
             isWindowHourMismatched = false
-            balance = reservation.newBalance
-            environment.account?.balance = balance
+            // A read-back carries no balance. Ask the wallet rather than subtract $10 here:
+            // the server's figure is the only one that cannot drift.
+            if let newBalance = reservation.newBalance {
+                balance = newBalance
+                environment.account?.balance = newBalance
+            } else {
+                await refreshBalance()
+            }
             selectedSpace = nil
             Haptics.play(.success)
         case .lost(let code):
@@ -361,7 +367,7 @@ extension APIError {
                 return String(localized: "This vehicle already holds a space for tomorrow.")
             case .duplicateResource:
                 return String(localized: "That plate already has an account. Sign in instead.")
-            case .duplicateRequest, .alreadyQueued:
+            case .duplicateRequest, .alreadyQueued, .idempotencyInProgress:
                 return String(localized: "Your attempt is still being processed.")
             case .insufficientBalance:
                 return String(localized: "Not enough balance. Add funds and try again.")
@@ -374,8 +380,11 @@ extension APIError {
                 return String(localized: "The server was busy. Try again.")
             case .authFailed:
                 return String(localized: "Incorrect licence plate or password.")
-            case .internalError:
+            case .internalError, .idempotencyKeyReused, .idempotencyKeyInvalid:
+                // The key codes are client bugs; the user can do nothing about them either.
                 return String(localized: "Something went wrong on the server.")
+            case .reservationNotFound:
+                return String(localized: "No reservation was found for tomorrow.")
             }
         }
     }

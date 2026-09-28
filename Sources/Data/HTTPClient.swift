@@ -56,11 +56,13 @@ struct HTTPClient: Sendable {
         body: Body,
         timeout: TimeInterval? = nil,
         authenticated: Bool = true,
+        headers: [String: String] = [:],
         as type: Response.Type = Response.self
     ) async throws -> Response {
         var request = request(path, method: "POST", authenticated: authenticated)
         request.httpBody = try JSONEncoder().encode(body)
         if let timeout { request.timeoutInterval = timeout }
+        for (field, value) in headers { request.setValue(value, forHTTPHeaderField: field) }
         return try await send(request, as: type)
     }
 

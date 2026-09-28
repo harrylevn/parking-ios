@@ -28,7 +28,11 @@ struct StubWallet: WalletServicing {
 
 struct StubReservations: ReservationServicing {
     var result: Result<Reservation, APIError>
-    func reserve(preferredSpace: Int?) async throws -> Reservation { try result.get() }
+    /// Unreachable by default, so an unresolved attempt falls through to the board, as it did
+    /// before the read-back existed.
+    var mineResult: Result<Reservation?, APIError> = .failure(.transport(message: "stub", failure: .notSent))
+    func reserve(preferredSpace: Int?, idempotencyKey: UUID) async throws -> Reservation { try result.get() }
+    func mine() async throws -> Reservation? { try mineResult.get() }
 }
 
 @MainActor
@@ -41,7 +45,10 @@ func makeEnvironment(
     reservations: ReservationServicing = StubReservations(result: .failure(.unauthenticated)),
     reauth: Reauthenticating = AlwaysAllowReauthenticator(),
     windowHour: Int = 0,
-    account: Account? = Account(userId: 1, licensePlate: "TEST-001", balance: 100)
+    account: Account? = Account(userId: 1, licensePlate: "TEST-001", balance: 100),
+    // No waiting between repeats: a view-model test is about what the screen does with the
+    // outcome, not about the pause before it.
+    retryPolicy: ReservationCoordinator.RetryPolicy = .init(maxAttempts: 4, delay: .zero)
 ) -> AppEnvironment {
     let environment = AppEnvironment(
         auth: auth,
@@ -51,7 +58,8 @@ func makeEnvironment(
         tokenStore: InMemoryTokenStore(),
         serverClock: ServerClock(),
         reauth: reauth,
-        window: ReservationWindow(openingHour: windowHour, timeZone: .gmt)
+        window: ReservationWindow(openingHour: windowHour, timeZone: .gmt),
+        retryPolicy: retryPolicy
     )
     environment.account = account
     return environment

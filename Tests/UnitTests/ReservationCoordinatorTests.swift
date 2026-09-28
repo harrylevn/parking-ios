@@ -9,17 +9,37 @@ actor FakeReservationService: ReservationServicing {
         case fail(APIError)
     }
 
-    private var behaviour: Behaviour
+    /// One per send, in order; the last repeats once the script runs out.
+    private let script: [Behaviour]
+    private let mineResult: Result<Reservation?, APIError>
     private(set) var callCount = 0
+    private(set) var keys: [UUID] = []
+    private(set) var mineCalls = 0
     private let delay: Duration
 
-    init(_ behaviour: Behaviour, delay: Duration = .zero) {
-        self.behaviour = behaviour
-        self.delay = delay
+    /// `mine` defaults to unreachable, which sends an unresolved attempt on to the board.
+    init(
+        _ behaviour: Behaviour,
+        delay: Duration = .zero,
+        mine: Result<Reservation?, APIError> = .failure(.transport(message: "refused", failure: .notSent))
+    ) {
+        self.init(script: [behaviour], delay: delay, mine: mine)
     }
 
-    func reserve(preferredSpace: Int?) async throws -> Reservation {
+    init(
+        script: [Behaviour],
+        delay: Duration = .zero,
+        mine: Result<Reservation?, APIError> = .failure(.transport(message: "refused", failure: .notSent))
+    ) {
+        self.script = script
+        self.delay = delay
+        self.mineResult = mine
+    }
+
+    func reserve(preferredSpace: Int?, idempotencyKey: UUID) async throws -> Reservation {
+        let behaviour = script[min(callCount, script.count - 1)]
         callCount += 1
+        keys.append(idempotencyKey)
         if delay != .zero { try? await Task.sleep(for: delay) }
         switch behaviour {
         case .succeed(let reservation): return reservation
@@ -27,7 +47,14 @@ actor FakeReservationService: ReservationServicing {
         }
     }
 
+    func mine() async throws -> Reservation? {
+        mineCalls += 1
+        return try mineResult.get()
+    }
+
     func calls() -> Int { callCount }
+    func sentKeys() -> [UUID] { keys }
+    func readBacks() -> Int { mineCalls }
 }
 
 struct FakeSpacesService: SpacesServicing {
@@ -67,11 +94,15 @@ final class ReservationCoordinatorTests: XCTestCase {
                   reservedSpaces: spaces.filter { !$0.isAvailable }.count, spaces: spaces)
     }
 
+    /// No waiting between repeats: the tests are about which repeats happen, not the pause.
     private func makeCoordinator(
-        reservations: ReservationServicing, spaces: SpacesServicing
+        reservations: ReservationServicing,
+        spaces: SpacesServicing,
+        policy: ReservationCoordinator.RetryPolicy = .init(maxAttempts: 4, delay: .zero)
     ) -> ReservationCoordinator {
         ReservationCoordinator(
-            reservations: reservations, spaces: spaces, reauth: AlwaysAllowReauthenticator()
+            reservations: reservations, spaces: spaces, reauth: AlwaysAllowReauthenticator(),
+            policy: policy
         )
     }
 
@@ -117,7 +148,7 @@ final class ReservationCoordinatorTests: XCTestCase {
         XCTAssertEqual(outcomes.filter { $0 == .won(self.winner) }.count, 1)
     }
 
-    /// A timeout is not retried: the outcome is unknown and must be reconciled.
+    /// Timeouts on every repeat, and the read-back unreachable: the board is the last evidence.
     func testTimeoutReconcilesFromGridWhenSuffixIsUnique() async {
         let coordinator = makeCoordinator(
             reservations: FakeReservationService(.fail(.transport(message: "timed out", failure: .timedOut))),

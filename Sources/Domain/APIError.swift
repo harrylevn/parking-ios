@@ -24,6 +24,14 @@ enum BusinessErrorCode: String, Decodable, Sendable {
     case lotFull = "LOT_FULL"
     case lockTimeout = "LOCK_TIMEOUT"
     case internalError = "INTERNAL_ERROR"
+    /// The same Idempotency-Key is still being processed. Unlike `DUPLICATE_REQUEST` it has
+    /// one meaning only: send the same key again after `Retry-After`.
+    case idempotencyInProgress = "IDEMPOTENCY_IN_PROGRESS"
+    /// The same key arrived with a different body. A client bug, never a race outcome.
+    case idempotencyKeyReused = "IDEMPOTENCY_KEY_REUSED"
+    case idempotencyKeyInvalid = "IDEMPOTENCY_KEY_INVALID"
+    /// From `GET /reservations/me`: nothing committed for that date.
+    case reservationNotFound = "RESERVATION_NOT_FOUND"
 }
 
 /// The JSON error body. `validationErrors` is present only on a 400.
