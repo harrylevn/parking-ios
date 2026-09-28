@@ -13,6 +13,9 @@ struct BoardView: View {
     /// the guardrail is about the default reading size, and clipping content is worse than
     /// scrolling it.
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// Landscape is the one place the guardrail yields: ~270pt of board height cannot hold
+    /// ten rows at any usable size, so the board scrolls at a full target instead.
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     var body: some View {
         GeometryReader { proxy in
@@ -20,25 +23,30 @@ struct BoardView: View {
 
             let scrolling = BoardLayout.scrolling(count: grid.spaces.count, width: proxy.size.width)
 
+            // Ordered by what 6.3 actually asks for. "All 80 spaces legible on a 6.1-inch
+            // screen without pinch-zoom" is the **guardrail**; the 44pt target is the
+            // Default, and where the two collide in portrait the guardrail wins. An earlier
+            // ordering put the target first, which sent the 6.1-inch board into a scroll view
+            // showing nine rows of ten — the guardrail traded away to protect the thing that
+            // was supposed to yield to it.
             if typeSize.isAccessibilitySize {
                 // Large text needs generous cells more than it needs many of them.
                 accessibleBoard()
-            } else if let layout, layout.meetsPreferredTouchTarget {
-                fixedBoard(layout)
-            } else if let scrolling {
-                // Everything fits, but only by going under the touch target — iPhone
-                // landscape, where ~270pt of board height drives the cells down to the 30pt
-                // floor for a 34pt target. Scrolling is accepted there and a target that
-                // small is not, so the board keeps 44pt and runs off the bottom instead.
-                //
-                // The 6.1-inch portrait guardrail is not affected: that board *does* meet the
-                // target, so it never reaches this branch. See `BoardLayoutTests`.
+            } else if verticalSizeClass == .compact, let scrolling {
+                // Landscape. ~270pt of board height cannot show ten rows at any size worth
+                // tapping, so this is the one orientation that scrolls by design, and it
+                // keeps the full 44pt target while doing so.
                 fixedBoard(scrolling)
                     .scrollableBoard()
             } else if let layout {
-                // Too narrow even to scroll at 44pt. Showing all 80 beats honouring a
-                // Default the screen cannot afford.
+                // Portrait, and all 80 fit legibly: show them, whatever that costs the
+                // vertical target. This is the 6.1-inch case the guardrail is written for.
                 fixedBoard(layout)
+            } else if let scrolling {
+                // Smaller than the reference — a mini or an SE — where 80 legible cells do
+                // not fit at all. Scrolling at a full target beats cells nobody can read.
+                fixedBoard(scrolling)
+                    .scrollableBoard()
             } else {
                 accessibleBoard()
             }

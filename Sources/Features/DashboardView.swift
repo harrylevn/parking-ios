@@ -78,7 +78,10 @@ struct DashboardView: View {
     /// Portrait iPhone. The board is given every point the chrome does not need, so all 80
     /// cells fit on a 6.1-inch screen without scrolling (6.3 guardrail).
     private var compactLayout: some View {
-        VStack(spacing: 10) {
+        // 8, not 10. The board is the only flexible row in this column, so every point the
+        // fixed rows give back lands in the cell height — and the cell height is what the
+        // 44pt Default is short of on a 6.1-inch screen.
+        VStack(spacing: 8) {
             DashboardHeader(
                 plate: model.plate,
                 balance: model.balance,
@@ -91,7 +94,7 @@ struct DashboardView: View {
             // Countdown and counts share one card. Two separate cards cost ~110pt of
             // chrome, which is the difference between the board fitting on a 6.1-inch
             // screen at a 44pt target and not fitting at all.
-            VStack(spacing: 10) {
+            VStack(spacing: 8) {
                 CountdownHero(
                     countdown: model.countdown,
                     isOpen: model.isWindowOpen,
@@ -107,16 +110,16 @@ struct DashboardView: View {
                     StatStrip(grid: grid)
                 }
             }
-            .card(padding: 12)
+            .card(padding: 10)
 
             if let space = model.mySpace {
                 HoldingBanner(spaceNumber: space, isConfirmed: model.hasConfirmedReservation)
             }
 
             board
+            if model.state.grid != nil { Legend() }
         }
         .padding(.horizontal, Theme.Metric.gutter)
-        .padding(.top, 2)
         // The bar is now present whenever a reservation is possible, selected or not, and it
         // is the same height either way — so the board reserves room for it unconditionally
         // rather than resizing under the user at the moment they tap a space.
@@ -128,8 +131,11 @@ struct DashboardView: View {
     /// squashed into a letterbox.
     private var wideLayout: some View {
         HStack(alignment: .top, spacing: 14) {
-            board
-                .frame(maxWidth: .infinity)
+            VStack(spacing: 8) {
+                board
+                if model.state.grid != nil { Legend() }
+            }
+            .frame(maxWidth: .infinity)
 
             ScrollView {
                 VStack(spacing: 12) {
@@ -202,10 +208,15 @@ struct DashboardView: View {
                 title: "Something went wrong", message: message
             )
         case .loaded(let grid):
+            // `BoardView` is the card's **only** child, and that is load-bearing. It sizes
+            // itself from a `GeometryReader`, which reports the height it is proposed rather
+            // than the height left over after a sibling has taken its share — so a `Legend`
+            // inside this card made the grid lay out ten rows into space that only held nine
+            // and draw the last one under the legend and past the card's own edge. Spaces 73
+            // to 80 were on screen and tappable, and none of them readable.
             VStack(spacing: 8) {
                 if isWide { StatStrip(grid: grid) }
                 BoardView(grid: grid, model: model)
-                Legend()
             }
             // Tighter than the other cards, and deliberately so — see `boardCardPadding`.
             // Those eight points of padding are the difference between a 43pt cell and the

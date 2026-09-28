@@ -181,15 +181,14 @@ the counts into one card, and dropping the oversized portrait title, bought roug
 enough that the board reached **7 columns × 12 rows at 44×43pt cells**, an effective 48.7 ×
 47.2pt including the gutter, with both items satisfied at once.
 
-**Making the confirm bar permanent briefly broke that, and the first fix was the wrong one.**
+**Making the confirm bar permanent briefly broke that, and it took two wrong fixes to settle.**
 Offering "reserve any space" (week-1 feedback, §5.3) means an action bar with nothing selected,
 and a bar that is always there costs the board 78pt on every screen. The board fell to
 **43 × 48pt**, and that was written up here as a defended deviation: the Default yields to the
 Guardrail, all 80 cells still visible, 2pt is small.
 
-That reasoning was comfortable and wrong, and it is worth keeping the correction visible.
-**The shortfall was horizontal, and no amount of vertical space fixes a horizontal miss.** A
-cell's effective target is
+That reasoning was comfortable and wrong in the horizontal dimension. **A cell's effective
+target is**
 
 ```
 (boardWidth + spacing) / columns
@@ -197,35 +196,65 @@ cell's effective target is
 
 because a tap in the gap between two tiles resolves to the nearer one. At eight columns on a
 393pt screen that is `(337 + 4) / 8 = 42.6`. Every point of horizontal padding is worth an
-eighth of a point of target, and the board card was spending **10pt a side** on padding while
-the argument was about the 78pt bar at the bottom. Trimming the card to
-`Theme.Metric.boardCardPadding` = 6 returns the board to `(349 + 4) / 8 = 44.1`:
+eighth of a point of target, and the board card was spending **10pt a side** while the argument
+was about the 78pt bar at the bottom. Trimming the card to `Theme.Metric.boardCardPadding` = 6
+returns the board to `(349 + 4) / 8 = 44.1`, and that part of the analysis still holds.
 
-| Board card padding | Board width | Cells | Effective target |
-|---|---|---|---|
-| 10pt (as shipped at the checkpoint) | 337pt | 8 × 10 at 39 × 44 | 43 × 48 ✗ |
-| **6pt** | **349pt** | **8 × 10 at 40 × 44** | **44 × 48 ✓** |
+**The vertical half of the same claim was fiction, and it took a query against the running app
+to see it.** `BoardLayoutTests` does not know how tall the screen's chrome is; it was told, by a
+`chromeHeight` constant set to 368. The real figure, read off the built layout on a 393×852
+screen, is **412**. So every test here was handing `BoardLayout` a 484pt board area that the
+device gives 440pt of, and certifying a tenth row the screen could not show. On the device the
+fitted layout missed 44pt vertically — and `BoardView` was ordered to prefer a scrolling layout
+that met the target over a fitted one that did not, so the 6.1-inch board quietly became a
+scroll view showing nine rows of ten. Spaces 73 to 80 existed, reported frames, answered to
+their accessibility identifiers, and were below the fold. Every assertion in the file passed
+throughout.
 
-So both columns of 6.3 are satisfied at once again: all 80 cells visible, no scrolling, 44pt
-met, *and* the bar stays permanent so the board never reflows under the finger tapping it.
-Nothing else on the screen moved — the page gutter, the other cards and the bar are unchanged.
+Two things were wrong, and both are fixed:
 
-The lesson is the one worth saying out loud at the demo: a deviation that is easy to defend is
-not the same as a deviation that is necessary. Reaching for the Guardrail-beats-Default rule
-settled the argument before anyone had checked which dimension was actually short.
+1. **The ordering.** `BoardView` now routes on orientation, not on whether the target is met: in
+   portrait a fitted layout is taken whatever it costs the target, because fitting all 80 is the
+   Guardrail and 44pt is the Default. The old ordering had the Guardrail yielding to the item
+   that is supposed to yield to it.
+2. **The budget.** ~30pt of chrome came back — 10 → 8 on the column spacings, 12 → 10 on the
+   countdown card, and the portrait title collapsed from a two-line block ("Tomorrow" over
+   "Tuesday 29 September") to one line ("Tomorrow · Tue 29 Sep"). The compact column has exactly
+   one flexible row, so every point recovered lands in the cell height.
 
-`BoardLayoutTests` asserts this against the 393×852 reference rather than whatever simulator
-happens to be installed — the smallest device available locally is 6.3 inches, and a layout that
-fits there can still breach the guardrail on the screen the brief names.
-`testFittedBoardStillClearsFortyFourPointTargets` is strict again, and the board area it
-measures is now derived from `Theme.Metric.gutter` and `Theme.Metric.boardCardPadding` rather
-than a hard-coded inset. That literal is how the miss survived a green suite in the first
-place: the card's padding changed and the test's copy of it did not, so it went on measuring a
-board 12pt narrower than the one on screen.
+Measured on a 393×852 simulator afterwards, not modelled:
 
-The one place the board is allowed to scroll is at accessibility text sizes, where a fixed board
-would clip. Clipping content is worse than scrolling it, and the guardrail is about legibility
-at the default reading size.
+| | board area | cells | effective target | scrolls? |
+|---|---|---|---|---|
+| Before, as documented | 349 × 484 *(modelled)* | 8 × 10 at 40 × 44 | 44 × 48 | claimed no |
+| Before, as built | 349 × 410 | 8 × 10 at 41 × 37 | 45 × 41 | **yes, 9 rows of 10** |
+| **After** | **349 × 440** | **8 × 10 at 40 × 40** | **44 × 44** | **no** |
+
+So both columns of 6.3 hold at once — this time with the numbers taken from the hierarchy the
+app actually built.
+
+The lesson is worth saying out loud at the demo, and it is not the one the earlier draft drew. A
+unit test that models the screen proves only that the arithmetic is consistent with the model.
+`chromeHeight` was an estimate wearing a constant's clothing, and the suite defended it for as
+long as nobody asked the app where the cells were. `BoardGeometryUITests` now does exactly that:
+it signs in, checks that spaces 1, 40, 73 and 80 are **hittable** — not merely present, because
+a cell inside an unscrolled scroll view is present — and asserts 44pt on the frames the app
+reports. It skips below the reference size, where scrolling is allowed. It also prints the board
+extent it measured, so `chromeHeight` can be re-derived rather than guessed at the next time the
+chrome moves.
+
+`BoardLayoutTests` still asserts against the 393×852 reference rather than whatever simulator
+happens to be installed, and the board area it measures is derived from `Theme.Metric.gutter`
+and `Theme.Metric.boardCardPadding` rather than a hard-coded inset. That literal is how the
+horizontal miss survived a green suite; `chromeHeight` is how the vertical one did. The
+difference now is that a second test measures instead of modelling, and the two have to agree.
+
+**Below the reference the board may scroll.** A mini or an SE is smaller than the screen 6.3
+names, and cramming 80 legible cells into it is not what the guardrail asks for; `BoardView`
+falls through to the scrolling layout, which keeps the full 44pt target. In practice a 13 mini
+(375×812) still fits all 80, at a 42 × 38 target. The other place the board scrolls is at
+accessibility text sizes, where a fixed board would clip — clipping content is worse than
+scrolling it, and the guardrail is about legibility at the default reading size.
 
 ### 5.3 Selecting and confirming are separate
 
@@ -273,9 +302,11 @@ accident.** A phone on its side gives the board about 392 × 273pt, and 80 cells
 but only by driving them to the 30pt floor, a 34pt touch target. Scrolling in landscape was
 accepted explicitly; a 34pt target was not. So `BoardLayout.scrolling` sizes the board from
 width alone, lands on **9 columns at 44pt**, shows 54 cells at a time and scrolls for the rest.
-`BoardView` takes that branch only when the fitted layout misses the target, which the 6.1-inch
-portrait board does not — `testTheSixOneInchPortraitBoardNeverScrolls` is what stops the rule
-leaking onto the screen the brief actually grades.
+`BoardView` takes that branch on **orientation** — a compact vertical size class — rather than
+on whether the fitted layout met the target. That distinction matters: the target-based rule
+read perfectly well and quietly applied itself to portrait too, which is how the 6.1-inch board
+ended up in a scroll view (§5.2). Landscape scrolls because landscape was decided to scroll, and
+portrait is not consulted about it.
 
 This replaced a claim in an earlier draft of this document that landscape landed on 10 × 8 with
 cells growing. It never did: the fitted layout was returning nil at the padding of the time, so
@@ -432,7 +463,7 @@ error.
 | **G** | All 80 spaces legible on a 6.1-inch screen without pinch-zoom | met — 7×12 at 44×43pt, asserted in `BoardLayoutTests` |
 | **G** | Full state matrix: loading, empty, error, offline, insufficient balance, race lost, success | met (`GridState`, `ReservationOutcome`) |
 | D | HIG, dark mode, no hardcoded user-facing strings (String Catalog or equivalent) | **partly** — HIG and dark mode kept. SwiftUI's `Text("…")` and `Button("…")` literals are `LocalizedStringKey` and extractable, but components taking a plain `String` parameter bypass that, and there is no String Catalog yet. Scheduled day 7. (A *populated* second locale is Stretch, not this row) |
-| D | Dynamic Type to accessibility sizes, VoiceOver labels, 44pt targets, contrast | kept — **44 × 48pt** on a 6.1-inch screen with the reserve bar permanent; briefly 43pt and recorded as a deviation until §5.2 found the shortfall was horizontal. Board scrolls only at accessibility sizes, rather than clipping |
+| D | Dynamic Type to accessibility sizes, VoiceOver labels, 44pt targets, contrast | kept — **44 × 44pt** on a 6.1-inch screen with the reserve bar permanent, measured off the running app by `BoardGeometryUITests`. Twice reported met when it was not; §5.2 has both misses. Board scrolls in landscape, below the reference size, and at accessibility sizes — never in 6.1-inch portrait |
 | D | The 20:00 moment designed deliberately | kept |
 
 ### 6.4 Testing and delivery discipline

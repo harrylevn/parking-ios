@@ -9,16 +9,21 @@ import XCTest
 /// screen the brief actually names.
 final class BoardLayoutTests: XCTestCase {
 
-    /// Chrome measured from the built portrait layout on a 6.1-inch screen: safe areas,
-    /// the single header row, the combined countdown + stats card, the legend and padding.
-    /// Deliberately generous — if the real layout is tighter the guardrail still holds.
+    /// Everything on the portrait screen that is not the board: safe areas, the header row,
+    /// the date line, the combined countdown + stats card, the legend, the confirm bar and
+    /// the padding between them.
     ///
-    /// Includes the 78pt the confirm bar takes. It used to appear only once a space was
-    /// selected, so the resting board was 78pt taller than this and these tests measured a
-    /// board the user only ever saw before tapping. Offering "any free space" made the bar
-    /// permanent, which is a real 78pt off the board on every screen — the figure belongs
-    /// here rather than in a state the tests never exercised.
-    private let chromeHeight: CGFloat = 368
+    /// **Read off the running app, not estimated.** `BoardGeometryUITests` launches on a
+    /// 6.1-inch screen and reports the height the board is actually handed; 852 minus that
+    /// is this number. The previous value, 368, was an estimate that ran 44pt light, so
+    /// these tests handed `BoardLayout` a board area the screen does not have and certified
+    /// a tenth row it could not show. Every assertion here passed while spaces 73 to 80 sat
+    /// below the fold of a scroll view on the very screen the guardrail names.
+    ///
+    /// If the chrome changes, this number is wrong until it is measured again — which is
+    /// what `BoardGeometryUITests` is for. It asserts the guardrail against the real
+    /// hierarchy, so a drift here shows up as a failure there rather than as silence.
+    private let chromeHeight: CGFloat = 412
 
     /// Derived from the same constants the layout uses, not restated. The width used to be
     /// `- 24` for the board card's inset; the card was then changed and the literal was not,
@@ -173,17 +178,28 @@ final class BoardLayoutTests: XCTestCase {
         )
     }
 
-    /// The portrait guardrail is untouched by that rule: the 6.1-inch board meets the target,
-    /// so it takes the fitted branch and never scrolls. This is the test that would catch the
-    /// scrolling rule leaking onto the screen the brief actually grades.
-    func testTheSixOneInchPortraitBoardNeverScrolls() throws {
+    /// Portrait is not subject to that rule at all. `BoardView` routes on orientation now,
+    /// not on whether the target is met: in portrait a fitted layout is taken whatever it
+    /// costs the target, because fitting all 80 is the guardrail and 44pt is the Default.
+    ///
+    /// The earlier ordering asked whether the fitted layout met 44pt and scrolled when it did
+    /// not, which is the guardrail yielding to the thing that is supposed to yield to it —
+    /// and that is precisely what happened once the chrome figure was corrected.
+    ///
+    /// So this asserts both halves separately: the board fits, *and* it still clears 44pt.
+    /// A future change that costs the target will fail the second assertion while the board
+    /// keeps showing all 80, which is the right way round.
+    func testTheSixOneInchPortraitBoardFitsAndStillClearsTheTarget() throws {
         let layout = try XCTUnwrap(BoardLayout.fitting(count: 80, in: boardAreaOn61Inch))
 
+        XCTAssertLessThanOrEqual(
+            layout.totalHeight, boardAreaOn61Inch.height,
+            "The guardrail: all 80 on screen at once, no scrolling"
+        )
         XCTAssertTrue(
             layout.meetsPreferredTouchTarget,
-            "If portrait stops meeting 44pt it starts scrolling, which breaches the guardrail"
+            "The Default: \(layout.cellWidth)x\(layout.cellHeight) + \(layout.spacing) misses 44pt"
         )
-        XCTAssertLessThanOrEqual(layout.totalHeight, boardAreaOn61Inch.height)
     }
 
     func testReturnsNilRatherThanClippingWhenThereIsGenuinelyNoRoom() {

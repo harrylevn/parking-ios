@@ -100,7 +100,8 @@ is reviewable in a diff. Note `CardBackground`'s border overlay carries
 | `ErrorDecodingTests` | Both 401 shapes, `WINDOW_CLOSED` as 429, the validation-errors map — against bytes captured from the running backend |
 | `ReservationCoordinatorTests` | Won race, lost race, concurrent double-tap, timeout reconciliation, suffix collision, `DUPLICATE_REQUEST` vs `ALREADY_RESERVED` |
 | `ServerClockTests` | Extrapolation, skew detection, and the window's open/shut boundaries including the midnight rollover |
-| `BoardLayoutTests` | That all 80 cells fit a 6.1-inch screen at a 44pt target — the 6.3 guardrail, asserted rather than eyeballed |
+| `BoardLayoutTests` | That `BoardLayout` fills whatever rectangle it is handed — the arithmetic of the 6.3 guardrail, against a *modelled* 6.1-inch screen |
+| `BoardGeometryUITests` | That the rectangle is the one the screen really has: all 80 cells **hittable** and 44pt in the running app. The model was 44pt light once and the unit tests stayed green through it |
 | `ViewModelTests` | `GridViewModel` and `LoginViewModel`: offline vs failed, sign-out rules, balance movement, countdown gating, deposit paths |
 | `ReservationFlowUITests` | Login → grid → select → confirm → outcome, against in-process fakes |
 | `ScreenshotTests` | Drives the app against the **live** backend and captures each screen. Skipped unless `SCREENSHOTS=1`, so CI never runs it |

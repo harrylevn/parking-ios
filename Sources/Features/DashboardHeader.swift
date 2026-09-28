@@ -14,7 +14,7 @@ struct DashboardHeader: View {
     let onSignOut: () -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: isCompact ? 8 : 12) {
             HStack(spacing: 8) {
                 Label(plate, systemImage: "car.fill")
                     .font(.footnote.weight(.semibold))
@@ -57,9 +57,38 @@ struct DashboardHeader: View {
                 .accessibilityLabel("More options")
             }
 
+            date(for: date)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.top, isCompact ? 2 : 4)
+    }
+
+    /// Which day the board is for.
+    ///
+    /// Two shapes for one fact. The roomy version is a large title over a spelled-out date,
+    /// and it is what runs on iPad and in landscape. In the compact column it collapses to a
+    /// single line, because that column has exactly one flexible row — the board — and the
+    /// ~27pt the second line costs comes off the cell height. At 80 cells over ten rows those
+    /// points are the difference between a 41pt vertical touch target and the 44pt in 6.3's
+    /// Default column, which is a poor trade for a date the countdown card already implies.
+    @ViewBuilder
+    private func date(for date: Date?) -> some View {
+        if isCompact {
+            HStack(spacing: 6) {
+                Text("Tomorrow")
+                    .font(.system(.headline, design: .rounded).weight(.bold))
+                    .foregroundStyle(Theme.Palette.ink)
+                if let date {
+                    Text(date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.Palette.inkMuted)
+                }
+            }
+            .accessibilityElement(children: .combine)
+        } else {
             VStack(alignment: .leading, spacing: 1) {
                 Text("Tomorrow")
-                    .font(.system(isCompact ? .title2 : .largeTitle, design: .rounded).weight(.bold))
+                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .foregroundStyle(Theme.Palette.ink)
                 if let date {
                     Text(date.formatted(.dateTime.weekday(.wide).day().month(.wide)))
@@ -67,9 +96,7 @@ struct DashboardHeader: View {
                         .foregroundStyle(Theme.Palette.inkMuted)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.top, 4)
     }
 
     /// Explicit en_US locale: the default gives "US$120" on a non-US device, which reads as
