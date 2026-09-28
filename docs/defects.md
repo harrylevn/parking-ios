@@ -5,9 +5,10 @@ Two different things are recorded here, and they go to different places:
 * **Section A — errors in the project brief itself.** Instructions from VNCDC that do not do
   what they say. These are not backend defects and cannot be "worked around in the client";
   they need correcting at source.
-* **Section B — backend defects.** The backend is read-only per the brief's guardrail:
-  nothing here was patched. Each item records what was observed, how to reproduce it, and how
-  the client works around it.
+* **Section B — backend defects.** The backend is read-only per the brief's guardrail, with
+  one exception the reviewer agreed on 28/09: D4, idempotency, fixed on the backend branch
+  `feature/reservation-idempotency`. Nothing else was patched. Each item records what was
+  observed, how to reproduce it, and how the client works around it.
 
 Backend under test: `trint218/parking-reservation`, branch `master`, commit `f27120c`.
 Verified 2026-09-21 against a local run (Spring Boot 3.3.4, Java 21, Postgres 15, Redis 7).
@@ -138,10 +139,17 @@ Consequently, after a network timeout the client cannot determine what happened:
 **Suggested fix.** Accept a client-supplied `Idempotency-Key` header and return the original
 response for a repeat, or expose `GET /reservations/me`.
 
-**Workaround.** `ReservationCoordinator` issues exactly one attempt per tap, never retries a
-timed-out reservation, reconciles against the grid, and reports
+**Workaround, as first built.** `ReservationCoordinator` issues exactly one attempt per tap,
+never retries a timed-out reservation, reconciles against the grid, and reports
 `ReservationOutcome.unknown` when it cannot prove the result — rather than guessing. Covered
 by `ReservationCoordinatorTests`.
+
+**Fixed on the backend branch** (reviewer-approved exception to the read-only rule). Both
+suggested fixes were built: an optional `Idempotency-Key` whose repeats replay the first
+outcome, and `GET /reservations/me`. The client now repeats a tap's key after a timeout and
+reads back what committed; the grid reconciliation remains only as the fallback when the
+read-back cannot be reached, which also covers running against `master`. See ADR-007 and
+`ReservationRetryTests`.
 
 ---
 
@@ -191,7 +199,8 @@ while the row survives). That makes it *more* trustworthy than `DUPLICATE_REQUES
 it is the only unambiguous "you already hold a reservation".
 
 **Workaround.** The client trusts `ALREADY_RESERVED` without reconciling and reconciles on
-`DUPLICATE_REQUEST`. Covered by
+`DUPLICATE_REQUEST`. With an Idempotency-Key, `ALREADY_RESERVED` is never this tap's own row, which the
+backend replays as a success instead, so it means an earlier tap holds the space. Covered by
 `ReservationCoordinatorTests.testAlreadyReservedIsTrustedWithoutReconciliation`.
 
 ---

@@ -54,7 +54,7 @@ here is the chain from observation to consequence:
 
 | Observed | Consequence for the client | Decision |
 |---|---|---|
-| Idempotency keyed server-side on `(userId, date)`; no client key, no `GET /reservations`, key cleared on failure | A timed-out reservation is genuinely indeterminate, and a retry returns an equally ambiguous `DUPLICATE_REQUEST` | [ADR-002](architecture.md#adr-002) |
+| Idempotency keyed server-side on `(userId, date)`; no client key, no `GET /reservations`, key cleared on failure | A timed-out reservation is genuinely indeterminate, and a retry returns an equally ambiguous `DUPLICATE_REQUEST`. **Fixed on the backend branch** with the reviewer's agreement: a client key and a read-back | [ADR-002](architecture.md#adr-002), [ADR-007](architecture.md#adr-007) |
 | p95 248 ms, p99 368 ms, max 867 ms under 1000 VUs | The timeout is a correctness setting, not a performance one — every spurious timeout manufactures an indeterminate outcome | [ADR-002](architecture.md#adr-002) |
 | `WINDOW_CLOSED` returned as **HTTP 429** | A conventional transport-layer retry policy would back off and retry a window that opens on a clock — and at 20:00 scale, a self-inflicted thundering herd | [ADR-003](architecture.md#adr-003) |
 | Two 401 shapes: bare filter-chain 401, and JSON `AUTH_FAILED` | Decoding must branch on body emptiness before status, or mistyping a password signs you out — which is what the reference web client does | [ADR-003](architecture.md#adr-003) |
@@ -506,7 +506,7 @@ error.
 |---|---|---|
 | **G** | 80-space grid with availability and plate suffix, **deposit field** and balance display | met — the deposit *field* was missing until this audit; presets alone are not a field |
 | **G** | Window opens at 20:00, countdown from server time not the device clock, do not hardcode 20:00 | met (`ServerClock`, `ReservationWindow`; hour is configuration) |
-| **G** | One tap, exactly one attempt; retry after timeout idempotent and cannot double-book | met (`ReservationCoordinator`, actor-guarded; never retries a timeout) |
+| **G** | One tap, exactly one attempt; retry after timeout idempotent and cannot double-book | met (`ReservationCoordinator`, actor-guarded; a timeout repeats the tap's Idempotency-Key, which the server replays rather than re-runs, then reads back — ADR-007) |
 | **G** | Two response shapes handled, not one — JSON `ErrorResponse` **and** the bare 401 | met (`HTTPClient.decodeFailure` branches on body emptiness) |
 | D | Optimistic UI permitted, with correct visible rollback | **swapped** — reservation stays pessimistic, defended in §4 |
 | D | Grid refresh strategy chosen and defended, no full-grid flicker or scroll jump | kept; 5s poll matched to the server's Redis TTL and kept off Postgres during the race, one refetch at the opening, no-op diffing |

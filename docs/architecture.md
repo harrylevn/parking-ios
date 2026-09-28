@@ -1,6 +1,6 @@
 # Architecture decision records
 
-Six records, one per decision that would actually be argued in review. Each gives the context
+Seven records, one per decision that would actually be argued in review. Each gives the context
 that forced it, what was decided, what else was considered, and what it costs.
 
 This is the decision log. [`design.md`](design.md) carries the problem, the interface, the
@@ -11,13 +11,14 @@ deviation is named explicitly.
 | # | Decision | Status |
 |---|---|---|
 | [001](#adr-001) | Three layers, no dependencies, generated project, Swift 6 | Accepted |
-| [002](#adr-002) | Never claim a reservation the client cannot prove | Accepted — deviates from Default |
+| [002](#adr-002) | Never claim a reservation the client cannot prove | Accepted — deviates from Default; its retry rule superseded by 007 |
 | [003](#adr-003) | Classify errors on the payload, not the HTTP status | Accepted |
 | [004](#adr-004) | Server time and refresh without a push channel | Accepted |
 | [005](#adr-005) | Fit all 80 cells, and adapt when there is room | Accepted — supersedes an earlier reading |
 | [006](#adr-006) | Keychain, biometric re-authentication, and the pinning gap | Accepted — one item **not built** |
+| [007](#adr-007) | Repeat a tap's Idempotency-Key, then read back what committed | Accepted — supersedes part of 002 |
 
-> These six were consolidated from nineteen finer-grained records. The finer records were
+> The first six were consolidated from nineteen finer-grained records. The finer records were
 > mostly one mechanism each, which made the log tedious to review and hid which decisions were
 > genuinely contestable. Nothing was dropped: every decision, deviation and open risk below
 > was in the longer log, including the one correction that matters, in ADR-005.
@@ -38,7 +39,7 @@ and asks in the Default column for a layered architecture, structured concurrenc
 *Three layers, one composition root.* Features (SwiftUI views and `@MainActor` view models),
 Domain (models, protocols, the reservation logic) and Data (HTTP, Keychain, biometrics).
 Domain imports nothing but Foundation. Every service is a protocol, injected from
-`AppEnvironment`, so every collaborator is fakeable and the 97 unit tests need no backend.
+`AppEnvironment`, so every collaborator is fakeable and the 109 unit tests need no backend.
 
 *No third-party dependencies.* `URLSession`, `Security` and `LocalAuthentication` cover
 everything the app does.
@@ -103,7 +104,9 @@ of 1,000 win, a p95 of 248 ms, p99 of 368 ms.
   contention does not apply, such as deposits.
 - One tap is exactly one attempt: `ReservationCoordinator` is an `actor` holding an
   `attemptInFlight` flag, and a second call while one is in flight is refused, not queued.
-- A timeout is **never** retried. The client reconciles against `GET /spaces` by the last three
+- *(Superseded by [ADR-007](#adr-007) once the backend accepted an Idempotency-Key. Kept as
+  written, because it was right for the backend it was written against.)*
+  A timeout is **never** retried. The client reconciles against `GET /spaces` by the last three
   characters of its own plate: exactly one match is evidence, two is a suffix collision and
   yields `unknown`, zero yields `unknown`. `ALREADY_RESERVED` is trusted without reconciliation,
   because it comes from the database's `uk_user_date` constraint rather than from Redis (D7).
@@ -345,3 +348,55 @@ authenticate against, and that is treated as a pass, where production would hard
 the grace period gone it is the only remaining gap in the control. Pinning remains the one
 Default neither kept nor replaced with something built, and it is carried openly as an open
 risk rather than presented as a defended swap.
+
+---
+
+<a name="adr-007"></a>
+## ADR-007 — Repeat a tap's Idempotency-Key, then read back what committed
+
+**Status:** Accepted — **supersedes ADR-002's "a timeout is never retried"**
+
+**Context.** ADR-002's rule followed from the backend: idempotency was derived server-side from
+`(userId, date)`, the key was cleared on failure, and there was nothing to ask, so a retry could
+not be told apart from a second attempt (D4). The reviewer agreed the backend could change. It
+now accepts an optional `Idempotency-Key` header and answers every repeat of a key with the
+first request's outcome, failures included, or `409 IDEMPOTENCY_IN_PROGRESS` while it runs.
+`GET /reservations/me` reads back what committed. The design is in the backend repo, on
+`feature/reservation-idempotency`, under `backend/docs/idempotency/`.
+
+**Decision.**
+
+- One UUID per tap, made after the biometric prompt succeeds. A declined prompt sends nothing
+  and uses no key; the next tap is a new intent with a new key.
+- A timeout, a dropped connection or `IDEMPOTENCY_IN_PROGRESS` repeats **the same key**, up to
+  four sends one second apart (the server's `Retry-After`). A repeat is the same attempt, not a
+  second one, so "one tap, one attempt" still holds; the actor's in-flight flag still refuses a
+  second tap.
+- A replayed failure is final: it is the first send's real outcome.
+- Once any send may have reached the server, no later failure is reported as "nothing
+  happened". A repeat that fails to leave the device proves nothing about the first send.
+- When the repeats run out, or the server answers `DUPLICATE_REQUEST` (some other attempt for
+  the day), `GET /reservations/me` decides. A reservation found there is authoritative and
+  reported as `won`, with the balance fetched from the wallet because the read-back carries
+  none. Nothing found is still `unknown`, not `lost`: a send may still be queued.
+- Only if the read-back cannot be reached does the board get consulted, exactly as ADR-002
+  did. That also keeps the app correct against a backend without the endpoint.
+- `PARKING_IDEMPOTENCY_KEYS=0` turns repeats off. Against a backend that ignores the header, a
+  repeat after a failure the client never heard about is a genuine second attempt, which would
+  break the Guardrail.
+
+**Alternatives.** Keep ADR-002 unchanged and only send the key — wastes the one thing the key
+makes possible. Retry without limit — every repeat is load in the minute the server can least
+afford it, and the user is staring at "Reserving…". Read back first and repeat only if nothing
+is found — a `404` while our request is still queued looks exactly like "nothing happened",
+whereas a repeat of the key gets `IDEMPOTENCY_IN_PROGRESS`, which is the true answer. Drop the
+board reconciliation — it would be dead code against the new backend, but it is the fallback
+against the old one and while the read-back is unreachable.
+
+**Consequences.** `ReservationOutcome.unknown` now means "the server could not be reached, or
+was still processing when the repeats ran out", rather than "every timeout". The worst case in
+front of the user grows from 3 s to about 15 s of "Reserving…" with the elapsed timer running.
+`Reservation.newBalance` became optional, for the read-back. The Guardrail row "retry after
+timeout idempotent and cannot double-book" is now met by the server's key rather than by never
+retrying. `ReservationRetryTests` covers the repeats, the key per tap, the replayed failure,
+the read-back both ways, the unsent repeat and the `never` policy.

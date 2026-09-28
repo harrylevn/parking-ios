@@ -124,6 +124,29 @@ reason did not, and the replacement is a better one: a faster poll mid-race is a
 read per client per interval. It was caught on the day-6 recheck by reading the backend
 source against the docs, which is the standing rule, applied late.
 
+**It drafted the one file the agreement says it does not.** `CLAUDE.md` keeps the
+reconciliation in `ReservationCoordinator` off the list of things AI writes here. For ADR-007 I
+asked for the backend idempotency change and the client side in one go, and the coordinator
+rewrite came back as part of it. It merges only once I have read it line by line and can
+defend each branch myself, and this entry exists so the exception is on the record rather than
+quietly absorbed.
+
+**The backend's own tests had never run.** Before any idempotency code was written, all nine
+existing integration tests errored before an assertion: a modifying query outside a
+transaction, a mock JWT that skipped the app's converter, and two tests expecting a status the
+app has never returned. Testcontainers also could not reach Colima until the Docker API version
+was forced. None of that was visible from reading the code, and building on an unrun suite
+would have meant new tests with nothing proven underneath them.
+
+**The mutation check caught what green could not.** Switching off each of the backend's two
+database fallbacks, and failure recording, made exactly its own test fail. That is the evidence
+the fallbacks are tested, as opposed to merely exercised.
+
+**A flaky UI test nearly got blamed on the change.** After the client change the UI suite
+failed, and on a different test each run. Stashing the change and running the baseline twice
+showed the same failure on `main`: the tap on a board space sometimes does not
+register. It predates ADR-007 and is still open.
+
 ## Tooling in the repository
 
 `.claude/` holds the Claude Code configuration, and it is committed deliberately. The

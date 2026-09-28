@@ -52,7 +52,7 @@ first:
 
 | File | What it is |
 |---|---|
-| `Domain/ReservationCoordinator.swift` | Decides what the app may truthfully claim about a reservation. Enforces one-tap-one-attempt, never retries a timeout, reconciles against the grid, and returns `.unknown` when the result cannot be substantiated. An `actor` because the in-flight flag is the guardrail. |
+| `Domain/ReservationCoordinator.swift` | Decides what the app may truthfully claim about a reservation. Enforces one-tap-one-attempt with one Idempotency-Key per tap, repeats that key after a timeout, reads back with `GET /reservations/me`, falls back to the grid only if that fails, and returns `.unknown` when the result cannot be substantiated. An `actor` because the in-flight flag is the guardrail. |
 | `Domain/ServerClock.swift` | Server time from the HTTP `Date` header anchored to a `ContinuousClock`, because the backend has no time endpoint and the device clock cannot be trusted. `ReservationWindow` models the gate exactly as the backend implements it: opens on the hour, shuts at midnight. |
 | `Data/HTTPClient.swift` | Exists mainly for `decodeFailure`, which branches on **body emptiness, not status**, because the backend answers with two different shapes and treating them as one is a crash. |
 | `Features/BoardLayout.swift` | Sizes the 80-cell board to the space available so every cell fits on a 6.1-inch screen. Pure, so the guardrail is asserted in a unit test rather than eyeballed on a simulator. |

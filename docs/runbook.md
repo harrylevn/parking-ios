@@ -13,12 +13,18 @@ companies over 250 employees.
 
 ## 2. Backend
 
-The backend lives on the **`master`** branch. A plain `git clone` lands on `main`, which
-contains a LICENSE and nothing else.
+The app is built against the **`feature/reservation-idempotency`** branch, which adds the
+`Idempotency-Key` replay and `GET /reservations/me` (ADR-007). A plain `git clone` lands on
+`main`, which contains a LICENSE and nothing else.
 
 ```bash
-git clone -b master https://github.com/trint218/parking-reservation.git
+git clone -b feature/reservation-idempotency https://github.com/trint218/parking-reservation.git
 ```
+
+Running against **`master`** instead is supported, with one setting: put
+`PARKING_IDEMPOTENCY_KEYS=0` in the scheme's environment variables. `master` ignores the key,
+so a repeat after a lost reply could be a genuine second attempt; the setting turns repeats
+off and the app falls back to reconciling against the board, as it did before ADR-007.
 
 Clone it alongside the iOS repo, or set `PARKING_BACKEND` to wherever it lives. Then, from
 the **iOS** repository root:
