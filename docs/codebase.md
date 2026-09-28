@@ -83,7 +83,13 @@ actually takes effect. `InMemoryTokenStore` alongside it for tests.
 matrix; `mySpace` applies the same never-claim-what-you-cannot-prove rule as the coordinator.
 Both `refresh()` and `updateClock()` publish **only on change** — writing an identical value
 to an `@Published` property still fires `objectWillChange`, which cost a 1 Hz full-screen
-invalidation before it was fixed.
+invalidation before it was fixed. It also owns the 20:00 moment (design.md §5.7): one
+refetch as the window opens, the age of the free count once it goes stale, and dropping a
+selection the board shows taken.
+
+**`Features/CountdownPhase.swift`** — early, final minute, final ten seconds, open. Pure,
+so the thresholds are tested without a clock; the hero picks its copy from it and the
+dashboard announces each phase to VoiceOver once.
 
 **`Features/DashboardView.swift`** — chooses between a stacked portrait layout and a
 side-by-side wide layout (iPad, or iPhone landscape). One `.sheet` modifier driven by an
@@ -103,6 +109,7 @@ is reviewable in a diff. Note `CardBackground`'s border overlay carries
 | `BoardLayoutTests` | That `BoardLayout` fills whatever rectangle it is handed — the arithmetic of the 6.3 guardrail, against a *modelled* 6.1-inch screen |
 | `BoardGeometryUITests` | That the rectangle is the one the screen really has: all 80 cells **hittable** and 44pt in the running app. The model was 44pt light once and the unit tests stayed green through it |
 | `ViewModelTests` | `GridViewModel` and `LoginViewModel`: offline vs failed, sign-out rules, balance movement, countdown gating, deposit paths |
+| `OpeningMomentTests` | Countdown phase thresholds; exactly one refetch at the opening and none on launching into an open window; the count's age; a taken pick dropped, a free one kept |
 | `ReservationFlowUITests` | Login → grid → select → confirm → outcome, against in-process fakes |
 | `ScreenshotTests` | Drives the app against the **live** backend and captures each screen. Skipped unless `SCREENSHOTS=1`, so CI never runs it |
 

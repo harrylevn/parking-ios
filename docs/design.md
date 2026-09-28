@@ -374,6 +374,57 @@ Domain no longer holds any of this wording. The reason strings used to be built 
 Foundation and out of reach of a String Catalog; `Uncertainty` is data, and the sentences live
 in `OutcomeSheet` with the rest of the copy.
 
+### 5.7 The 20:00 moment
+
+92% of the people watching this countdown will lose, and most of them lose inside the first
+second — the measured p95 is 248 ms, so the lot can change hands faster than a poll is due.
+The screen is designed for that second, and every change below is about what the app may
+honestly claim during it.
+
+**The countdown has phases, and they change the words, not the layout.** Over a minute out
+it reads "Opens in". In the last minute it says to pick a space; in the last ten seconds it
+says the window is close and the clock takes the accent colour. A minute is enough time to
+pick a space and have the button ready under a thumb, and ten seconds is not, so the copy
+stops suggesting it. Only the words change and never the number of lines, because the
+compact row's height is part of what the 6.1-inch board is measured against in §5.2.
+VoiceOver hears each phase once, at T-60s, T-10s and the opening. A countdown read out
+every second would drown out everything else, and launching the app into a window that is
+already open is not announced as the window opening.
+
+**A space can be picked before the opening, and nothing is sent early.** The confirm bar
+reads "Space 12 picked · tap here once open" and stays disabled until the server clock says
+the window is open. It never sends the attempt on its own: one tap, one attempt means an
+attempt the user did not tap for would break the guardrail. Face ID still prompts for each
+attempt, T-0 included. Asking at T-10s would have saved a second, but it would change what
+the prompt is evidence of — consent to this particular payment — which is the argument the
+deposit prompt was built on (§4).
+
+**The board is fetched again at the opening, once.** A pick made during the countdown is
+only worth confirming if the board it was made from is current, and the next poll can be up
+to five seconds away. The app fetches the board once as it sees the window open, then goes
+back to the normal poll. Polling faster would not help: `/spaces` sits behind a 5-second
+Redis TTL, so a faster poll cannot see anything newer. The fetch rides the 1 Hz clock tick,
+so it lands up to a second late, which matches the `Date` header's own one-second
+resolution. It only fires if the app saw the window shut first.
+
+**The free count says how old it is.** The banner reads "N free at last check", never "N
+free". Once polls stop arriving for more than two intervals, the same line reads "N free as
+of 23s ago". In a 20:00 race a count from ten seconds ago describes a lot that no longer
+exists. The age is published only after that ten-second threshold, not every second: a
+per-second update would re-render the whole screen for as long as the window is open,
+which is the problem §6 item 2 already fixed once. While an attempt is in flight the button
+shows how long it has been waiting ("Reserving… 0:02"), so the wait visibly moves instead
+of looking the same at one second as at three. The system draws that timer itself, so it
+does not re-render the screen either.
+
+**A pick is dropped once the board shows it taken.** Losing a named space refreshes the
+board, and before this the selection stayed on the lost space: the bar still offered
+"Reserve space 12 · $10", a tap that could only fail, and only after another Face ID
+prompt. Now any board that shows the selected space taken clears the selection, and the bar
+falls back to "any free space", which §5.3 shows is the better bet after a loss. The same
+rule is what makes an early pick safe: the board fetched at the opening decides whether
+that pick still stands.
+
 ## 6. What building the interface surfaced
 
 Six real defects, none of them visible to the unit tests, and the last not visible to the UI
@@ -464,7 +515,7 @@ error.
 | **G** | Full state matrix: loading, empty, error, offline, insufficient balance, race lost, success | met (`GridState`, `ReservationOutcome`) |
 | D | HIG, dark mode, no hardcoded user-facing strings (String Catalog or equivalent) | **partly** — HIG and dark mode kept. SwiftUI's `Text("…")` and `Button("…")` literals are `LocalizedStringKey` and extractable, but components taking a plain `String` parameter bypass that, and there is no String Catalog yet. Scheduled day 7. (A *populated* second locale is Stretch, not this row) |
 | D | Dynamic Type to accessibility sizes, VoiceOver labels, 44pt targets, contrast | kept — **44 × 44pt** on a 6.1-inch screen with the reserve bar permanent, measured off the running app by `BoardGeometryUITests`. Twice reported met when it was not; §5.2 has both misses. Board scrolls in landscape, below the reference size, and at accessibility sizes — never in 6.1-inch portrait |
-| D | The 20:00 moment designed deliberately | kept |
+| D | The 20:00 moment designed deliberately | kept — countdown phases, early pick with no early send, refetch at the opening, a count that says its age, stale picks dropped (§5.7; `OpeningMomentTests`) |
 
 ### 6.4 Testing and delivery discipline
 

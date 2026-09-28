@@ -94,6 +94,27 @@ project built and passed all 45 tests under Swift 6 with no source changes at al
 reasoning was not wrong so much as unverified, and an unverified reason presented in the
 confident register of an ADR is hard to distinguish from a real one.
 
+**It tested a clock at the exact edge of its threshold.** The day-6 tests for the count's
+age asserted exactly 10 s and exactly 15 s against `ServerClock`, which extrapolates from a
+monotonic anchor. The anchor moves by microseconds between readings, so one assertion failed
+on the first run (14 against 15) and another would have flipped at random. Both now assert
+well inside the boundary, or accept a range, with a comment saying why. It also took the
+start of the in-flight timer from the server clock while SwiftUI's timer text counts against
+the device clock. That would have shown any clock skew as elapsed time, and it was caught by
+reading the diff, not by a test.
+
+**The test-mutation check was worth running.** Switching each new day-6 behaviour off in turn
+made its test fail. The tests that still passed were the ones checking the opposite case, as
+they should. The first attempt at the check silently proved nothing: the edit left code after
+a `return`, warnings are errors here, and the build failed without printing a single test
+result. A test run with no output is not a pass.
+
+**A person using the app found what neither of us looked for.** At 20:00 the board showed
+space 1 as booked and nothing new opened up. The app and the backend were on different
+opening hours (20 and 11), and a booking made at 15:08 was the only sign of it. The app
+detects the mismatch in one direction only, and this was the other one. It came from a
+person watching the countdown on a real clock, not from any test.
+
 ## Tooling in the repository
 
 `.claude/` holds the Claude Code configuration, and it is committed deliberately. The

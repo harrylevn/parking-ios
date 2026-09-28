@@ -97,9 +97,18 @@ window the server is not using.
 - **From the command line:** `SIMCTL_CHILD_PARKING_WINDOW_HOUR=<hour> xcrun simctl launch
   --terminate-running-process <udid> com.vncdc.parking`. A backend restarted on a new hour
   does not reach an app already running; relaunch it.
+- **Changing the backend's hour** means restarting the API: it reads the hour once, at
+  start-up. Stop it (`Ctrl+C` in its terminal, or `kill $(lsof -tnP -iTCP:8080 -sTCP:LISTEN)`),
+  then `./scripts/backend-up.sh <hour>`. Postgres and Redis keep running, so reservations
+  survive the restart; `make backend-reset` clears them.
+- **Picking an hour to test the countdown:** the window runs from the opening hour until
+  midnight, so any hour at or before the current one is already open. To watch T-60s, T-10s
+  and the opening, use the *next* hour.
 - If they disagree anyway and the app thinks the window is open, the first reservation
   answers `WINDOW_CLOSED` and the app replaces "Reservations are open" with a mismatch
-  warning. The opposite case (app counting down, server already open) is not detectable.
+  warning. The opposite case (app counting down, server already open) is not detected yet. Its
+  symptom is spaces on the board booked for tomorrow while the app still counts down — which
+  can only happen after the server's window has opened. Check `make backend-hour` first.
 
 `make` with no target lists every command.
 
