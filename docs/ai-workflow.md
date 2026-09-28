@@ -115,6 +115,15 @@ opening hours (20 and 11), and a booking made at 15:08 was the only sign of it. 
 detects the mismatch in one direction only, and this was the other one. It came from a
 person watching the countdown on a real clock, not from any test.
 
+**It read the cache's TTL and not its eviction.** The day-1 reading of the backend found that
+`/spaces` is cached for 5 seconds, and "polling faster cannot see anything newer" followed
+from it into an ADR, the design doc, the slides and two code comments. It was true only at
+rest: `ReservationService` clears that cache in the `finally` of every attempt, so during the
+race, which is when the claim was being used, it was false. The decision survived. The
+reason did not, and the replacement is a better one: a faster poll mid-race is a Postgres
+read per client per interval. It was caught on the day-6 recheck by reading the backend
+source against the docs, which is the standing rule, applied late.
+
 ## Tooling in the repository
 
 `.claude/` holds the Claude Code configuration, and it is committed deliberately. The

@@ -16,9 +16,13 @@ enum GridState: Equatable {
 
 @MainActor
 final class GridViewModel: ObservableObject {
-    /// `/spaces` is cached server-side in Redis with a 5-second TTL, so polling faster than
-    /// that cannot surface anything newer — it only burns battery and backend CPU. The
-    /// interval is therefore set by the server's cache, not by taste.
+    /// `/spaces` is cached server-side in Redis with a 5-second TTL, and every reservation
+    /// attempt clears that cache (`ReservationService`'s `finally`). At rest, then, a faster
+    /// poll sees nothing new. During the race it would, but only because each such poll
+    /// misses the cache and rebuilds it from Postgres, and a caller that waits more than
+    /// 500 ms for the rebuild lock reads Postgres directly. A thousand clients polling
+    /// harder would add that load in the same second the reservation path needs the
+    /// database. Five seconds is the TTL's own period, so at rest it costs nothing.
     static let pollInterval: Duration = .seconds(5)
 
     @Published private(set) var state: GridState = .loading
@@ -196,9 +200,11 @@ final class GridViewModel: ObservableObject {
         // Measured, the lot can change hands in well under the five seconds a poll might be
         // away (p95 248 ms under 1000 users), and a pre-selected space is only worth
         // confirming if the board it was picked from is current. One request, not a faster
-        // poll: `/spaces` sits behind a 5-second Redis TTL, so polling harder cannot show
-        // anything newer. This fires on the 1 Hz tick, so it lands up to a second after the
-        // opening — the Date header's own granularity, so nothing finer was available.
+        // poll: the cache is cleared on every attempt, so under the race a faster poll would
+        // be a Postgres read per client per interval, in the second the reservations need
+        // the database (see `pollInterval`). This fires on the 1 Hz tick, so it lands up to a
+        // second after the opening — the Date header's own granularity, so nothing finer was
+        // available.
         if open, hasSeenWindowClosed {
             hasSeenWindowClosed = false
             await refresh()

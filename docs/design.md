@@ -59,7 +59,7 @@ here is the chain from observation to consequence:
 | `WINDOW_CLOSED` returned as **HTTP 429** | A conventional transport-layer retry policy would back off and retry a window that opens on a clock — and at 20:00 scale, a self-inflicted thundering herd | [ADR-003](architecture.md#adr-003) |
 | Two 401 shapes: bare filter-chain 401, and JSON `AUTH_FAILED` | Decoding must branch on body emptiness before status, or mistyping a password signs you out — which is what the reference web client does | [ADR-003](architecture.md#adr-003) |
 | No time endpoint | The countdown anchors the HTTP `Date` header to a monotonic clock; `Date()` would be trivially defeated by changing the device clock | [ADR-004](architecture.md#adr-004) |
-| `/spaces` Redis-cached at 5s | Polling faster cannot surface anything newer, so the interval is the server's, not a matter of taste | [ADR-004](architecture.md#adr-004) |
+| `/spaces` Redis-cached at 5s, cleared on every reservation attempt | At rest a faster poll shows nothing new; in the race it shows newer data only by sending every poll to Postgres, in the second the reservations need it | [ADR-004](architecture.md#adr-004) |
 
 The rule the first two rows produce, and the one this client is built around:
 **never claim a reservation the client cannot substantiate.** `ReservationOutcome` has four
@@ -402,8 +402,10 @@ deposit prompt was built on (§4).
 **The board is fetched again at the opening, once.** A pick made during the countdown is
 only worth confirming if the board it was made from is current, and the next poll can be up
 to five seconds away. The app fetches the board once as it sees the window open, then goes
-back to the normal poll. Polling faster would not help: `/spaces` sits behind a 5-second
-Redis TTL, so a faster poll cannot see anything newer. The fetch rides the 1 Hz clock tick,
+back to the normal poll. It is one request rather than a faster poll because the backend
+clears the `/spaces` cache on every reservation attempt: during the race, polling harder
+would see newer data only by making each poll a Postgres read, from a thousand clients, in
+the second the reservation path needs the database. The fetch rides the 1 Hz clock tick,
 so it lands up to a second late, which matches the `Date` header's own one-second
 resolution. It only fires if the app saw the window shut first.
 
@@ -504,7 +506,7 @@ error.
 | **G** | One tap, exactly one attempt; retry after timeout idempotent and cannot double-book | met (`ReservationCoordinator`, actor-guarded; never retries a timeout) |
 | **G** | Two response shapes handled, not one — JSON `ErrorResponse` **and** the bare 401 | met (`HTTPClient.decodeFailure` branches on body emptiness) |
 | D | Optimistic UI permitted, with correct visible rollback | **swapped** — reservation stays pessimistic, defended in §4 |
-| D | Grid refresh strategy chosen and defended, no full-grid flicker or scroll jump | kept; 5s poll bounded by the server's Redis TTL, no-op diffing |
+| D | Grid refresh strategy chosen and defended, no full-grid flicker or scroll jump | kept; 5s poll matched to the server's Redis TTL and kept off Postgres during the race, one refetch at the opening, no-op diffing |
 
 ### 6.3 UI/UX design and accessibility
 

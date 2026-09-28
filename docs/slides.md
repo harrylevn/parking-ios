@@ -141,7 +141,7 @@ balance or double booking we see in the app is the client's bug. And **80 of 1,0
 | The key is cleared in a `finally` block on failure | The ambiguity is genuinely two-sided |
 | **No `GET /reservations`** | A timed-out reservation cannot be resolved by asking |
 | No time endpoint | Countdown derives from the HTTP `Date` header, anchored to a monotonic clock |
-| `/spaces` is Redis-cached, 5s TTL | Polling faster than 5s cannot reveal anything newer |
+| `/spaces` is Redis-cached, 5s TTL, cleared on every attempt | Polling faster only helps by hitting Postgres mid-race |
 | `plateLast3` is 3 chars across 80 spaces | Reconciliation is a strong hint, **not proof** |
 
 Full defect report with reproduction steps: [`defects.md`](defects.md).
@@ -221,7 +221,8 @@ Six ADRs in [`architecture.md`](architecture.md). The four that carry the produc
 - No time endpoint exists, and `Date()` is trivially defeated by changing the device clock —
   the obvious way to cheat a countdown
 - Skew beyond 30s is surfaced to the user; the window hour is configuration, never a hardcoded 20
-- `/spaces` is Redis-cached at 5s, so polling faster cannot reveal anything newer
+- `/spaces` is Redis-cached at 5s and cleared on every attempt, so polling faster during the
+  race would mean a Postgres read per client per poll
 - Publish only on change: writing an identical `@Published` value still fires
   `objectWillChange`, which invalidated the whole screen at 1 Hz and made the board untappable
   under UI test

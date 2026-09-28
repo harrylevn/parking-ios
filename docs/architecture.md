@@ -172,7 +172,8 @@ the kind of thing a refactor silently breaks.
 **Context.** 6.2 makes the countdown deriving from server time a Guardrail, and asks in the
 Default column for a refresh strategy "chosen and defended … with no full-grid flicker or scroll
 jump on update". The backend offers neither a time endpoint (D5) nor a push channel, and
-`SpaceService` caches `/spaces` in Redis with a **5-second TTL**.
+`SpaceService` caches `/spaces` in Redis with a **5-second TTL**, and `ReservationService`
+clears that cache in the `finally` of every reservation attempt, won or lost.
 
 **Decision.** `ServerClock` is an actor that ingests the `Date` response header from every
 response, anchors it to a `ContinuousClock` instant and extrapolates. Before the first reading
@@ -185,7 +186,10 @@ The grid polls every 5 seconds from a `Task` owned by the view model and cancell
 
 **Alternatives.** `Date()` — trivially defeated by changing the device clock, which is the
 obvious way to cheat a countdown. Adding a `/time` endpoint — forbidden, the backend is
-read-only. A faster poll — cannot beat the server's own cache. Push or SSE — unsupported by the
+read-only. A faster poll — at rest it sees nothing the TTL has not already shown; during the
+race it would see newer data, but only because every attempt empties the cache, so each poll
+becomes a Postgres read (or, past the 500 ms rebuild lock, a direct one) in the second the
+reservation path needs the database. Push or SSE — unsupported by the
 backend; a written design for that migration is in `design.md` §7.
 
 **Consequences.** Two limits are surfaced rather than hidden: the `Date` header has one-second
