@@ -25,7 +25,7 @@ jobs:
       PATH: /opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # archive derives the build number from the commit count
 
@@ -60,7 +60,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: .build/DerivedData/Logs/Test
