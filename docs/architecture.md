@@ -254,7 +254,8 @@ at all.
 
 **Context.** 6.5 makes the session token in the Keychain "with a justified accessibility class"
 a Guardrail, and asks in the Default column for biometric re-authentication before a reservation
-and for certificate pinning against the local backend.
+and for certificate pinning against the local backend. "Before a reservation" is read here as
+the floor, not the ceiling — see *Scope* below.
 
 **Decision.**
 
@@ -266,6 +267,13 @@ no session-scoped exemption. The policy is `.deviceOwnerAuthentication`, not the
 variant, so the device passcode is the automatic fallback. Each attempt builds a fresh
 `LAContext`, because a stored one reintroduces the same exemption through
 `touchIDAuthenticationAllowableReuseDuration`.
+
+*Scope: every action that moves money, not only the reservation.* The Default column names the
+reservation, and the control was first built there alone. That read the requirement as a rule
+about spending rather than about the money path: a deposit credits the wallet, and leaving it
+unchallenged meant anyone holding the unlocked handset could top the balance up while only the
+spend was contested. Both now prompt, and the prompt names the amount, because the control
+exists to evidence consent to *this* transaction. Raised at the week-1 checkpoint.
 
 *Pinning:* **not implemented.** `security.md` documents the threat, what production would use —
 a `URLSessionDelegate` validating the leaf's SPKI hash against a pinned set with at least one

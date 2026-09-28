@@ -236,10 +236,41 @@ final class GridViewModelTests: XCTestCase {
             wallet: StubWallet(depositResult: .success(175))
         ))
 
-        await model.deposit(75)
+        let credited = await model.deposit(75)
 
+        XCTAssertTrue(credited)
         XCTAssertEqual(model.balance, 175)
         XCTAssertNil(model.depositError)
+    }
+
+    /// A deposit moves money, so it carries the same step-up authentication as a
+    /// reservation. Asserted by counting prompts rather than trusting the call site.
+    func testDepositPromptsForReauthentication() async {
+        let reauth = CountingReauthenticator()
+        let model = GridViewModel(environment: makeEnvironment(
+            wallet: StubWallet(depositResult: .success(175)), reauth: reauth
+        ))
+
+        await model.deposit(75)
+
+        let prompts = await reauth.count()
+        XCTAssertEqual(prompts, 1, "A deposit must challenge exactly once")
+    }
+
+    /// Cancelling the prompt leaves the wallet untouched, reports no error — the user chose
+    /// this — and reports failure, so the sheet stays open rather than closing over a
+    /// deposit that never happened.
+    func testDeclinedReauthenticationLeavesTheWalletUntouched() async {
+        let model = GridViewModel(environment: makeEnvironment(
+            wallet: StubWallet(depositResult: .success(175)),
+            reauth: CountingReauthenticator(succeeds: false)
+        ))
+
+        let credited = await model.deposit(75)
+
+        XCTAssertFalse(credited, "A cancelled prompt must not read as a successful deposit")
+        XCTAssertEqual(model.balance, 100, "Nothing was sent, so nothing was credited")
+        XCTAssertNil(model.depositError, "Cancelling is a choice, not an error to report")
     }
 
     func testDepositFailureSurfacesAMessageAndLeavesBalanceAlone() async {

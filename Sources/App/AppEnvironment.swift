@@ -13,6 +13,11 @@ final class AppEnvironment: ObservableObject {
     let coordinator: ReservationCoordinator
     let window: ReservationWindow
 
+    /// Held here, not only inside `ReservationCoordinator`, because reserving is not the
+    /// only action that moves money: a deposit credits the wallet and must carry the same
+    /// step-up evidence. See `GridViewModel.deposit`.
+    let reauth: Reauthenticating
+
     /// True when the app is driven by a UI test.
     ///
     /// Two things hang off it, both of which are about removing nondeterminism a test cannot
@@ -50,6 +55,7 @@ final class AppEnvironment: ObservableObject {
         self.serverClock = serverClock
         self.window = window
         self.isUITesting = isUITesting
+        self.reauth = reauth
         self.coordinator = ReservationCoordinator(
             reservations: reservations, spaces: spaces, reauth: reauth
         )

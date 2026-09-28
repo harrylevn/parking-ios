@@ -205,6 +205,13 @@ The Default asks for Face ID before a reservation is submitted. It is built exac
 `.deviceOwnerAuthentication`, so a user without biometrics uses the passcode rather than being
 locked out.
 
+**Deposit prompts too, as of the week-1 feedback.** The Default names the reservation, and I
+built it there alone — which read the requirement as being about spending when it is about the
+money path. A deposit credits the wallet: unchallenged, anyone holding the unlocked handset
+could move money while only the spend was contested. Both now prompt, and the prompt names the
+amount, because consent is to a transaction and not to a session. The argument below was
+already written in `design.md`; I had not followed it all the way through.
+
 This is not what I first shipped, and the change is worth a minute of the checkpoint because
 the reasoning is the point. The first version carried a 120-second grace period, defended from
 the race: a prompt in the critical path of a contest decided in milliseconds costs seconds,
@@ -215,7 +222,7 @@ bought no security.
 The flaw is in what that weighs. Step-up authentication here is not a proportionality control
 keyed to $10; it exists to evidence that the account holder consented to *this* transaction.
 A session-scoped exemption destroys that evidence, and costs an attacker holding the unlocked
-handset nothing. `CLAUDE.md` claims a banking bar for this repository, and the one action that
+handset nothing. `CLAUDE.md` claims a banking bar for this repository, and an action that
 moves money was where that claim was not being met.
 
 The race cost is accepted rather than designed around, and it is not yet measured on device —

@@ -99,7 +99,16 @@ proportionality control keyed to the amount at risk; it exists to produce eviden
 account holder consented to *this* transaction. A session-scoped exemption destroys exactly
 that evidence, and it is free to anyone holding the unlocked handset — the wrong party to make
 it cheap for. `CLAUDE.md` opens by claiming a banking bar for this repository; an exemption on
-the one action that moves money was the clearest place that claim was not being met.
+an action that moves money was the clearest place that claim was not being met.
+
+The same reasoning decides *which* actions prompt. The Default names the reservation, and the
+control was first built there alone — which quietly read the requirement as being about
+spending rather than about the money path. A deposit credits the wallet; unchallenged, it let
+anyone holding the unlocked handset move money while only the spend was contested. Both
+actions now prompt, and the prompt names the amount, because consent is to a transaction and
+not to a session. The week-1 checkpoint raised the deposit gap independently, which is the
+useful kind of confirmation: the principle was already written down here, and had not been
+followed all the way through.
 
 The race cost is real, and it is now accepted rather than designed around. It is also not yet
 measured on device; a simulator figure would flatter it, so the measurement is a day-9

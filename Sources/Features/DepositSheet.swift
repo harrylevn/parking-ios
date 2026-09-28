@@ -100,9 +100,12 @@ struct DepositSheet: View {
                 guard let amount else { return }
                 Task {
                     isBusy = true
-                    await model.deposit(amount)
+                    let credited = await model.deposit(amount)
                     isBusy = false
-                    if model.depositError == nil { dismiss() }
+                    // Only a real credit closes the sheet. Dismissing whenever no error was
+                    // set would close it on a cancelled Face ID too, which reads as a
+                    // deposit that happened.
+                    if credited { dismiss() }
                 }
             } label: {
                 if isBusy {

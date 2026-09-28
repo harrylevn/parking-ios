@@ -28,10 +28,21 @@ only credentials in the repo are synthetic (`TEST-####`). `.gitignore` blocks `*
 
 ## Re-authentication
 
-Face ID / Touch ID before a reservation, via `.deviceOwnerAuthentication` so the device
-passcode is the automatic fallback — a user without biometrics, or locked out after failed
-attempts, can still reserve. The biometrics-only policy would lock those users out of the
-product entirely.
+Face ID / Touch ID before **any action that moves money**, via `.deviceOwnerAuthentication` so
+the device passcode is the automatic fallback — a user without biometrics, or locked out after
+failed attempts, can still reserve. The biometrics-only policy would lock those users out of
+the product entirely.
+
+Two actions qualify, and the prompt names the amount in both:
+
+| Action | Prompt |
+|---|---|
+| Reserve a space (debits $10) | "Confirm your parking reservation" |
+| Deposit into the wallet (credits it) | "Confirm a $50 deposit" |
+
+The deposit was added after the week-1 checkpoint raised it. Gating only the reservation read
+the requirement as being about spending rather than about the money path, and left the credit
+side reachable by anyone holding the unlocked handset.
 
 **Every attempt prompts.** There is no grace period and no session-scoped exemption: a
 reservation debits $10, and the control exists to evidence consent to *this* transaction

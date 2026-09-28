@@ -85,7 +85,7 @@ into the wrong column once already.
 | 6.4 | Tests against fakes never the live backend; SwiftLint at zero violations | ✅ kept — one disclosed exception, §9.4 |
 | 6.4 | `xcodebuild archive` in CI, build number from the commit, `runbook.md` | ✅ kept |
 | 6.4 | CI on a self-hosted runner | ✅ kept |
-| 6.5 | Face ID / Touch ID before a reservation, correct non-biometric fallback | ✅ kept — every attempt prompts |
+| 6.5 | Face ID / Touch ID before a reservation, correct non-biometric fallback | ✅ kept — every attempt prompts, **and deposit too** (wk-1 feedback) |
 | 6.5 | Certificate pinning, bypass gated to debug builds | ⏳ **not built** — §9.3 |
 | 6.5 | A proposal for measuring AI contribution on a mobile repo | ✅ kept |
 | 6.5 | Data-privacy limits for an AI tool in a banking context | ✅ kept |

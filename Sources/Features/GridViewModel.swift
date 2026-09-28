@@ -195,16 +195,40 @@ final class GridViewModel: ObservableObject {
         environment.account?.balance = latest
     }
 
-    func deposit(_ amount: Decimal) async {
+    /// Credits the wallet, behind the same step-up authentication a reservation carries.
+    ///
+    /// A deposit moves money, so it is a payment action and not a settings change: the
+    /// control exists to evidence that the account holder consented to *this* transaction,
+    /// which is why the amount is named in the prompt. Gating only the reservation left the
+    /// cheaper half of the money path unguarded — anyone holding the unlocked handset could
+    /// top the wallet up, and only the spend was challenged.
+    ///
+    /// Returns `true` only when the wallet was actually credited. A cancelled prompt is the
+    /// user's own choice, so it reports no error — but it must not read as success either,
+    /// or the sheet would close over a deposit that never happened.
+    @discardableResult
+    func deposit(_ amount: Decimal) async -> Bool {
         depositError = nil
+
+        do {
+            try await environment.reauth.authenticate(
+                reason: "Confirm a \(DashboardHeader.money(amount)) deposit"
+            )
+        } catch {
+            return false
+        }
+
         do {
             balance = try await environment.wallet.deposit(amount: amount)
             environment.account?.balance = balance
             Haptics.play(.success)
+            return true
         } catch let error as APIError {
             depositError = error.userFacingMessage
+            return false
         } catch {
             depositError = String(describing: error)
+            return false
         }
     }
 
