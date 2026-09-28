@@ -6,7 +6,20 @@ struct ParkingSpace: Identifiable, Equatable, Sendable {
     /// Last three *characters* of the holder's plate, not digits. Not unique:
     /// collisions across 80 cells are possible, so this identifies a space's
     /// holder only as a hint, never as proof that it is you.
+    ///
+    /// **Always `nil` when the space is available**, enforced below rather than trusted
+    /// from the wire. The backend computes `available` against tomorrow but returns
+    /// `plate_last3` from the row whatever date it holds, so the two fields contradict each
+    /// other for every space whose booking has already passed.
     let plateLast3: String?
+
+    /// A free space has no holder. The backend can say otherwise; this type cannot, so no
+    /// reader has to remember the rule and no view can print a stale plate on a free tile.
+    init(number: Int, isAvailable: Bool, plateLast3: String?) {
+        self.number = number
+        self.isAvailable = isAvailable
+        self.plateLast3 = isAvailable ? nil : plateLast3
+    }
 
     var id: Int { number }
 }

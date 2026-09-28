@@ -133,3 +133,39 @@ extension BoardLayoutTests {
         }
     }
 }
+
+// MARK: - ParkingSpace
+
+/// The backend computes `available` against tomorrow but returns `plate_last3` from the row
+/// on whatever date it was last held, so a space freed by a past booking arrives available
+/// *and* carrying a stranger's plate. On the demo backend that was 15 of 80 spaces, space 4
+/// among them — the board showed them as selectable while printing someone else's plate, which
+/// reads as taken. Raised at the week-1 checkpoint as "shows spaces already booked today".
+final class ParkingSpaceTests: XCTestCase {
+
+    func testAnAvailableSpaceCannotCarryAPlate() {
+        let space = ParkingSpace(number: 4, isAvailable: true, plateLast3: "004")
+
+        XCTAssertNil(space.plateLast3, "A free space has no holder to name")
+    }
+
+    func testAReservedSpaceKeepsItsPlate() {
+        let space = ParkingSpace(number: 4, isAvailable: false, plateLast3: "004")
+
+        XCTAssertEqual(space.plateLast3, "004", "The hint is still needed where it is true")
+    }
+
+    /// Reconciliation after a timeout matches on `plateLast3`, and the plate that matters is
+    /// three characters across 80 cells. A stale plate left on a free space is a candidate for
+    /// a false match on the one path that decides whether the user was charged.
+    func testAStalePlateCannotBeMistakenForOurOwn() {
+        let grid = [
+            ParkingSpace(number: 4, isAvailable: true, plateLast3: "731"),
+            ParkingSpace(number: 9, isAvailable: false, plateLast3: "731")
+        ]
+
+        let held = grid.filter { $0.plateLast3 == "731" }
+
+        XCTAssertEqual(held.map(\.number), [9], "Only the space actually held may match")
+    }
+}

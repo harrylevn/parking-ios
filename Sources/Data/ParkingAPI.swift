@@ -90,7 +90,12 @@ struct SpacesService: SpacesServicing {
             availableSpaces: response.availableSpaces,
             reservedSpaces: response.reservedSpaces,
             spaces: response.spaces.map {
-                ParkingSpace(number: $0.spaceNumber, isAvailable: $0.available, plateLast3: $0.plateLast3)
+                // A plate on an available space is dropped by `ParkingSpace.init`: the
+                // backend contradicts itself on free-but-previously-held spaces, and the
+                // rule belongs with the type rather than at each call site.
+                ParkingSpace(
+                    number: $0.spaceNumber, isAvailable: $0.available, plateLast3: $0.plateLast3
+                )
             }
         )
     }

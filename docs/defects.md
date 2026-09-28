@@ -214,6 +214,55 @@ the brief requires defects be reported rather than worked around silently.
 
 ---
 
+## D9 — `GET /spaces` contradicts itself: free spaces arrive carrying a plate
+
+`SpaceService.fetchAndCacheSpaces` computes the two fields against different dates:
+
+```java
+LocalDate tomorrow = LocalDate.now().plusDays(1);
+.available(space.getReservedDate() == null || !space.getReservedDate().equals(tomorrow))
+.plateLast3(space.getPlateLast3())   // ← no date filter
+```
+
+`available` is correctly scoped to tomorrow. `plateLast3` is returned from the row whatever
+date it holds, and the `spaces` table has a single `reserved_date` column that is never
+cleared once that date passes — there is no check-out, no expiry job, and no nightly reset.
+So every space whose booking is in the past arrives **`available: true` with a stranger's
+plate attached**, and the two fields flatly contradict each other.
+
+**Reproduce** (after the backend has been used on any earlier day):
+
+```
+curl -s localhost:8080/spaces -H "Authorization: Bearer $TOKEN" \
+  | python3 -c "import sys,json;d=json.load(sys.stdin);\
+print(sum(1 for s in d['spaces'] if s['available'] and s.get('plateLast3')),'contradictory of',len(d['spaces']))"
+```
+
+Observed 2026-09-28: **15 of 80**, with `reserved_date` values of 2026-09-24, -25 and -26
+still in the table. Space 4 was among them.
+
+**Impact.** Two, and the second is the one that matters:
+
+1. *Cosmetic but decisive.* A board that prints the plate is telling the user the space is
+   taken while the same payload says it is free. This is what the week-1 checkpoint saw and
+   reported as "the dashboard books tomorrow but still shows spaces booked today".
+2. *Correctness.* `plateLast3` is the **only** reconciliation surface after a timed-out
+   reservation (D4), matched on three characters across 80 cells. Stale plates enlarge the
+   population that can collide with our own suffix on the one path that decides whether the
+   user believes they were charged.
+
+**Workaround.** `ParkingSpace.init` drops `plateLast3` whenever `isAvailable` is true, so the
+contradiction is resolved once at the type rather than at each reader, and no view or
+reconciliation path can observe it. Covered by `ParkingSpaceTests`.
+
+**The fix belongs server-side.** Filtering the plate by the same date as the flag is a
+one-line change; the durable fix is a check-out or expiry that clears `reserved_date` and
+`plate_last3` once the day has passed, which is what the "single `reserved_date` column"
+design is missing. The client cannot distinguish a stale plate from a current one by
+inspection — it infers it only from the `available` flag it is contradicting.
+
+---
+
 ## Appendix — measured behaviour, 1000-VU stress run
 
 Clean database, `FLUSHALL`ed Redis, gate on with the window open. 2026-09-21.
