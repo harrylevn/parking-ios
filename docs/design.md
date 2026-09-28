@@ -284,7 +284,10 @@ in `docs/defects.md` exercised the named-space path only.
 ### 5.4 The losing sheet is designed, not a fallback
 
 92% of users lose. `OutcomeSheet` therefore gives losing the same care as winning: it names
-what happened, never blames the user, and always offers a next action ("Pick another space").
+what happened, never blames the user, and always offers a next action. Losing a named space
+points at "Reserve any space" rather than at picking another, because naming one is the
+losing strategy under contention, and it makes no claim about how many are left: the lot
+changes hands in about 250 ms, so the board is the only thing that knows.
 The fourth state is the one most clients would not have, and it exists because §3 means there
 are genuinely outcomes the client cannot resolve. It is **three** sheets rather than one: the
 space probably is yours, two plates share your suffix, or nothing is known either way. It was

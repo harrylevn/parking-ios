@@ -196,8 +196,13 @@ struct OutcomeSheet: View {
             return Style(
                 icon: "person.2.fill", tint: Theme.Palette.accent,
                 title: "Someone was faster",
-                message: "That space went to another driver. Plenty of others may still be free.",
-                detail: nil, action: "Pick another space"
+                message: "That space went to another driver. Nothing was charged.",
+                // No claim about what is left: the lot changes hands in about 250 ms, so a
+                // lost named space usually means a full one, and the board is what knows.
+                // The advice is "any space" because naming one is the losing strategy under
+                // contention; the button only closes the sheet, so its label says so.
+                detail: "Reserve any space takes the first one still free, if any are left.",
+                action: "Back to the board"
             )
         case .lotFull:
             return Style(
