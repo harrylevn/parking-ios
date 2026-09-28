@@ -60,7 +60,7 @@ into the wrong column once already.
 | 6.3 | All 80 spaces legible on a 6.1-inch screen without pinch-zoom | ✅ |
 | 6.3 | Full state matrix: loading, empty, error, offline, no balance, race lost, success | ✅ |
 | 6.4 | Unit tests on domain **and view models**, race and retry genuinely tested | ✅ 84 |
-| 6.4 | At least one UI test covering login, grid and reserve | ✅ 7 |
+| 6.4 | At least one UI test covering login, grid and reserve | ✅ 7 flow tests |
 | 6.4 | CI on every push: build, lint, unit tests, UI tests on a simulator | ✅ |
 | 6.5 | Session token in the Keychain with a justified accessibility class | ✅ |
 | 6.5 | No secrets, keys or credentialled endpoints in the repo or bundle | ✅ |
@@ -90,7 +90,7 @@ into the wrong column once already.
 | 6.5 | A proposal for measuring AI contribution on a mobile repo | ✅ kept |
 | 6.5 | Data-privacy limits for an AI tool in a banking context | ✅ kept |
 
-**Thirteen kept, one deviation defended, one not built and disclosed.**
+**Twelve kept, one deviation defended, one partial, one not built and disclosed.**
 
 ### Stretch — not required
 

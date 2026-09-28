@@ -460,7 +460,7 @@ error.
 | Col | Item | State |
 |---|---|---|
 | **G** | Screen and information architecture designed by you, rationale in `docs/design.md` | met |
-| **G** | All 80 spaces legible on a 6.1-inch screen without pinch-zoom | met — 7×12 at 44×43pt, asserted in `BoardLayoutTests` |
+| **G** | All 80 spaces legible on a 6.1-inch screen without pinch-zoom | met — 8×10 at 40×40pt cells, a 44×44pt target, no scrolling in portrait; measured off the running app by `BoardGeometryUITests`, not modelled. `BoardLayoutTests` once certified a layout the screen could not show (§5.2) |
 | **G** | Full state matrix: loading, empty, error, offline, insufficient balance, race lost, success | met (`GridState`, `ReservationOutcome`) |
 | D | HIG, dark mode, no hardcoded user-facing strings (String Catalog or equivalent) | **partly** — HIG and dark mode kept. SwiftUI's `Text("…")` and `Button("…")` literals are `LocalizedStringKey` and extractable, but components taking a plain `String` parameter bypass that, and there is no String Catalog yet. Scheduled day 7. (A *populated* second locale is Stretch, not this row) |
 | D | Dynamic Type to accessibility sizes, VoiceOver labels, 44pt targets, contrast | kept — **44 × 44pt** on a 6.1-inch screen with the reserve bar permanent, measured off the running app by `BoardGeometryUITests`. Twice reported met when it was not; §5.2 has both misses. Board scrolls in landscape, below the reference size, and at accessibility sizes — never in 6.1-inch portrait |

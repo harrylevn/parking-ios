@@ -241,6 +241,14 @@ cells growing rather than the board scrolling. A bottom-docked bar on a 13-inch 
 the action a hand's travel from the board it refers to, which is why the control moves rather
 than merely resizing.
 
+**Amended after the fact — the figures above were not what the app did.** They came from
+`BoardLayoutTests`, which modelled the screen's chrome instead of measuring it, and were kept
+here as the record of what this ADR originally claimed. Measured off the running app on a
+393×852 screen, the 6.1-inch board is **8 × 10 at 40×40pt cells, a 44×44pt target**, with no
+scrolling; `BoardGeometryUITests` now asserts that on the device. iPhone landscape never landed
+on 10×8: it scrolls by decision, at 9 columns and 44pt. [design.md §5.2 and §5.5](design.md)
+have both measurements and how the model went wrong.
+
 The board is still allowed to scroll at accessibility text sizes, where a fixed layout would
 clip. Clipping is worse than scrolling, and the Guardrail concerns the default reading size.
 
