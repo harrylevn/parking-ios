@@ -241,6 +241,7 @@ struct DashboardView: View {
             spaceNumber: selected,
             balance: model.balance,
             isWindowOpen: model.isWindowOpen,
+            availableSpaces: model.state.grid?.availableSpaces,
             isReserving: model.isReserving,
             style: style,
             onCancel: selected.map { _ in { withAnimation(.snappy) { model.selectedSpace = nil } } },

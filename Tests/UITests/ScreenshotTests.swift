@@ -134,14 +134,21 @@ final class ScreenshotTests: XCTestCase {
 
         XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 10), "back on the board")
 
+        // The resting bar, before anything is selected, is "Reserve any space" and carries a
+        // different identifier from the one below. Asserted here because nothing else in the
+        // suite ever touched it: the rest of this test looks for `dashboard.confirm`, so a run
+        // against a full lot failed on a missing element rather than on the reason for it.
+        XCTAssertTrue(app.buttons["dashboard.reserveAny"].waitForExistence(timeout: 5),
+                      "with nothing selected the bar offers any free space")
+
         // Select a free space to raise the confirm bar.
-        for number in 1...80 where app.buttons["space.\(number)"].exists {
-            let cell = app.buttons["space.\(number)"]
-            if cell.isEnabled {
-                cell.tap()
-                break
-            }
+        var selected = false
+        for number in 1...80 where app.buttons["space.\(number)"].isEnabled {
+            app.buttons["space.\(number)"].tap()
+            selected = true
+            break
         }
+        XCTAssertTrue(selected, "no free space to select — the lot is full; run make backend-reset")
         XCTAssertTrue(app.buttons["dashboard.confirm"].waitForExistence(timeout: 5))
         capture(app, "05-confirm")
 

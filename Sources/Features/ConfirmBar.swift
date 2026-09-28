@@ -18,12 +18,24 @@ struct ConfirmBar: View {
     let spaceNumber: Int?
     let balance: Decimal
     let isWindowOpen: Bool
+    /// Free spaces on the board, or `nil` before one has arrived.
+    ///
+    /// Zero is an unavailable state in its own right, and it was the one state this bar did
+    /// not model: with the lot full the button stayed solid blue and tappable directly under
+    /// a card reading "No spaces left for tomorrow", and the only thing a tap could return
+    /// was `LOT_FULL`. It covers a stale selection too — if the board fills while a space is
+    /// selected, that space now belongs to somebody else.
+    let availableSpaces: Int?
     let isReserving: Bool
     let style: Style
     let onCancel: (() -> Void)?
     let onConfirm: () -> Void
 
     private var canAfford: Bool { balance >= 10 }
+
+    /// Nothing left to take. `nil` is "no board yet", which is not the same as a full one and
+    /// disables nothing.
+    private var isLotFull: Bool { availableSpaces == 0 }
 
     /// One row, not two.
     ///
@@ -57,6 +69,10 @@ struct ConfirmBar: View {
                     }
                 } else if !isWindowOpen {
                     Text("Opens later today")
+                } else if isLotFull {
+                    // Ahead of the balance check on purpose: telling someone to add funds for
+                    // a space that does not exist is worse advice than saying there is none.
+                    Text("No spaces left")
                 } else if !canAfford {
                     Text("Add funds to reserve")
                 } else {
@@ -64,7 +80,7 @@ struct ConfirmBar: View {
                 }
             }
             .buttonStyle(PrimaryButtonStyle())
-            .disabled(isReserving || !isWindowOpen || !canAfford)
+            .disabled(isReserving || !isWindowOpen || isLotFull || !canAfford)
             .accessibilityIdentifier(spaceNumber == nil ? "dashboard.reserveAny" : "dashboard.confirm")
             .accessibilityHint(Text(hint))
         }
@@ -79,9 +95,12 @@ struct ConfirmBar: View {
     }
 
     private var hint: String {
+        if isLotFull {
+            return "Every space for tomorrow is taken. The board refreshes every few seconds."
+        }
         // Said plainly, because "any" is the option most likely to win and the one a user is
         // least likely to try: the server takes the first free space and the pick is final.
-        spaceNumber == nil
+        return spaceNumber == nil
             ? "We take the first free space. Balance after, \(DashboardHeader.money(balance - 10))."
             : "Balance after, \(DashboardHeader.money(balance - 10))."
     }
