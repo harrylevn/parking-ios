@@ -44,8 +44,12 @@ struct DashboardView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
-            if let selected = model.selectedSpace, model.mySpace == nil, !isWide {
-                confirmBar(selected)
+            // Nothing selected still offers a reservation — the web client's "Reserve Any
+            // Space". Without it the only route to a space was picking one, which is both an
+            // extra decision and the losing strategy under contention. Suppressed while a
+            // space is held, like the confirm bar, since the backend allows one per day.
+            if model.mySpace == nil, !isWide, model.state.grid != nil {
+                confirmBar(model.selectedSpace)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -113,7 +117,10 @@ struct DashboardView: View {
         }
         .padding(.horizontal, Theme.Metric.gutter)
         .padding(.top, 2)
-        .padding(.bottom, model.selectedSpace == nil ? 6 : 126)
+        // The bar is now present whenever a reservation is possible, selected or not, and it
+        // is the same height either way — so the board reserves room for it unconditionally
+        // rather than resizing under the user at the moment they tap a space.
+        .padding(.bottom, model.mySpace == nil && model.state.grid != nil ? 84 : 6)
     }
 
     /// Landscape iPhone and iPad. The board takes the full height on the leading side and
@@ -139,8 +146,8 @@ struct DashboardView: View {
                     if let space = model.mySpace {
                         HoldingBanner(spaceNumber: space)
                     }
-                    if let selected = model.selectedSpace, model.mySpace == nil {
-                        confirmPanel(selected)
+                    if model.mySpace == nil, model.state.grid != nil {
+                        confirmPanel(model.selectedSpace)
                     }
                 }
             }
@@ -204,26 +211,25 @@ struct DashboardView: View {
         }
     }
 
-    private func confirmBar(_ selected: Int) -> some View {
-        ConfirmBar(
-            spaceNumber: selected,
-            balance: model.balance,
-            isWindowOpen: model.isWindowOpen,
-            isReserving: model.isReserving,
-            style: .bar,
-            onCancel: { withAnimation(.snappy) { model.selectedSpace = nil } },
-            onConfirm: { Task { await model.reserve(space: selected) } }
-        )
+    private func confirmBar(_ selected: Int?) -> some View {
+        confirm(selected, style: .bar)
     }
 
-    private func confirmPanel(_ selected: Int) -> some View {
+    private func confirmPanel(_ selected: Int?) -> some View {
+        confirm(selected, style: .panel)
+    }
+
+    /// One bar for both cases. `selected == nil` is "any free space", and there is nothing to
+    /// cancel in that state — the bar is the resting state of the screen, not a response to a
+    /// tap, so offering Cancel would suggest a selection the user never made.
+    private func confirm(_ selected: Int?, style: ConfirmBar.Style) -> some View {
         ConfirmBar(
             spaceNumber: selected,
             balance: model.balance,
             isWindowOpen: model.isWindowOpen,
             isReserving: model.isReserving,
-            style: .panel,
-            onCancel: { withAnimation(.snappy) { model.selectedSpace = nil } },
+            style: style,
+            onCancel: selected.map { _ in { withAnimation(.snappy) { model.selectedSpace = nil } } },
             onConfirm: { Task { await model.reserve(space: selected) } }
         )
     }
@@ -299,86 +305,5 @@ private struct SkeletonBoard: View {
         .card(padding: 14)
         .accessibilityIdentifier("grid.loading")
         .accessibilityLabel("Loading spaces")
-    }
-}
-
-/// The commit step. Selecting a space and confirming it are deliberately separate: one tap
-/// must produce exactly one reservation attempt, and a board of 80 small targets is a bad
-/// place to spend money on a mis-tap.
-///
-/// Two presentations, same content: a bar docked to the bottom in portrait, and a card in the
-/// sidebar when there is width for one. A bottom bar on iPad would put the action a hand's
-/// travel away from the board it refers to.
-struct ConfirmBar: View {
-    enum Style { case bar, panel }
-
-    let spaceNumber: Int
-    let balance: Decimal
-    let isWindowOpen: Bool
-    let isReserving: Bool
-    let style: Style
-    let onCancel: () -> Void
-    let onConfirm: () -> Void
-
-    private var canAfford: Bool { balance >= 10 }
-
-    var body: some View {
-        VStack(spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Space \(spaceNumber)")
-                        .font(.headline)
-                        .foregroundStyle(Theme.Palette.ink)
-                    Text("$10.00 · balance after \(DashboardHeader.money(balance - 10))")
-                        .font(.caption)
-                        .foregroundStyle(Theme.Palette.inkMuted)
-                        .monospacedDigit()
-                }
-                Spacer(minLength: 8)
-                Button("Cancel", action: onCancel)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Theme.Palette.inkMuted)
-            }
-
-            Button(action: onConfirm) {
-                if isReserving {
-                    HStack(spacing: 8) {
-                        ProgressView().tint(.white)
-                        Text("Reserving…")
-                    }
-                } else if !isWindowOpen {
-                    Text("Opens later today")
-                } else if !canAfford {
-                    Text("Add funds to reserve")
-                } else {
-                    Label("Confirm with Face ID", systemImage: "faceid")
-                }
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .disabled(isReserving || !isWindowOpen || !canAfford)
-            .accessibilityIdentifier("dashboard.confirm")
-        }
-        .modifier(ConfirmChrome(style: style))
-    }
-}
-
-private struct ConfirmChrome: ViewModifier {
-    let style: ConfirmBar.Style
-
-    func body(content: Content) -> some View {
-        switch style {
-        case .bar:
-            content
-                .padding(Theme.Metric.gutter)
-                .background(.regularMaterial)
-                .overlay(alignment: .top) {
-                    Rectangle()
-                        .fill(Theme.Palette.hairline)
-                        .frame(height: 1)
-                        .allowsHitTesting(false)
-                }
-        case .panel:
-            content.card()
-        }
     }
 }

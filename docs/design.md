@@ -175,17 +175,39 @@ document resolved it the wrong way round — honouring 44pt and letting the boar
 sacrifices the non-negotiable item to protect the negotiable one. Corrected; the reading error
 and its root cause are recorded in [ADR-005](architecture.md#adr-005).
 
-In the end neither has to yield. `BoardLayout` searches column counts for the largest cell size
-that puts all 80 in the space available, ranking a layout that meets 44pt above one that does
-not. Folding the countdown and the counts into one card, and dropping the oversized portrait
-title, bought roughly 110pt — enough that on the 6.1-inch reference the board lands on
-**7 columns × 12 rows at 44×43pt cells**, an effective target of 48.7 × 47.2pt including the
-gutter. All 80 visible, no scrolling, 44pt comfortably cleared.
+`BoardLayout` searches column counts for the largest cell size that puts all 80 in the space
+available, ranking a layout that meets 44pt above one that does not. Folding the countdown and
+the counts into one card, and dropping the oversized portrait title, bought roughly 110pt —
+enough that the board reached **7 columns × 12 rows at 44×43pt cells**, an effective 48.7 ×
+47.2pt including the gutter, with both items satisfied at once.
+
+**That held until the confirm bar became permanent, and now the Default yields by 2pt.**
+Offering "reserve any space" (week-1 feedback, §5.3) means an action bar with nothing selected,
+and a bar that is always there is roughly 78pt off the board on every screen. Seven columns
+need twelve rows; twelve rows need about 40pt more height than remains. The board therefore
+settles on **8 columns × 10 rows**, an effective **42 × 48pt** — 2pt under the Default
+horizontally, with the guardrail untouched: all 80 still visible, still no scrolling.
+
+Two things make this the right way round rather than a regression dressed up:
+
+* The Default is the column that yields. The guardrail is not negotiable and is not touched.
+* **42pt was already what users tapped Confirm on.** The old bar appeared only on selection, so
+  the board stood at 44pt right up until the tap and then reflowed to 8 columns underneath the
+  finger. The resting figure flattered a layout nobody confirmed from. Making the bar permanent
+  makes the board *stable*: the screenshots of the resting and selected states are
+  pixel-identical apart from the bar.
+
+The alternative — keep the bar on selection only — preserves 44pt at rest, keeps the reflow, and
+leaves "any space" needing a less discoverable home, which is the affordance the checkpoint
+asked for in the first place. Rejected on those grounds.
 
 `BoardLayoutTests` asserts this against the 393×852 reference rather than whatever simulator
 happens to be installed — the smallest device available locally is 6.3 inches, and a layout that
-fits there can still breach the guardrail on the screen the brief names. One of those tests
-exists purely to fail if a future change quietly reintroduces the trade-off.
+fits there can still breach the guardrail on the screen the brief names.
+`testSixOneInchBoardHoldsTheLineAtFortyTwoPoints` pins the achieved figure in both directions:
+it fails if the target drops below 42pt, and it *also* fails if 44pt starts being met again, so
+whoever reclaims that height is told to restore the strict check and delete this deviation.
+Larger screens are still held to the full 44pt.
 
 The one place the board is allowed to scroll is at accessibility text sizes, where a fixed board
 would clip. Clipping content is worse than scrolling it, and the guardrail is about legibility
@@ -195,8 +217,26 @@ at the default reading size.
 
 One tap on the board selects; a second, deliberate tap on the confirm bar spends the money.
 The guardrail is one tap, one attempt — and a board of 80 small targets is a bad place to
-commit $10 on a mis-tap. The confirm bar states the space, the price and the balance after,
-so the commitment is legible before it is made.
+commit $10 on a mis-tap. The bar names the space and the price in the button itself, so what
+is being committed to is legible on the control that commits it.
+
+**Selecting a space is optional, and often the wrong move.** The bar is the resting state of
+the screen: with nothing selected it offers "reserve any space", which is the reference web
+client's `Reserve Any Space` and sends `preferredSpaceNumber: null`. This was missing until the
+week-1 checkpoint raised it, and it matters for more than parity. The two backend paths differ
+under contention:
+
+| Request | Query | Behaviour when another transaction holds the row |
+|---|---|---|
+| A named space | `WHERE space_number = :n … FOR UPDATE SKIP LOCKED` | the single row is skipped, nothing is found, `SPACE_UNAVAILABLE` |
+| Any space | `ORDER BY space_number LIMIT 1 FOR UPDATE SKIP LOCKED` | steps over the locked rows and takes the next free one |
+
+So naming a space converts a lost lock race into an outright failure, while "any" only fails
+when the lot is genuinely full. At 20:00, with ~1000 users contending for 80 spaces, "any" is
+the strictly better bet — and it is the option a user is least likely to reach for, which is
+why it is the default state of the bar rather than something hidden behind the selection. The
+figure is read from the backend's own SQL; it has not been measured under load, and the k6 run
+in `docs/defects.md` exercised the named-space path only.
 
 ### 5.4 The losing sheet is designed, not a fallback
 
@@ -313,7 +353,7 @@ error.
 | **G** | All 80 spaces legible on a 6.1-inch screen without pinch-zoom | met — 7×12 at 44×43pt, asserted in `BoardLayoutTests` |
 | **G** | Full state matrix: loading, empty, error, offline, insufficient balance, race lost, success | met (`GridState`, `ReservationOutcome`) |
 | D | HIG, dark mode, no hardcoded user-facing strings (String Catalog or equivalent) | **partly** — HIG and dark mode kept. SwiftUI's `Text("…")` and `Button("…")` literals are `LocalizedStringKey` and extractable, but components taking a plain `String` parameter bypass that, and there is no String Catalog yet. Scheduled day 7. (A *populated* second locale is Stretch, not this row) |
-| D | Dynamic Type to accessibility sizes, VoiceOver labels, 44pt targets, contrast | kept; board scrolls only at accessibility sizes, rather than clipping |
+| D | Dynamic Type to accessibility sizes, VoiceOver labels, 44pt targets, contrast | kept except the 44pt figure, **now 42 × 48pt** on a 6.1-inch screen so the reserve bar can be permanent — defended in §5.2; board scrolls only at accessibility sizes, rather than clipping |
 | D | The 20:00 moment designed deliberately | kept |
 
 ### 6.4 Testing and delivery discipline

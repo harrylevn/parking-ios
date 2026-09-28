@@ -59,7 +59,7 @@ into the wrong column once already.
 | 6.3 | Screen and information architecture designed by me, rationale in `design.md` | ✅ |
 | 6.3 | All 80 spaces legible on a 6.1-inch screen without pinch-zoom | ✅ |
 | 6.3 | Full state matrix: loading, empty, error, offline, no balance, race lost, success | ✅ |
-| 6.4 | Unit tests on domain **and view models**, race and retry genuinely tested | ✅ 73 |
+| 6.4 | Unit tests on domain **and view models**, race and retry genuinely tested | ✅ 78 |
 | 6.4 | At least one UI test covering login, grid and reserve | ✅ 4 |
 | 6.4 | CI on every push: build, lint, unit tests, UI tests on a simulator | ✅ |
 | 6.5 | Session token in the Keychain with a justified accessibility class | ✅ |
@@ -80,7 +80,7 @@ into the wrong column once already.
 | 6.2 | Optimistic UI with visible rollback | 🔄 **swapped** — §9.1 |
 | 6.2 | Grid refresh strategy chosen and defended, no flicker or scroll jump | ✅ kept |
 | 6.3 | HIG, dark mode, no hardcoded strings (String Catalog or equivalent) | ⏳ **partial** — no catalog yet |
-| 6.3 | Dynamic Type to accessibility sizes, VoiceOver, 44pt, contrast | ✅ kept |
+| 6.3 | Dynamic Type to accessibility sizes, VoiceOver, 44pt, contrast | ⚠️ **42 × 48pt** on 6.1" — Default yields so the reserve bar is permanent; guardrail (all 80, no scroll) untouched |
 | 6.3 | The 20:00 moment designed deliberately | ✅ kept |
 | 6.4 | Tests against fakes never the live backend; SwiftLint at zero violations | ✅ kept — one disclosed exception, §9.4 |
 | 6.4 | `xcodebuild archive` in CI, build number from the commit, `runbook.md` | ✅ kept |
@@ -178,7 +178,7 @@ Six ADRs in [`architecture.md`](architecture.md). The four that carry the produc
 
 **Why:**
 - Domain imports nothing but Foundation — the race logic is testable without a network
-- Every collaborator is fakeable, so 73 unit tests need no backend
+- Every collaborator is fakeable, so 78 unit tests need no backend
 - `@MainActor` view models, actor-isolated state where contention is real
 
 ---

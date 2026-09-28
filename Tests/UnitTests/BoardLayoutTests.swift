@@ -12,7 +12,13 @@ final class BoardLayoutTests: XCTestCase {
     /// Chrome measured from the built portrait layout on a 6.1-inch screen: safe areas,
     /// the single header row, the combined countdown + stats card, the legend and padding.
     /// Deliberately generous — if the real layout is tighter the guardrail still holds.
-    private let chromeHeight: CGFloat = 290
+    ///
+    /// Includes the 78pt the confirm bar takes. It used to appear only once a space was
+    /// selected, so the resting board was 78pt taller than this and these tests measured a
+    /// board the user only ever saw before tapping. Offering "any free space" made the bar
+    /// permanent, which is a real 78pt off the board on every screen — the figure belongs
+    /// here rather than in a state the tests never exercised.
+    private let chromeHeight: CGFloat = 368
 
     private var boardAreaOn61Inch: CGSize {
         let screen = BoardLayout.Metrics.referenceScreen
@@ -51,18 +57,33 @@ final class BoardLayoutTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(layout.cellHeight, BoardLayout.Metrics.minCellHeight)
     }
 
-    /// The 44pt figure sits in the **Default** column, so it would yield to the guardrail if
-    /// the two genuinely conflicted. After trimming the chrome they do not: the board fits
-    /// on a 6.1-inch screen *and* clears 44pt on both axes. This test is what stops a future
-    /// change quietly reintroducing the trade-off.
-    func testFittedBoardStillClearsFortyFourPointTargets() throws {
+    /// The 44pt figure sits in the **Default** column and it now yields, on this screen only,
+    /// to the guardrail above it.
+    ///
+    /// Clearing 44pt horizontally needs 7 columns, which needs 12 rows, which needs 40pt more
+    /// height than the board has once the confirm bar is permanent — and the bar is permanent
+    /// so that the action is always offered and the board never reflows under the finger
+    /// tapping it. The alternative was a board that stood at 44pt until the moment of the tap
+    /// and then rearranged itself; the old layout did exactly that, so 42pt was already what
+    /// the user actually confirmed on. See `docs/design.md` §6.3.
+    ///
+    /// This test pins the figure rather than the ideal: 44pt is not met, and a *further*
+    /// regression still fails. Large screens are held to the full 44pt by
+    /// `testBoardGrowsIntoTheSpaceAvailableOnALargerScreen`.
+    func testSixOneInchBoardHoldsTheLineAtFortyTwoPoints() throws {
         let layout = try XCTUnwrap(BoardLayout.fitting(count: 80, in: boardAreaOn61Inch))
 
-        XCTAssertTrue(
+        let horizontal = layout.cellWidth + layout.spacing
+        let vertical = layout.cellHeight + layout.spacing
+        let achieved = "\(horizontal) x \(vertical)pt"
+
+        XCTAssertGreaterThanOrEqual(horizontal, 42, "Touch target regressed to \(achieved)")
+        XCTAssertGreaterThanOrEqual(vertical, 44, "Touch target regressed to \(achieved)")
+        XCTAssertFalse(
             layout.meetsPreferredTouchTarget,
             """
-            Board fits but the touch target regressed to \(layout.cellWidth + layout.spacing) \
-            x \(layout.cellHeight + layout.spacing)pt
+            44pt is met again at \(achieved) — the chrome must have shrunk. Delete this \
+            assertion, restore the strict check, and drop the deviation from docs/design.md.
             """
         )
     }
