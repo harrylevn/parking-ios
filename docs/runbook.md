@@ -470,3 +470,30 @@ the answer. It is `DUPLICATE_REQUEST`: the crash left that user's guard in Redis
 
 Logs and result bundles, with a screenshot of each outcome, are in `.build/rehearsal/`.
 
+## 11. Two users confirming at the same moment
+
+```bash
+TRIALS=20 make concurrent
+```
+
+Needs the backend with the window open (`make backend-now`); it does not take the backend over.
+Two checks:
+
+1. **The API, precisely.** `scripts/concurrent-reserve.py` releases two users' reservations
+   for space 12 from a barrier, within about 40 µs of each other, `TRIALS` times. Every trial
+   must end with one winner, one `SPACE_UNAVAILABLE`, one $10 debit and the space held by the
+   winner. Then the same for "any space", where both must win different spaces. It also prints
+   how often each side won, which shows whether arriving first confers an edge.
+2. **The app, for real.** Two simulators (`iPhone 17 Pro` and `iPhone 17 Pro Max`, override
+   with `CONCURRENT_SIM_A` / `_B`), each signed in as a different user with space 12 selected,
+   tap Confirm at an instant agreed 90 s ahead. One must show the win and the other "Someone
+   was faster", and the database must agree. The script prints how far apart the taps
+   actually landed.
+
+The Simulator app opens so both devices can be watched; each keeps its result on screen for
+30 s (`CONCURRENT_HOLD_SECONDS`). Screenshots of both results are saved to
+`.build/concurrent/screens-<time>/`, ready for slides. Outcomes are matched by accessibility
+identifier, not wording, so the two simulators may run in different languages. Showing one in
+English and one in Vietnamese is a good way to demonstrate the localisation during the same
+race.
+

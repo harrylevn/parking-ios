@@ -57,6 +57,7 @@ against (ADR-007) is not published; see `docs/runbook.md` §2.
 | `make tls` | TLS on `https://localhost:8443` in front of the backend, for certificate pinning; prints the pin |
 | `make pinning-demo` | the app through the TLS proxy: right pin, wrong pin, and a backup pin after rotation |
 | `make rehearse` | the three demo rehearsals, unattended and checked against the database; `ROUNDS=2` for two |
+| `make concurrent` | two users confirm the same space at once: API races, then two simulators tapping together |
 | `make trace` | Instruments trace of the app on the board, idle and then during a 150-user race |
 
 ### Opening the window on demand
