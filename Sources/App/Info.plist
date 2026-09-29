@@ -32,7 +32,7 @@
 		</dict>
 	</dict>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Confirms it is you before a parking space is reserved.</string>
+	<string>Confirms it is you before money moves: reserving a space or adding funds.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

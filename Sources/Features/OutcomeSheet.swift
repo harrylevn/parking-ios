@@ -28,6 +28,9 @@ struct OutcomeSheet: View {
                     .foregroundStyle(style.tint)
                     .symbolRenderingMode(.hierarchical)
             }
+            // Decorative: the title says the same thing in words. Left in, VoiceOver read
+            // the SF Symbol's name, "checkmark circle badge questionmark", before the outcome.
+            .accessibilityHidden(true)
             .padding(.bottom, 18)
 
             Text(style.title)
@@ -63,6 +66,7 @@ struct OutcomeSheet: View {
         .padding(Theme.Metric.gutter)
         .padding(.bottom, 6)
         .frame(maxWidth: .infinity)
+        .scrollsAtLargeText()
         .background(Theme.Palette.surface)
     }
 

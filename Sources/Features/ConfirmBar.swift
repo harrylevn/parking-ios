@@ -67,7 +67,7 @@ struct ConfirmBar: View {
             Button(action: onConfirm) {
                 if isReserving {
                     HStack(spacing: 8) {
-                        ProgressView().tint(.white)
+                        ProgressView().tint(Theme.Palette.onTint)
                         Text("Reserving…")
                         // The system renders this timer itself, so it ticks without
                         // republishing anything from the view model.

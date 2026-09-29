@@ -15,17 +15,21 @@ enum Theme {
     /// "80 errors" when nothing has gone wrong — someone else simply got there first.
     /// Reserved is therefore a calm slate, and colour is spent where it carries meaning:
     /// green for what you can act on, amber for the space that is yours.
+    ///
+    /// Every value that carries text meets WCAG AA's 4.5:1 against the surface or fill it sits
+    /// on, measured rather than judged by eye (docs/accessibility.md). Several did not: the
+    /// green "Done" button was 3.5:1, a held space's gold number 3.0:1 on its own fill.
     enum Palette {
-        static let available = adaptive(light: 0x1B9C5B, dark: 0x3DD68C)
+        static let available = adaptive(light: 0x15803D, dark: 0x3DD68C)
         static let availableFill = adaptive(light: 0xE8F7EF, dark: 0x0F3325)
 
-        static let reserved = adaptive(light: 0x8A94A6, dark: 0x6B7688)
+        static let reserved = adaptive(light: 0x6B7588, dark: 0x7C8699)
         static let reservedFill = adaptive(light: 0xF1F3F7, dark: 0x1C2029)
 
-        static let mine = adaptive(light: 0xB8860B, dark: 0xF5C451)
+        static let mine = adaptive(light: 0x8C6508, dark: 0xF5C451)
         static let mineFill = adaptive(light: 0xFDF4DC, dark: 0x3A2E0C)
 
-        static let accent = adaptive(light: 0x2563EB, dark: 0x60A5FA)
+        static let accent = adaptive(light: 0x1D4ED8, dark: 0x60A5FA)
         static let accentFill = adaptive(light: 0xE6EEFE, dark: 0x13294D)
 
         static let danger = adaptive(light: 0xC0392B, dark: 0xF87171)
@@ -37,6 +41,11 @@ enum Theme {
 
         static let ink = adaptive(light: 0x0F1419, dark: 0xF2F4F7)
         static let inkMuted = adaptive(light: 0x5C6573, dark: 0x99A2B0)
+
+        /// Text on a filled button. White on the light-mode tints, near-black on the dark-mode
+        /// ones: those are brightened to read on a dark canvas, and white on them measured
+        /// between 1.7:1 (amber) and 2.8:1 (red), so every primary button in dark mode failed.
+        static let onTint = adaptive(light: 0xFFFFFF, dark: 0x0B0D11)
     }
 
     // MARK: - Metrics
@@ -138,7 +147,7 @@ struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.Palette.onTint)
             .frame(maxWidth: .infinity)
             .frame(minHeight: 52)
             .background(
@@ -181,5 +190,82 @@ enum Haptics {
     @MainActor
     static func select() {
         UISelectionFeedbackGenerator().selectionChanged()
+    }
+}
+
+// MARK: - Large text
+
+/// Sheets and cards laid out for the default sizes clip at the large ones, and a fixed-height
+/// sheet cannot grow at all, so it truncates. Above `.large` the content is put in a scroll
+/// view instead, where it can take the height it needs. At the default sizes nothing changes,
+/// so the layouts measured against the 6.1-inch screen are untouched.
+struct ScrollsAtLargeText: ViewModifier {
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    func body(content: Content) -> some View {
+        if typeSize > .large {
+            ScrollView { content }
+                .scrollBounceBehavior(.basedOnSize)
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    func scrollsAtLargeText() -> some View {
+        modifier(ScrollsAtLargeText())
+    }
+}
+
+// MARK: - Sheet height
+
+/// Opens a sheet at the height its content needs.
+///
+/// Fixed detents truncated text even at the default size: the ambiguous outcome's message is
+/// longer than 380pt allows, and it ended "…or whether either of…". The content is laid out at
+/// its ideal height and the sheet opens at exactly that, so it fits by construction. It is
+/// measured in place rather than through a hidden copy: a copy laid out taller than its
+/// container read to the accessibility audit as clipped text on every sheet. `minimum` only
+/// covers the first frame, before a measurement exists. Above `.large` the sheet opens full
+/// height and `scrollsAtLargeText` takes over.
+struct FitsContentDetent: ViewModifier {
+    var minimum: CGFloat = 200
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var measured: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        if typeSize > .large {
+            content.presentationDetents([.large])
+        } else {
+            content
+                .fixedSize(horizontal: false, vertical: true)
+                .onGeometryChangeCompat { measured = $0 }
+                .presentationDetents([.height(max(minimum, measured))])
+        }
+    }
+}
+
+private struct HeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+private extension View {
+    /// Reports this view's height. `onGeometryChange` would do it directly, but it needs
+    /// iOS 18 and the deployment target is 17.
+    func onGeometryChangeCompat(_ action: @escaping @MainActor (CGFloat) -> Void) -> some View {
+        background(GeometryReader { proxy in
+            Color.clear.preference(key: HeightKey.self, value: proxy.size.height)
+        })
+        .onPreferenceChange(HeightKey.self) { height in
+            Task { @MainActor in action(height) }
+        }
+    }
+}
+
+extension View {
+    func fitsContentDetent() -> some View {
+        modifier(FitsContentDetent())
     }
 }

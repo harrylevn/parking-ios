@@ -48,8 +48,9 @@ targets:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
-        # Face ID re-authentication before submitting a reservation (6.5).
-        NSFaceIDUsageDescription: Confirms it is you before a parking space is reserved.
+        # Face ID re-authentication before anything that moves money: a reservation or a
+        # deposit (6.5, ADR-006). Translated in Sources/Resources/InfoPlist.xcstrings.
+        NSFaceIDUsageDescription: "Confirms it is you before money moves: reserving a space or adding funds."
         # The local backend is plaintext HTTP. Scoped to localhost only, and this
         # exception is documented in docs/security.md as a local-development bypass.
         NSAppTransportSecurity:

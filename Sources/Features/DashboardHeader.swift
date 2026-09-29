@@ -13,54 +13,80 @@ struct DashboardHeader: View {
     let onWallet: () -> Void
     let onSignOut: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         VStack(spacing: isCompact ? 8 : 12) {
-            HStack(spacing: 8) {
-                Label(plate, systemImage: "car.fill")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Theme.Palette.inkMuted)
-                    .lineLimit(1)
-                    .accessibilityLabel(Text("Signed in as \(plate)"))
-
-                Spacer(minLength: 8)
-
-                Button(action: onWallet) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "wallet.bifold.fill")
-                            .font(.caption2.weight(.semibold))
-                        Text(Self.money(balance))
-                            .font(.subheadline.weight(.bold))
-                            .monospacedDigit()
-                        Image(systemName: "plus.circle.fill")
-                            .font(.caption2)
-                            .opacity(0.65)
+            // At accessibility sizes the plate takes its own line. Sharing one with the wallet
+            // and the menu, it shrank to "TE…" and the balance vanished from its own pill.
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    plateLabel
+                    HStack(spacing: 8) {
+                        walletButton
+                        menu
+                        Spacer(minLength: 0)
                     }
-                    .foregroundStyle(Theme.Palette.accent)
-                    .padding(.horizontal, 11)
-                    .frame(height: Theme.Metric.tapTarget - 10)
-                    .background(Theme.Palette.accentFill, in: .capsule)
                 }
-                .accessibilityIdentifier("dashboard.wallet")
-                .accessibilityLabel(Text("Balance \(Self.money(balance)). Add funds."))
-
-                Menu {
-                    Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive,
-                           action: onSignOut)
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.footnote.weight(.bold))
-                        .foregroundStyle(Theme.Palette.inkMuted)
-                        .frame(width: Theme.Metric.tapTarget - 10, height: Theme.Metric.tapTarget - 10)
-                        .background(Theme.Palette.surface, in: .circle)
-                        .overlay(Circle().strokeBorder(Theme.Palette.hairline, lineWidth: 1))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(spacing: 8) {
+                    plateLabel
+                    Spacer(minLength: 8)
+                    walletButton
+                    menu
                 }
-                .accessibilityLabel("More options")
             }
 
             date(for: date)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.top, isCompact ? 2 : 4)
+    }
+
+    private var plateLabel: some View {
+        Label(plate, systemImage: "car.fill")
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Theme.Palette.inkMuted)
+            .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
+            .accessibilityLabel(Text("Signed in as \(plate)"))
+    }
+
+    private var walletButton: some View {
+        Button(action: onWallet) {
+            HStack(spacing: 5) {
+                Image(systemName: "wallet.bifold.fill")
+                    .font(.caption2.weight(.semibold))
+                Text(Self.money(balance))
+                    .font(.subheadline.weight(.bold))
+                    .monospacedDigit()
+                Image(systemName: "plus.circle.fill")
+                    .font(.caption2)
+                    .opacity(0.65)
+            }
+            .foregroundStyle(Theme.Palette.accent)
+            .padding(.horizontal, 11)
+            // A minimum, not a height: fixed at 34pt it clipped the amount at large sizes.
+            .frame(minHeight: Theme.Metric.tapTarget - 10)
+            .background(Theme.Palette.accentFill, in: .capsule)
+        }
+        .accessibilityIdentifier("dashboard.wallet")
+        .accessibilityLabel(Text("Balance \(Self.money(balance)). Add funds."))
+    }
+
+    private var menu: some View {
+        Menu {
+            Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive,
+                   action: onSignOut)
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(Theme.Palette.inkMuted)
+                .frame(width: Theme.Metric.tapTarget - 10, height: Theme.Metric.tapTarget - 10)
+                .background(Theme.Palette.surface, in: .circle)
+                .overlay(Circle().strokeBorder(Theme.Palette.hairline, lineWidth: 1))
+        }
+        .accessibilityLabel("More options")
     }
 
     /// Which day the board is for.
@@ -73,7 +99,9 @@ struct DashboardHeader: View {
     /// Default column, which is a poor trade for a date the countdown card already implies.
     @ViewBuilder
     private func date(for date: Date?) -> some View {
-        if isCompact {
+        // One line at the default sizes; stacked at accessibility sizes, where side by side
+        // they broke "Tomorrow" mid-word.
+        if isCompact && !typeSize.isAccessibilitySize {
             HStack(spacing: 6) {
                 Text("Tomorrow")
                     .font(.system(.headline, design: .rounded).weight(.bold))

@@ -108,7 +108,7 @@ struct LoginView: View {
                             Task { await model.signIn() }
                         } label: {
                             if model.isBusy {
-                                ProgressView().tint(.white)
+                                ProgressView().tint(Theme.Palette.onTint)
                             } else {
                                 Text("Sign in")
                             }

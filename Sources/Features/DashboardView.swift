@@ -5,6 +5,7 @@ struct DashboardView: View {
     @State private var activeSheet: Sheet?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// One sheet modifier, not two. Attaching two `.sheet` modifiers to the same view is
     /// unreliable in SwiftUI — the second is silently ignored — which showed up as the
@@ -40,7 +41,13 @@ struct DashboardView: View {
             // empty and error cards are short, and without this the whole column sank to the
             // bottom of the screen, header and countdown included.
             Group {
-                if isWide { wideLayout } else { compactLayout }
+                if isWide {
+                    wideLayout
+                } else if typeSize.isAccessibilitySize {
+                    accessibleLayout
+                } else {
+                    compactLayout
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
@@ -48,7 +55,7 @@ struct DashboardView: View {
             // Space". Without it the only route to a space was picking one, which is both an
             // extra decision and the losing strategy under contention. Suppressed while a
             // space is held, like the confirm bar, since the backend allows one per day.
-            if model.mySpace == nil, !isWide, model.state.grid != nil {
+            if model.mySpace == nil, !isWide, !typeSize.isAccessibilitySize, model.state.grid != nil {
                 confirmBar(model.selectedSpace)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
@@ -69,12 +76,14 @@ struct DashboardView: View {
         .sheet(item: $activeSheet, onDismiss: { model.dismissOutcome() }, content: { sheet in
             switch sheet {
             case .deposit:
+                // Sized to the content, not fixed: a fixed height truncated the longest
+                // outcomes even at the default size, and every line of them at the largest.
                 DepositSheet(model: model)
-                    .presentationDetents([.height(340)])
+                    .fitsContentDetent()
                     .presentationDragIndicator(.visible)
             case .outcome(let outcome):
                 OutcomeSheet(outcome: outcome) { activeSheet = nil }
-                    .presentationDetents([.height(380)])
+                    .fitsContentDetent()
             }
         })
         .tint(Theme.Palette.accent)
@@ -89,42 +98,15 @@ struct DashboardView: View {
         // fixed rows give back lands in the cell height — and the cell height is what the
         // 44pt Default is short of on a 6.1-inch screen.
         VStack(spacing: 8) {
-            DashboardHeader(
-                plate: model.plate,
-                balance: model.balance,
-                date: model.state.grid?.date,
-                isCompact: true,
-                onWallet: { activeSheet = .deposit },
-                onSignOut: { model.signOut() }
-            )
+            compactHeader
 
-            // Countdown and counts share one card. Two separate cards cost ~110pt of
-            // chrome, which is the difference between the board fitting on a 6.1-inch
-            // screen at a 44pt target and not fitting at all.
-            VStack(spacing: 8) {
-                CountdownHero(
-                    countdown: model.countdown,
-                    isOpen: model.isWindowOpen,
-                    hasServerTime: model.hasServerTime,
-                    isSkewed: model.isClockSkewed,
-                    availableSpaces: model.state.grid?.availableSpaces,
-                    staleGridAge: model.staleGridAge,
-                    isHourMismatched: model.isWindowHourMismatched,
-                    isCompact: true,
-                    isFramed: false
-                )
-                if let grid = model.state.grid {
-                    Divider().overlay(Theme.Palette.hairline)
-                    StatStrip(grid: grid)
-                }
-            }
-            .card(padding: 10)
+            compactHeroCard
 
             if let space = model.mySpace {
                 HoldingBanner(spaceNumber: space, isConfirmed: model.hasConfirmedReservation)
             }
 
-            board
+            board()
             if model.state.grid != nil { Legend() }
         }
         .padding(.horizontal, Theme.Metric.gutter)
@@ -134,13 +116,79 @@ struct DashboardView: View {
         .padding(.bottom, model.mySpace == nil && model.state.grid != nil ? 84 : 6)
     }
 
+    /// Portrait at accessibility text sizes.
+    ///
+    /// The 6.1-inch guardrail is about the default reading size, and at these sizes nothing
+    /// fits on one screen anyway, so the whole column scrolls. Squeezed into the fixed column
+    /// instead, every row was cut to one truncated line: "Reservatio…", "TAK…", and a header
+    /// whose balance vanished. The bar sits in the bottom inset rather than over the content,
+    /// because at these sizes it is tall enough to hide the last rows of the board.
+    private var accessibleLayout: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                compactHeader
+                compactHeroCard
+                if let space = model.mySpace {
+                    HoldingBanner(spaceNumber: space, isConfirmed: model.hasConfirmedReservation)
+                }
+                board(scrolls: false)
+                if model.state.grid != nil { Legend() }
+            }
+            .padding(.horizontal, Theme.Metric.gutter)
+            .padding(.bottom, 6)
+        }
+        // Kept out of the status bar. With no navigation bar to blur behind, content that
+        // scrolled up ran straight over the clock.
+        .clipped()
+        .safeAreaInset(edge: .bottom) {
+            if model.mySpace == nil, model.state.grid != nil {
+                confirmBar(model.selectedSpace)
+            }
+        }
+    }
+
+    private var compactHeader: some View {
+        DashboardHeader(
+            plate: model.plate,
+            balance: model.balance,
+            date: model.state.grid?.date,
+            isCompact: true,
+            onWallet: { activeSheet = .deposit },
+            onSignOut: { model.signOut() }
+        )
+    }
+
+    /// Countdown and counts share one card. Two separate cards cost ~110pt of chrome, which is
+    /// the difference between the board fitting on a 6.1-inch screen at a 44pt target and not
+    /// fitting at all.
+    private var compactHeroCard: some View {
+        VStack(spacing: 8) {
+            CountdownHero(
+                countdown: model.countdown,
+                isOpen: model.isWindowOpen,
+                hasServerTime: model.hasServerTime,
+                isSkewed: model.isClockSkewed,
+                availableSpaces: model.state.grid?.availableSpaces,
+                staleGridAge: model.staleGridAge,
+                isHourMismatched: model.isWindowHourMismatched,
+                isCompact: true,
+                isFramed: false
+            )
+            if let grid = model.state.grid {
+                Divider().overlay(Theme.Palette.hairline)
+                StatStrip(grid: grid)
+            }
+        }
+        .card(padding: 10)
+    }
+
     /// Landscape iPhone and iPad. The board takes the full height on the leading side and
     /// everything else becomes a sidebar, so the grid stays square-ish instead of being
     /// squashed into a letterbox.
     private var wideLayout: some View {
         HStack(alignment: .top, spacing: 14) {
             VStack(spacing: 8) {
-                board
+                board()
                 if model.state.grid != nil { Legend() }
             }
             .frame(maxWidth: .infinity)
@@ -191,7 +239,7 @@ struct DashboardView: View {
     }
 
     @ViewBuilder
-    private var board: some View {
+    private func board(scrolls: Bool = true) -> some View {
         switch model.state {
         case .loading:
             SkeletonBoard()
@@ -227,7 +275,7 @@ struct DashboardView: View {
             // to 80 were on screen and tappable, and none of them readable.
             VStack(spacing: 8) {
                 if isWide { StatStrip(grid: grid) }
-                BoardView(grid: grid, model: model)
+                BoardView(grid: grid, model: model, scrolls: scrolls)
             }
             // Tighter than the other cards, and deliberately so — see `boardCardPadding`.
             // Those eight points of padding are the difference between a 43pt cell and the

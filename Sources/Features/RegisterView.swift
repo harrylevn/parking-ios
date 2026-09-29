@@ -234,7 +234,7 @@ struct RegisterView: View {
                 Task { await model.register() }
             } label: {
                 if model.isBusy {
-                    ProgressView().tint(.white)
+                    ProgressView().tint(Theme.Palette.onTint)
                 } else {
                     Text("Create account")
                 }

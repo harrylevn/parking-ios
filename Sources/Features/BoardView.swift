@@ -16,8 +16,20 @@ struct BoardView: View {
     /// Landscape is the one place the guardrail yields: ~270pt of board height cannot hold
     /// ten rows at any usable size, so the board scrolls at a full target instead.
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    /// False when an enclosing scroll view already scrolls the whole screen, which is how the
+    /// portrait dashboard lays out at accessibility sizes. A board that also scrolled would
+    /// nest one scroll view in another, and its `GeometryReader` would be offered no height.
+    var scrolls = true
 
     var body: some View {
+        if typeSize.isAccessibilitySize && !scrolls {
+            accessibleGrid
+        } else {
+            sizedBoard
+        }
+    }
+
+    private var sizedBoard: some View {
         GeometryReader { proxy in
             let layout = BoardLayout.fitting(count: grid.spaces.count, in: proxy.size)
 
@@ -67,12 +79,17 @@ struct BoardView: View {
     /// Fallback for accessibility text sizes: same board, allowed to scroll rather than clip.
     private func accessibleBoard() -> some View {
         ScrollView {
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 5),
-                spacing: 5
-            ) {
-                cells(height: 52, spacing: 5)
-            }
+            accessibleGrid
+        }
+    }
+
+    /// Five across at 52pt: large text needs generous cells more than it needs many of them.
+    private var accessibleGrid: some View {
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 5),
+            spacing: 5
+        ) {
+            cells(height: 52, spacing: 5)
         }
     }
 
@@ -108,13 +125,19 @@ struct BoardView: View {
 
 struct StatStrip: View {
     let grid: SpaceGrid
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(spacing: 0) {
+        // Three columns cannot hold three labels at accessibility sizes ("TAK…", "TOT…"), so
+        // there they become three rows.
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 6))
+            : AnyLayout(HStackLayout(spacing: 0))
+        layout {
             stat(value: grid.availableSpaces, label: "Free", tint: Theme.Palette.available)
-            divider
+            if !typeSize.isAccessibilitySize { divider }
             stat(value: grid.reservedSpaces, label: "Taken", tint: Theme.Palette.reserved)
-            divider
+            if !typeSize.isAccessibilitySize { divider }
             stat(value: grid.totalSpaces, label: "Total", tint: Theme.Palette.inkMuted)
         }
         .accessibilityElement(children: .combine)

@@ -10,10 +10,19 @@ struct DepositSheet: View {
     @ObservedObject var model: GridViewModel
     @Environment(\.dismiss) private var dismiss
     @FocusState private var amountFocused: Bool
+    @Environment(\.dynamicTypeSize) private var typeSize
+    // Scaled rather than fixed: at 30 and 38pt flat, the amount was the one figure on the
+    // sheet that ignored the user's text size. These are the default-size values.
+    @ScaledMetric(relativeTo: .title) private var currencySize: CGFloat = 30
+    @ScaledMetric(relativeTo: .largeTitle) private var amountSize: CGFloat = 38
     @State private var amountText = "50"
     @State private var isBusy = false
 
     private let presets: [Decimal] = [10, 20, 50, 100]
+
+    private var presetColumns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 8), count: typeSize > .large ? 2 : 4)
+    }
 
     /// The backend rejects anything below 0.01; the client says so before spending a
     /// round trip to find out.
@@ -39,10 +48,10 @@ struct DepositSheet: View {
 
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text("$")
-                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .font(.system(size: currencySize, weight: .semibold, design: .rounded))
                     .foregroundStyle(Theme.Palette.inkMuted)
                 TextField("0.00", text: $amountText)
-                    .font(.system(size: 38, weight: .bold, design: .rounded))
+                    .font(.system(size: amountSize, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.leading)
@@ -51,7 +60,7 @@ struct DepositSheet: View {
                     .accessibilityLabel("Deposit amount in dollars")
             }
             .padding(.horizontal, 14)
-            .frame(height: 60)
+            .frame(minHeight: 60)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.Palette.canvas, in: .rect(cornerRadius: 12))
             .overlay(
@@ -63,7 +72,8 @@ struct DepositSheet: View {
                     .allowsHitTesting(false)
             )
 
-            HStack(spacing: 8) {
+            // Two by two above the default sizes: four across left each amount "$…".
+            LazyVGrid(columns: presetColumns, spacing: 8) {
                 ForEach(presets, id: \.self) { preset in
                     Button {
                         Haptics.select()
@@ -73,7 +83,7 @@ struct DepositSheet: View {
                             .font(.subheadline.weight(.semibold))
                             .monospacedDigit()
                             .frame(maxWidth: .infinity)
-                            .frame(height: Theme.Metric.tapTarget)
+                            .frame(minHeight: Theme.Metric.tapTarget)
                             .background(Theme.Palette.canvas, in: .rect(cornerRadius: 10))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
@@ -109,7 +119,7 @@ struct DepositSheet: View {
                 }
             } label: {
                 if isBusy {
-                    ProgressView().tint(.white)
+                    ProgressView().tint(Theme.Palette.onTint)
                 } else if let amount {
                     Text("Deposit \(DashboardHeader.money(amount))")
                 } else {
@@ -121,6 +131,7 @@ struct DepositSheet: View {
             .accessibilityIdentifier("deposit.submit")
         }
         .padding(Theme.Metric.gutter)
+        .scrollsAtLargeText()
         .background(Theme.Palette.surface)
     }
 }
