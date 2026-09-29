@@ -362,7 +362,9 @@ not be told apart from a second attempt (D4). The reviewer agreed the backend co
 now accepts an optional `Idempotency-Key` header and answers every repeat of a key with the
 first request's outcome, failures included, or `409 IDEMPOTENCY_IN_PROGRESS` while it runs.
 `GET /reservations/me` reads back what committed. The design is in the backend repo, on
-`feature/reservation-idempotency`, under `backend/docs/idempotency/`.
+`feature/reservation-idempotency`, under `backend/docs/idempotency/`. That branch is local
+to the author's clone and not published (no write access to the backend repo), so anyone else
+runs against `master` with repeats off; see *Decision* below.
 
 **Decision.**
 

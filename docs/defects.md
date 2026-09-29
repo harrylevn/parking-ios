@@ -7,7 +7,7 @@ Two different things are recorded here, and they go to different places:
   they need correcting at source.
 * **Section B — backend defects.** The backend is read-only per the brief's guardrail, with
   one exception the reviewer agreed on 28/09: D4, idempotency, fixed on the backend branch
-  `feature/reservation-idempotency`. Nothing else was patched. Each item records what was
+  `feature/reservation-idempotency`, which is local and not pushed. Nothing else was patched. Each item records what was
   observed, how to reproduce it, and how the client works around it.
 
 Backend under test: `trint218/parking-reservation`, branch `master`, commit `f27120c`.

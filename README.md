@@ -39,10 +39,11 @@ are in [`docs/runbook.md`](docs/runbook.md).
 ### Backend
 
 Each of these runs in the foreground, so give the backend its own terminal. They assume the
-backend is cloned alongside this repo as `../parking-reservation`, **on its
-`feature/reservation-idempotency` branch** (or `master`, with `PARKING_IDEMPOTENCY_KEYS=0` in
-the scheme) — a plain clone lands on `main`, which holds a LICENSE and nothing else. Override the location
-with `PARKING_BACKEND=/path/to/parking-reservation`.
+backend is cloned alongside this repo as `../parking-reservation`, **on its `master`
+branch**, with `PARKING_IDEMPOTENCY_KEYS=0` in the scheme — a plain clone lands on `main`,
+which holds a LICENSE and nothing else. Override the location with
+`PARKING_BACKEND=/path/to/parking-reservation`. The idempotency backend the app is built
+against (ADR-007) is not published; see `docs/runbook.md` §2.
 
 | | |
 |---|---|
