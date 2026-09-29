@@ -68,6 +68,20 @@ final class RehearsalUITests: XCTestCase {
         capture("rehearsal-killed")
     }
 
+    /// Not a rehearsal: the driver for `scripts/trace.sh`, which attaches Instruments to the app
+    /// this launches. It signs in and stays on the board while the script races other users
+    /// for the spaces.
+    func testSitOnTheBoardForATrace() throws {
+        try requireRehearsal("trace")
+        _ = signedIn()
+        let seconds = UInt32(environment["REHEARSAL_TRACE_SECONDS"] ?? "") ?? 45
+        // A plain sleep, not a wait on an element. Waiting polls the app's accessibility tree
+        // continuously, and the first trace measured that instead of the app: 18% of the main
+        // thread was answering the test's queries, the rest unattributed while they ran.
+        sleep(seconds)
+        capture("trace-board")
+    }
+
     // MARK: - Steps
 
     private func signedIn() -> XCUIApplication {
@@ -76,7 +90,11 @@ final class RehearsalUITests: XCTestCase {
         app.launchEnvironment["PARKING_BASE_URL"] = backend
         app.launchEnvironment["PARKING_WINDOW_HOUR"] = environment["REHEARSAL_WINDOW_HOUR"]
         app.launch()
+        signIn(app)
+        return app
+    }
 
+    private func signIn(_ app: XCUIApplication) {
         let plate = app.textFields["login.plate"]
         XCTAssertTrue(plate.waitForExistence(timeout: 15))
         plate.tap()
@@ -88,7 +106,6 @@ final class RehearsalUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["space.\(space)"].waitForExistence(timeout: 20), "the board should load")
         dismissSavePasswordPromptIfPresent(in: app, timeout: 3)
-        return app
     }
 
     private func reserveSpace(in app: XCUIApplication) {
