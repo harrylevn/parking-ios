@@ -207,7 +207,10 @@ struct DashboardView: View {
                 BoardView(grid: grid, model: model)
                 Legend()
             }
-            .card(padding: 10)
+            // Tighter than the other cards, and deliberately so — see `boardCardPadding`.
+            // Those eight points of padding are the difference between a 43pt cell and the
+            // 44pt Default, because the board is eight columns wide.
+            .card(padding: Theme.Metric.boardCardPadding)
         }
     }
 

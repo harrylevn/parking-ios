@@ -48,6 +48,18 @@ enum Theme {
         static let cardCorner: CGFloat = 18
         static let gutter: CGFloat = 16
         static let cellSpacing: CGFloat = 7
+
+        /// Padding inside the board card, tighter than the 12–14 the other cards use.
+        ///
+        /// **Load-bearing, not taste.** The effective touch target of a cell is
+        /// `(boardWidth + spacing) / columns`, so on the 6.1-inch reference every point of
+        /// horizontal padding is worth an eighth of a point of target across eight columns.
+        /// At 10 the board came to 43pt and missed the 44pt Default; at 6 it makes 44pt with
+        /// all 80 cells still visible. `BoardLayoutTests` derives the board's width from this
+        /// constant rather than restating it, so the two cannot drift apart — an earlier
+        /// version hard-coded the inset and went on passing after the layout had changed
+        /// underneath it.
+        static let boardCardPadding: CGFloat = 6
     }
 
     private static func adaptive(light: UInt32, dark: UInt32) -> Color {

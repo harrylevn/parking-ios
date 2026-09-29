@@ -20,10 +20,13 @@ final class BoardLayoutTests: XCTestCase {
     /// here rather than in a state the tests never exercised.
     private let chromeHeight: CGFloat = 368
 
+    /// Derived from the same constants the layout uses, not restated. The width used to be
+    /// `- 24` for the board card's inset; the card was then changed and the literal was not,
+    /// so this measured a board 12pt narrower than the one on screen and kept passing.
     private var boardAreaOn61Inch: CGSize {
         let screen = BoardLayout.Metrics.referenceScreen
         return CGSize(
-            width: screen.width - 2 * Theme.Metric.gutter - 24,
+            width: screen.width - 2 * Theme.Metric.gutter - 2 * Theme.Metric.boardCardPadding,
             height: screen.height - chromeHeight
         )
     }
@@ -57,33 +60,28 @@ final class BoardLayoutTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(layout.cellHeight, BoardLayout.Metrics.minCellHeight)
     }
 
-    /// The 44pt figure sits in the **Default** column and it now yields, on this screen only,
-    /// to the guardrail above it.
+    /// 44pt is **met**, with all 80 cells visible and no scrolling — both columns of 6.3
+    /// satisfied at once, on the screen the brief names.
     ///
-    /// Clearing 44pt horizontally needs 7 columns, which needs 12 rows, which needs 40pt more
-    /// height than the board has once the confirm bar is permanent — and the bar is permanent
-    /// so that the action is always offered and the board never reflows under the finger
-    /// tapping it. The alternative was a board that stood at 44pt until the moment of the tap
-    /// and then rearranged itself; the old layout did exactly that, so 42pt was already what
-    /// the user actually confirmed on. See `docs/design.md` §6.3.
+    /// It was briefly missed. Making the confirm bar permanent took 78pt off the board, which
+    /// dropped it to 43pt, and that was recorded as a defended deviation. The deviation was
+    /// wrong: the shortfall was horizontal, and no amount of vertical space fixes a
+    /// horizontal miss. A cell's effective target is `(boardWidth + spacing) / columns`, so
+    /// across eight columns the eight points of padding inside the board card were worth a
+    /// full point of target — the whole deficit. Trimming the card to
+    /// `Theme.Metric.boardCardPadding` recovered it without touching the bar, the chrome, or
+    /// any other card on the screen.
     ///
-    /// This test pins the figure rather than the ideal: 44pt is not met, and a *further*
-    /// regression still fails. Large screens are held to the full 44pt by
-    /// `testBoardGrowsIntoTheSpaceAvailableOnALargerScreen`.
-    func testSixOneInchBoardHoldsTheLineAtFortyTwoPoints() throws {
+    /// Kept strict deliberately: this is the test that refuses the trade-off, and the
+    /// arithmetic above is why the trade-off was never necessary.
+    func testFittedBoardStillClearsFortyFourPointTargets() throws {
         let layout = try XCTUnwrap(BoardLayout.fitting(count: 80, in: boardAreaOn61Inch))
 
-        let horizontal = layout.cellWidth + layout.spacing
-        let vertical = layout.cellHeight + layout.spacing
-        let achieved = "\(horizontal) x \(vertical)pt"
-
-        XCTAssertGreaterThanOrEqual(horizontal, 42, "Touch target regressed to \(achieved)")
-        XCTAssertGreaterThanOrEqual(vertical, 44, "Touch target regressed to \(achieved)")
-        XCTAssertFalse(
+        XCTAssertTrue(
             layout.meetsPreferredTouchTarget,
             """
-            44pt is met again at \(achieved) — the chrome must have shrunk. Delete this \
-            assertion, restore the strict check, and drop the deviation from docs/design.md.
+            Board fits but the touch target regressed to \(layout.cellWidth + layout.spacing) \
+            x \(layout.cellHeight + layout.spacing)pt
             """
         )
     }

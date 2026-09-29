@@ -181,33 +181,47 @@ the counts into one card, and dropping the oversized portrait title, bought roug
 enough that the board reached **7 columns × 12 rows at 44×43pt cells**, an effective 48.7 ×
 47.2pt including the gutter, with both items satisfied at once.
 
-**That held until the confirm bar became permanent, and now the Default yields by 2pt.**
+**Making the confirm bar permanent briefly broke that, and the first fix was the wrong one.**
 Offering "reserve any space" (week-1 feedback, §5.3) means an action bar with nothing selected,
-and a bar that is always there is roughly 78pt off the board on every screen. Seven columns
-need twelve rows; twelve rows need about 40pt more height than remains. The board therefore
-settles on **8 columns × 10 rows**, an effective **42 × 48pt** — 2pt under the Default
-horizontally, with the guardrail untouched: all 80 still visible, still no scrolling.
+and a bar that is always there costs the board 78pt on every screen. The board fell to
+**43 × 48pt**, and that was written up here as a defended deviation: the Default yields to the
+Guardrail, all 80 cells still visible, 2pt is small.
 
-Two things make this the right way round rather than a regression dressed up:
+That reasoning was comfortable and wrong, and it is worth keeping the correction visible.
+**The shortfall was horizontal, and no amount of vertical space fixes a horizontal miss.** A
+cell's effective target is
 
-* The Default is the column that yields. The guardrail is not negotiable and is not touched.
-* **42pt was already what users tapped Confirm on.** The old bar appeared only on selection, so
-  the board stood at 44pt right up until the tap and then reflowed to 8 columns underneath the
-  finger. The resting figure flattered a layout nobody confirmed from. Making the bar permanent
-  makes the board *stable*: the screenshots of the resting and selected states are
-  pixel-identical apart from the bar.
+```
+(boardWidth + spacing) / columns
+```
 
-The alternative — keep the bar on selection only — preserves 44pt at rest, keeps the reflow, and
-leaves "any space" needing a less discoverable home, which is the affordance the checkpoint
-asked for in the first place. Rejected on those grounds.
+because a tap in the gap between two tiles resolves to the nearer one. At eight columns on a
+393pt screen that is `(337 + 4) / 8 = 42.6`. Every point of horizontal padding is worth an
+eighth of a point of target, and the board card was spending **10pt a side** on padding while
+the argument was about the 78pt bar at the bottom. Trimming the card to
+`Theme.Metric.boardCardPadding` = 6 returns the board to `(349 + 4) / 8 = 44.1`:
+
+| Board card padding | Board width | Cells | Effective target |
+|---|---|---|---|
+| 10pt (as shipped at the checkpoint) | 337pt | 8 × 10 at 39 × 44 | 43 × 48 ✗ |
+| **6pt** | **349pt** | **8 × 10 at 40 × 44** | **44 × 48 ✓** |
+
+So both columns of 6.3 are satisfied at once again: all 80 cells visible, no scrolling, 44pt
+met, *and* the bar stays permanent so the board never reflows under the finger tapping it.
+Nothing else on the screen moved — the page gutter, the other cards and the bar are unchanged.
+
+The lesson is the one worth saying out loud at the demo: a deviation that is easy to defend is
+not the same as a deviation that is necessary. Reaching for the Guardrail-beats-Default rule
+settled the argument before anyone had checked which dimension was actually short.
 
 `BoardLayoutTests` asserts this against the 393×852 reference rather than whatever simulator
 happens to be installed — the smallest device available locally is 6.3 inches, and a layout that
 fits there can still breach the guardrail on the screen the brief names.
-`testSixOneInchBoardHoldsTheLineAtFortyTwoPoints` pins the achieved figure in both directions:
-it fails if the target drops below 42pt, and it *also* fails if 44pt starts being met again, so
-whoever reclaims that height is told to restore the strict check and delete this deviation.
-Larger screens are still held to the full 44pt.
+`testFittedBoardStillClearsFortyFourPointTargets` is strict again, and the board area it
+measures is now derived from `Theme.Metric.gutter` and `Theme.Metric.boardCardPadding` rather
+than a hard-coded inset. That literal is how the miss survived a green suite in the first
+place: the card's padding changed and the test's copy of it did not, so it went on measuring a
+board 12pt narrower than the one on screen.
 
 The one place the board is allowed to scroll is at accessibility text sizes, where a fixed board
 would clip. Clipping content is worse than scrolling it, and the guardrail is about legibility
@@ -402,7 +416,7 @@ error.
 | **G** | All 80 spaces legible on a 6.1-inch screen without pinch-zoom | met — 7×12 at 44×43pt, asserted in `BoardLayoutTests` |
 | **G** | Full state matrix: loading, empty, error, offline, insufficient balance, race lost, success | met (`GridState`, `ReservationOutcome`) |
 | D | HIG, dark mode, no hardcoded user-facing strings (String Catalog or equivalent) | **partly** — HIG and dark mode kept. SwiftUI's `Text("…")` and `Button("…")` literals are `LocalizedStringKey` and extractable, but components taking a plain `String` parameter bypass that, and there is no String Catalog yet. Scheduled day 7. (A *populated* second locale is Stretch, not this row) |
-| D | Dynamic Type to accessibility sizes, VoiceOver labels, 44pt targets, contrast | kept except the 44pt figure, **now 42 × 48pt** on a 6.1-inch screen so the reserve bar can be permanent — defended in §5.2; board scrolls only at accessibility sizes, rather than clipping |
+| D | Dynamic Type to accessibility sizes, VoiceOver labels, 44pt targets, contrast | kept — **44 × 48pt** on a 6.1-inch screen with the reserve bar permanent; briefly 43pt and recorded as a deviation until §5.2 found the shortfall was horizontal. Board scrolls only at accessibility sizes, rather than clipping |
 | D | The 20:00 moment designed deliberately | kept |
 
 ### 6.4 Testing and delivery discipline

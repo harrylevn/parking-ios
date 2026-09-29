@@ -80,7 +80,7 @@ into the wrong column once already.
 | 6.2 | Optimistic UI with visible rollback | 🔄 **swapped** — §9.1 |
 | 6.2 | Grid refresh strategy chosen and defended, no flicker or scroll jump | ✅ kept |
 | 6.3 | HIG, dark mode, no hardcoded strings (String Catalog or equivalent) | ⏳ **partial** — no catalog yet |
-| 6.3 | Dynamic Type to accessibility sizes, VoiceOver, 44pt, contrast | ⚠️ **42 × 48pt** on 6.1" — Default yields so the reserve bar is permanent; guardrail (all 80, no scroll) untouched |
+| 6.3 | Dynamic Type to accessibility sizes, VoiceOver, 44pt, contrast | ✅ kept — **44 × 48pt** on 6.1" with the reserve bar permanent |
 | 6.3 | The 20:00 moment designed deliberately | ✅ kept |
 | 6.4 | Tests against fakes never the live backend; SwiftLint at zero violations | ✅ kept — one disclosed exception, §9.4 |
 | 6.4 | `xcodebuild archive` in CI, build number from the commit, `runbook.md` | ✅ kept |
