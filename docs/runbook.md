@@ -399,8 +399,8 @@ push. It is a worse answer and should be argued for explicitly, not slipped in.
 1. Backend up with the gate **on** and the window shifted to the current hour.
 2. Clean grid (§3), 1000 synthetic users seeded by a k6 setup run.
 3. App on the simulator, `PARKING_WINDOW_HOUR` matching what `make backend-hour` reports.
-4. Rehearsed: a won race, a lost race, and the backend killed mid-reservation
-   (`pkill -f spring-boot:run`) — the app must never show a state that is not true.
+4. Rehearsed: a won race, a lost race, and the backend killed mid-reservation, by
+   `ROUNDS=2 make rehearse` (§10) — the app must never show a state that is not true.
 5. Certificate pinning (§9): `make tls` running, and `make pinning-demo` green on the day.
 
 ## 9. TLS and certificate pinning
@@ -442,4 +442,31 @@ see the lockout a release without a backup pin would suffer.
 fails ordinary validation, and pinning never overrides it. Run `make tls` again with the
 simulator booted, or check `xcrun simctl keychain <udid> add-root-cert .tls/ca.pem`. A release
 build refuses plaintext and ignores environment pins by design.
+
+## 10. Rehearsals
+
+```bash
+ROUNDS=2 make rehearse
+```
+
+Unattended, about four minutes a round. It takes over `:8080`: whatever backend is running is
+stopped, and the backend is started from `../parking-reservation`, which must be on
+`feature/reservation-idempotency`. Each round:
+
+| Step | Drives | Checked against the database |
+|---|---|---|
+| Gate | A reservation on a backend started with the window an hour ahead | `429 WINDOW_CLOSED`, so the gate is on rather than bypassed |
+| Won | `RehearsalUITests.testWonRace`: a funded account reserves space 12 | The account holds space 12; balance 90.00 |
+| Lost | The test selects space 12, books it for a rival through the API, then confirms | Space 12 is the rival's; the user is uncharged |
+| Killed | A database lock holds the user's row; the backend is SIGKILLed the moment the reservation is seen waiting | After restart: nothing booked, balance unchanged, as the "Still checking" sheet said |
+
+The window hour is read at start-up, which is why the gate is proved on a separate start: a
+backend with the gate bypassed looks the same as one with it on until something is reserved
+outside the window.
+
+After the killed scenario the script makes one more reservation for the same user and prints
+the answer. It is `DUPLICATE_REQUEST`: the crash left that user's guard in Redis for 24 hours
+(`docs/defects.md` D11). Redis is reset before every scenario, so the rehearsal is unaffected.
+
+Logs and result bundles, with a screenshot of each outcome, are in `.build/rehearsal/`.
 

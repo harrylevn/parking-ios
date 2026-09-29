@@ -295,6 +295,32 @@ apart from the agreed idempotency change.
 
 ---
 
+## D11 — A crash mid-reservation locks that user out for the day
+
+`ReservationService` sets the per-day guard `idem:{userId}:{date}` with a 24-hour TTL before the
+transaction, and deletes it in `finally` only if the attempt fails. A request that dies in
+between (the process is killed, the pod evicted) runs no `finally`: the guard stays for 24
+hours, and so does the one it added to the space counter.
+
+**Observed**, twice, by `make rehearse` on 29/09 (on `feature/reservation-idempotency`, whose
+change does not touch this path; `master` behaves the same). The backend is killed with SIGKILL
+while the reservation waits inside its transaction; nothing commits. After a restart, a fresh
+reservation by the same user, with a new Idempotency-Key, answers `409 DUPLICATE_REQUEST`.
+
+**Impact.** A backend crash during the 20:00 race locks every user caught mid-request out of
+that day's race, and each such request counts one space as taken that nobody holds. The client
+can only say "An earlier attempt is still being processed", which stays untrue for a day.
+
+**Suggested fix.** Hold the guard for the length of an attempt, as the Idempotency-Key record
+already does (120 s), and extend it only on success. After a success the `uk_user_date`
+constraint already prevents a second booking, so the long TTL buys nothing. Reconcile the space
+counter from the database on start-up instead of trusting what a crash left in Redis.
+
+**Workaround.** None in the client: it cannot clear server state. The rehearsal resets Redis
+between scenarios, which is why the demo is unaffected.
+
+---
+
 ## Appendix — measured behaviour, 1000-VU stress run
 
 Clean database, `FLUSHALL`ed Redis, gate on with the window open. 2026-09-21.
