@@ -2,6 +2,9 @@ import Foundation
 
 struct APIConfiguration: Sendable {
     var baseURL: URL
+    /// SPKI hashes the server must present (see `SPKIPin`). Used for every HTTPS request;
+    /// empty with an HTTPS URL means nothing is trusted, so a missing pin fails closed.
+    var pinnedKeys: Set<String> = []
     /// Comfortably above the measured p99 under 1000-VU load (368 ms, max 867 ms).
     /// Set too low, this manufactures timeouts — and a timeout on a reservation is a
     /// correctness problem here, not a latency one, because the outcome becomes unknown.
@@ -17,6 +20,40 @@ struct APIConfiguration: Sendable {
         }
         return APIConfiguration(baseURL: url)
     }()
+
+    /// Where the app points, from the scheme's environment in debug builds only.
+    ///
+    /// `PARKING_BASE_URL` selects the server, and `PARKING_SPKI_PINS` (comma-separated) the
+    /// keys it must present; `scripts/tls-proxy.sh` prints the pin for the local proxy. A
+    /// release build ignores both: its pins would be compiled in rather than taken from the
+    /// environment, where anyone who can launch the app could replace them. There is no
+    /// production server in this exercise, so a release build has nothing to talk to.
+    static func fromEnvironment(_ environment: [String: String]) -> APIConfiguration {
+        #if DEBUG
+        var configuration = localBackend
+        if let raw = environment["PARKING_BASE_URL"], let url = URL(string: raw) {
+            configuration.baseURL = url
+        }
+        configuration.pinnedKeys = Set(
+            (environment["PARKING_SPKI_PINS"] ?? "")
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+        )
+        return configuration
+        #else
+        return localBackend
+        #endif
+    }
+
+    /// Plaintext is a local-development bypass, and exists only in debug builds.
+    var allowsPlaintext: Bool {
+        #if DEBUG
+        return true
+        #else
+        return false
+        #endif
+    }
 }
 
 /// Thin async/await HTTP layer. No completion handlers, no semaphores.
@@ -102,11 +139,24 @@ struct HTTPClient: Sendable {
     private func send<Response: Decodable & Sendable>(
         _ request: URLRequest, as type: Response.Type
     ) async throws -> Response {
+        let isSecure = request.url?.scheme == "https"
+        // Refused before anything is sent. The ATS exception for localhost ships in the
+        // release Info.plist too, so this is what actually keeps release builds off plaintext.
+        guard isSecure || configuration.allowsPlaintext else {
+            throw APIError.untrustedServer
+        }
+        let pinning = isSecure ? PinningTaskDelegate(pins: configuration.pinnedKeys) : nil
+
         let data: Data
         let response: URLResponse
         do {
-            (data, response) = try await session.data(for: request)
+            (data, response) = try await session.data(for: request, delegate: pinning)
         } catch let error as URLError {
+            // The handshake failed on purpose, before any request was sent. Not a transport
+            // failure: retrying cannot help, and "check your connection" would be untrue.
+            if pinning?.didRefuseServer == true {
+                throw APIError.untrustedServer
+            }
             throw APIError.transport(
                 message: error.localizedDescription,
                 failure: Self.transportFailure(for: error.code)

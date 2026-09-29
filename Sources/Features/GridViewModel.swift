@@ -357,6 +357,13 @@ extension APIError {
             }
         case .malformedResponse:
             return String(localized: "The server sent something we couldn't read.")
+        case .untrustedServer:
+            // Says what happened and what did not. "Check your connection" would send the user
+            // to fix a network that may be the very thing that is compromised.
+            return String(localized: """
+                The server's identity couldn't be verified, so nothing was sent. \
+                Try again on a network you trust.
+                """)
         case .business(let response):
             switch response.code {
             case .spaceUnavailable:

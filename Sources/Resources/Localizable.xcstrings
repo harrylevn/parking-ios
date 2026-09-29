@@ -1246,6 +1246,16 @@
         }
       }
     },
+    "The server's identity couldn't be verified, so nothing was sent. Try again on a network you trust.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không xác minh được danh tính máy chủ nên chưa có gì được gửi đi. Hãy thử lại trên mạng mà bạn tin cậy."
+          }
+        }
+      }
+    },
     "This app's opening time doesn't match the server's, so it can't show a countdown.": {
       "localizations": {
         "vi": {

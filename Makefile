@@ -9,7 +9,7 @@ DERIVED     := .build/DerivedData
 BACKEND     := $(or $(PARKING_BACKEND),$(CURDIR)/../parking-reservation)
 COMPOSE     := $(BACKEND)/backend/docker-compose.yml
 
-.PHONY: project build test uitest lint strings strings-check archive clean ci \
+.PHONY: project build test uitest lint strings strings-check archive clean ci tls tls-pin pinning-demo \
         backend backend-now backend-off backend-reset backend-health backend-hour backend-down loadtest help
 
 # Default target: list what there is to run.
@@ -33,6 +33,8 @@ help:
 	@echo '  make backend-health is it up?'
 	@echo '  make backend-hour   which window hour and gate the running backend has'
 	@echo '  make screenshots    regenerate docs/screenshots (needs the backend)'
+	@echo '  make tls            TLS proxy on :8443 in front of the backend; prints the pin'
+	@echo '  make pinning-demo   the app through the proxy, right pin then wrong pin'
 	@echo '  make backend-down   stop postgres and redis'
 	@echo '  make loadtest       k6 stress scenario, 1000 VUs'
 	@echo ''
@@ -122,6 +124,18 @@ clean:
 # Wrappers over scripts/backend-up.sh so the commands are findable from here
 # rather than only in docs/runbook.md. All of them need the backend cloned at
 # $(BACKEND), on its master branch — main holds a LICENSE and nothing else.
+
+# Certificate pinning (docs/security.md). `tls` terminates TLS on :8443 in front of the
+# backend and prints the pin; `pinning-demo` runs the app through it with the right pin and
+# with a wrong one. Both need the backend up.
+tls:
+	./scripts/tls-proxy.sh
+
+tls-pin:
+	@./scripts/tls-proxy.sh pin
+
+pinning-demo: project
+	./scripts/pinning-demo.sh
 
 backend:
 	./scripts/backend-up.sh

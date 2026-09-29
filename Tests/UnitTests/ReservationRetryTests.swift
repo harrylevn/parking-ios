@@ -168,6 +168,20 @@ final class ReservationRetryTests: XCTestCase {
         XCTAssertEqual(calls, 1)
     }
 
+    // MARK: - A refused certificate
+
+    /// The handshake was refused, so nothing was sent. Repeating the key could only reach the
+    /// same server, which may be someone in the middle, so it is final after one attempt.
+    func testUntrustedServerIsRejectedAndNeverRepeated() async {
+        let service = FakeReservationService(.fail(.untrustedServer))
+
+        let outcome = await coordinator(service).attempt(preferredSpace: 7, plate: "TEST-001")
+
+        XCTAssertEqual(outcome, .rejected(.untrustedServer))
+        let calls = await service.calls()
+        XCTAssertEqual(calls, 1)
+    }
+
     // MARK: - A backend without keys
 
     /// Against a backend that ignores the header, a repeat is a real second attempt. The

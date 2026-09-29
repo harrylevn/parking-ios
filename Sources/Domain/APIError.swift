@@ -79,6 +79,12 @@ enum APIError: Error, Sendable, Equatable {
     /// A 2xx body that did not decode, or a non-2xx with an unrecognised shape.
     case malformedResponse(String)
 
+    /// The server's certificate did not carry a pinned key, or failed ordinary validation, so
+    /// the connection was refused during the handshake. Nothing was sent. It may mean someone
+    /// is between the app and the server, so it is never retried and never reported as a
+    /// connection problem.
+    case untrustedServer
+
     var businessCode: BusinessErrorCode? {
         if case let .business(response) = self { return response.code }
         return nil
@@ -103,7 +109,7 @@ enum APIError: Error, Sendable, Equatable {
             return failure == .notSent
         case .business(let response):
             return response.code == .lockTimeout
-        case .unauthenticated, .malformedResponse:
+        case .unauthenticated, .malformedResponse, .untrustedServer:
             return false
         }
     }

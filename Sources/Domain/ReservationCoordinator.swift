@@ -176,9 +176,10 @@ actor ReservationCoordinator {
                 return .failed
             }
 
-        case .unauthenticated, .malformedResponse, .transport:
+        case .unauthenticated, .malformedResponse, .transport, .untrustedServer:
             // `.transport(_, .notSent)` included: on a first send it proves nothing happened,
-            // but on a repeat the first send may still have landed.
+            // but on a repeat the first send may still have landed. `.untrustedServer` too:
+            // the handshake was refused, so this send never left, and it is never repeated.
             return .failed
         }
     }

@@ -63,7 +63,9 @@ final class AppEnvironment: ObservableObject {
     }
 
     /// The real app: Keychain-backed session, live HTTP, biometric re-auth.
-    static func live(configuration: APIConfiguration = .localBackend) -> AppEnvironment {
+    static func live(
+        configuration: APIConfiguration = .fromEnvironment(ProcessInfo.processInfo.environment)
+    ) -> AppEnvironment {
         let tokenStore = KeychainTokenStore()
         let serverClock = ServerClock()
         let client = HTTPClient(
