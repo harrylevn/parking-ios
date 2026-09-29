@@ -2,9 +2,7 @@ import SwiftUI
 
 @main
 struct ParkingApp: App {
-    @StateObject private var environment = ProcessInfo.processInfo.arguments.contains("-UITestMode")
-        ? AppEnvironment.uiTesting()
-        : AppEnvironment.live()
+    @StateObject private var environment = AppEnvironment.forLaunch()
 
     var body: some Scene {
         WindowGroup {

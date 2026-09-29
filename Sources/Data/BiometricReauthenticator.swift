@@ -41,8 +41,10 @@ struct BiometricReauthenticator: Reauthenticating {
     }
 }
 
+#if DEBUG
 /// Always-succeeds stand-in for tests and previews, so the non-biometric path is
-/// exercised without a device.
+/// exercised without a device. Debug builds only: it is a Face ID bypass.
 struct AlwaysAllowReauthenticator: Reauthenticating {
     func authenticate(reason: String) async throws {}
 }
+#endif

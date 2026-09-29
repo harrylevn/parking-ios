@@ -70,7 +70,11 @@ final class AppEnvironment: ObservableObject {
         let serverClock = ServerClock()
         let client = HTTPClient(
             configuration: configuration,
-            session: .shared,
+            // Ephemeral: no disk cache and no persistent cookies, so balances and bookings are
+            // never written to Library/Caches. Nothing was, checked on 29/09, but only because
+            // the backend sends `Cache-Control: no-store` (Spring Security's default), and a
+            // client should not depend on a header it does not control.
+            session: URLSession(configuration: .ephemeral),
             tokenStore: tokenStore,
             serverClock: serverClock
         )
@@ -112,6 +116,20 @@ final class AppEnvironment: ObservableObject {
         return BiometricReauthenticator()
     }
 
+    /// The environment this launch runs in. Test modes exist in debug builds only: in a
+    /// release build `-UITestMode` means nothing, and the fakes and the always-yes
+    /// re-authenticator it would select are not compiled in at all. They used to be, and the
+    /// release binary carried a complete Face ID bypass behind one launch argument.
+    static func forLaunch() -> AppEnvironment {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-UITestMode") {
+            return uiTesting()
+        }
+        #endif
+        return live()
+    }
+
+    #if DEBUG
     /// Deterministic in-memory stack for UI tests, selected by the `-UITestMode` launch
     /// argument. Guardrail 6.4: tests never run against the live backend, so the UI test
     /// stays green whether or not the Spring Boot service happens to be up.
@@ -161,6 +179,7 @@ final class AppEnvironment: ObservableObject {
             isUITesting: true
         )
     }
+    #endif
 
     func signOut() {
         try? tokenStore.clear()
@@ -169,6 +188,8 @@ final class AppEnvironment: ObservableObject {
 }
 
 // MARK: - UI test stubs
+
+#if DEBUG
 
 private struct StubAuthService: AuthServicing {
     let tokenStore: TokenStoring
@@ -282,3 +303,4 @@ private actor StagedGrid {
         heldByUs = appearingAfterAttempt
     }
 }
+#endif
