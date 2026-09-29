@@ -19,12 +19,38 @@ The JWT lives in the Keychain (`Sources/Data/KeychainTokenStore.swift`), never i
 Writes are delete-then-add rather than `SecItemUpdate`, so a change of accessibility class
 actually takes effect instead of silently retaining the previous one.
 
-## Secrets
+## Secrets, logs and data at rest
 
-No secrets, keys or credentialled endpoints are committed or shipped in the bundle. There
-are none to commit: the backend is local and unauthenticated until a user registers, and the
-only credentials in the repo are synthetic (`TEST-####`). `.gitignore` blocks `*.p12`,
-`*.mobileprovision`, `*.cer` and `.env`.
+Checked on 29/09, not assumed:
+
+- **The repository.** Every commit's diff scanned for private keys, JWTs, cloud and GitHub
+  tokens, and credential assignments; no key, certificate or `.env`-style file ever committed.
+  The only hits are synthetic test passwords, and every plate in the history is `TEST-…`.
+  `.gitignore` blocks `*.p12`, `*.mobileprovision`, `*.cer`, `.env` and the pinning demo's
+  `.tls/`, whose keys never leave the machine that generated them.
+- **Logs.** The app contains no logging calls at all: no `print`, `os_log`, `Logger` or
+  `NSLog`, so nothing it handles can reach the device log.
+- **The release bundle.** Seven files: the binary, `Info.plist`, `PkgInfo` and four string
+  tables. No certificates, keys or fixtures; no token or credential in the binary's strings.
+  One real finding, now fixed: the **UI-test environment was compiled into release builds**.
+  Launching the release app with `-UITestMode` would have selected in-memory fakes and an
+  always-yes re-authenticator, a Face ID bypass behind one launch argument, against the code's
+  own claim that the bypass was compiled out. That environment, its stubs and
+  `AlwaysAllowReauthenticator` now exist in debug builds only, and the release binary was
+  re-inspected: no stub strings, no symbols.
+- **Data at rest.** The session token is the only thing the app stores (Keychain, above). The
+  URL cache was empty after a live session, but only because the backend sends
+  `Cache-Control: no-store`, Spring Security's default. The app now uses an ephemeral
+  `URLSession`, so no response is written to disk whatever the server sends.
+- **CI.** No secrets are configured or echoed; the only artifact is test results, whose
+  screenshots show synthetic data.
+
+Still read from the environment in release builds: `PARKING_WINDOW_HOUR` (the countdown only;
+the server enforces the window) and `PARKING_IDEMPOTENCY_KEYS` (turns retries off). Neither is
+a security control. Server URL and pins are not.
+
+**The backend's repository is another matter:** it commits the JWT signing key, so anyone with
+the repository can mint a session for any user (`docs/defects.md` D10).
 
 ## Re-authentication
 

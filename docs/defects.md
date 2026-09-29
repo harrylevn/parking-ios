@@ -272,6 +272,29 @@ inspection — it infers it only from the `available` flag it is contradicting.
 
 ---
 
+## D10 — The JWT signing key is committed to the repository
+
+`backend/src/main/resources/keys/` holds the RSA private key the backend signs session tokens
+with, and `terraform-minimal/` holds a copy. Both have been there since the first commit
+(`ff91cb1`). The default profile (`application.yml`) and the dev profile sign with that
+committed key; only the prod profile reads one from a file path.
+
+**Impact.** Anyone with read access to the repository can mint a valid token for any user id,
+and with it sign in as that user and spend their balance on reservations. Nothing on the
+server tells a minted token from a real one. Here the data is synthetic and the backend local,
+so it harms nobody; the defect is in what the repository makes possible for any deployment
+that forgets the prod profile.
+
+**Suggested fix.** Remove the keys from the repository and from its history, rotate the key
+pair, and have every profile load the signing key from a secret store or an injected path,
+failing to start without one rather than falling back to a bundled key.
+
+**Client impact.** None to work around: the client only stores and presents the token. Found
+during the day-8 secrets check (`docs/security.md`). Not fixed, since the backend is read-only
+apart from the agreed idempotency change.
+
+---
+
 ## Appendix — measured behaviour, 1000-VU stress run
 
 Clean database, `FLUSHALL`ed Redis, gate on with the window open. 2026-09-21.
