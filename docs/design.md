@@ -266,8 +266,24 @@ and hard to follow — see §5.6.
 
 Side-by-side whenever there is width to spare, rather than a second codebase: the board takes
 the leading side at full height, and the header, countdown, holding banner and confirm panel
-become a sidebar. The same 80 cells land on **10 × 8** in iPhone landscape and **6 × 14** on
-iPad, cells growing rather than the board scrolling. The confirm control is docked to the bottom
+become a sidebar. On iPad all 80 cells land on **6 × 14** and grow rather than scroll.
+
+**iPhone landscape is the one place the board scrolls, and that is a decision rather than an
+accident.** A phone on its side gives the board about 392 × 273pt, and 80 cells do fit that —
+but only by driving them to the 30pt floor, a 34pt touch target. Scrolling in landscape was
+accepted explicitly; a 34pt target was not. So `BoardLayout.scrolling` sizes the board from
+width alone, lands on **9 columns at 44pt**, shows 54 cells at a time and scrolls for the rest.
+`BoardView` takes that branch only when the fitted layout misses the target, which the 6.1-inch
+portrait board does not — `testTheSixOneInchPortraitBoardNeverScrolls` is what stops the rule
+leaking onto the screen the brief actually grades.
+
+This replaced a claim in an earlier draft of this document that landscape landed on 10 × 8 with
+cells growing. It never did: the fitted layout was returning nil at the padding of the time, so
+landscape silently used the accessibility fallback — five columns of 74pt cells, clipped at the
+legend — and the test that should have caught it asserted against a 480 × 330 board the app
+never hands it. Both numbers here are measured off a capture of the running app.
+
+The confirm control is docked to the bottom
 in portrait, where the thumb is, and becomes a card in the sidebar when wide — same view, two
 chrome styles, so copy and behaviour cannot drift apart.
 

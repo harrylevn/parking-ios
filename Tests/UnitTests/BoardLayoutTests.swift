@@ -86,6 +86,34 @@ final class BoardLayoutTests: XCTestCase {
         )
     }
 
+    /// Every phone larger than the reference clears 44pt with room to spare.
+    ///
+    /// Worth asserting rather than assuming. `BoardLayout` picks a column count per size, so
+    /// a bigger screen is not automatically a better target — it can spend the extra width on
+    /// more columns instead of larger cells. It does not, and this is what says so.
+    func testLargerPhonesClearFortyFourPointsWithRoom() throws {
+        // iPhone 17 Pro (402×874) and 17 Pro Max (440×956), same chrome as the reference.
+        for screen in [CGSize(width: 402, height: 874), CGSize(width: 440, height: 956)] {
+            let area = CGSize(
+                width: screen.width - 2 * Theme.Metric.gutter - 2 * Theme.Metric.boardCardPadding,
+                height: screen.height - chromeHeight
+            )
+            let layout = try XCTUnwrap(BoardLayout.fitting(count: 80, in: area))
+
+            XCTAssertTrue(
+                layout.meetsPreferredTouchTarget,
+                """
+                \(screen.width)x\(screen.height) gives \(layout.columns)x\(layout.rows) at \
+                \(layout.cellWidth + layout.spacing)x\(layout.cellHeight + layout.spacing)pt
+                """
+            )
+            XCTAssertGreaterThanOrEqual(
+                layout.cellWidth + layout.spacing, 44,
+                "A larger phone must not spend its extra width on more columns"
+            )
+        }
+    }
+
     func testBoardGrowsIntoTheSpaceAvailableOnALargerScreen() throws {
         let phone = try XCTUnwrap(BoardLayout.fitting(count: 80, in: boardAreaOn61Inch))
         let pad = try XCTUnwrap(
@@ -97,16 +125,65 @@ final class BoardLayoutTests: XCTestCase {
                       "With room to spare there is no excuse for missing 44pt")
     }
 
-    func testLandscapeStripStillFitsEveryCell() throws {
-        // iPhone 16 landscape, board occupying the leading two-thirds.
-        let landscape = CGSize(width: 480, height: 330)
+    /// iPhone landscape, measured off a capture of the running app rather than estimated:
+    /// the tiles span 392pt across and 273pt down beside the 300pt sidebar. The assertions
+    /// below are properties — clears 44pt, wider than the fallback, taller than its space —
+    /// not exact column counts, so a point either way in the measurement does not matter.
+    ///
+    /// Two earlier versions of this number were guesses and both were wrong. The first
+    /// assumed a 480×330 area the app never gives, so this suite "passed" while the real
+    /// screen fell through to the accessibility fallback. The second estimated 390×239 by
+    /// subtracting chrome by eye, which was 34pt low — enough to make `fitting` look like it
+    /// returns nil here when it does not. Measured, not reckoned.
+    private var landscapeBoardArea: CGSize { CGSize(width: 392, height: 273) }
+
+    /// All 80 cells *do* fit an iPhone landscape board — but only by driving the cells down
+    /// to the 30pt floor, which is a 34pt target.
+    func testLandscapeFitsEveryCellOnlyBelowTheTouchTarget() throws {
+        let layout = try XCTUnwrap(BoardLayout.fitting(count: 80, in: landscapeBoardArea))
+
+        XCTAssertEqual(layout.columns, 10)
+        XCTAssertEqual(layout.rows, 8)
+        XCTAssertFalse(
+            layout.meetsPreferredTouchTarget,
+            """
+            Landscape now meets 44pt at \(layout.cellWidth + layout.spacing) x \
+            \(layout.cellHeight + layout.spacing)pt — BoardView can stop scrolling there.
+            """
+        )
+    }
+
+    /// So `BoardView` scrolls instead, and the scrolling layout keeps the target. Scrolling in
+    /// landscape was accepted explicitly; a 34pt touch target was not.
+    func testLandscapeScrollsRatherThanShrinkingTheTarget() throws {
         let layout = try XCTUnwrap(
-            BoardLayout.fitting(count: 80, in: landscape),
-            "The board must still fit in landscape"
+            BoardLayout.scrolling(count: 80, width: landscapeBoardArea.width),
+            "Landscape must still produce a board"
         )
 
-        XCTAssertLessThanOrEqual(layout.totalHeight, landscape.height)
-        XCTAssertGreaterThan(layout.columns, 8, "Landscape should spread wider than portrait")
+        XCTAssertGreaterThanOrEqual(layout.cellWidth + layout.spacing, 44)
+        XCTAssertGreaterThanOrEqual(layout.cellHeight + layout.spacing, 44)
+        XCTAssertGreaterThan(
+            layout.columns, 5,
+            "Wider than the accessibility fallback, which spends the width on five huge cells"
+        )
+        XCTAssertGreaterThan(
+            layout.totalHeight, landscapeBoardArea.height,
+            "This layout is meant to scroll — if it fits, it should have come from `fitting`"
+        )
+    }
+
+    /// The portrait guardrail is untouched by that rule: the 6.1-inch board meets the target,
+    /// so it takes the fitted branch and never scrolls. This is the test that would catch the
+    /// scrolling rule leaking onto the screen the brief actually grades.
+    func testTheSixOneInchPortraitBoardNeverScrolls() throws {
+        let layout = try XCTUnwrap(BoardLayout.fitting(count: 80, in: boardAreaOn61Inch))
+
+        XCTAssertTrue(
+            layout.meetsPreferredTouchTarget,
+            "If portrait stops meeting 44pt it starts scrolling, which breaches the guardrail"
+        )
+        XCTAssertLessThanOrEqual(layout.totalHeight, boardAreaOn61Inch.height)
     }
 
     func testReturnsNilRatherThanClippingWhenThereIsGenuinelyNoRoom() {

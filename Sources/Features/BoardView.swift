@@ -18,10 +18,29 @@ struct BoardView: View {
         GeometryReader { proxy in
             let layout = BoardLayout.fitting(count: grid.spaces.count, in: proxy.size)
 
-            if let layout, !typeSize.isAccessibilitySize {
+            let scrolling = BoardLayout.scrolling(count: grid.spaces.count, width: proxy.size.width)
+
+            if typeSize.isAccessibilitySize {
+                // Large text needs generous cells more than it needs many of them.
+                accessibleBoard()
+            } else if let layout, layout.meetsPreferredTouchTarget {
+                fixedBoard(layout)
+            } else if let scrolling {
+                // Everything fits, but only by going under the touch target — iPhone
+                // landscape, where ~270pt of board height drives the cells down to the 30pt
+                // floor for a 34pt target. Scrolling is accepted there and a target that
+                // small is not, so the board keeps 44pt and runs off the bottom instead.
+                //
+                // The 6.1-inch portrait guardrail is not affected: that board *does* meet the
+                // target, so it never reaches this branch. See `BoardLayoutTests`.
+                fixedBoard(scrolling)
+                    .scrollableBoard()
+            } else if let layout {
+                // Too narrow even to scroll at 44pt. Showing all 80 beats honouring a
+                // Default the screen cannot afford.
                 fixedBoard(layout)
             } else {
-                scrollingBoard()
+                accessibleBoard()
             }
         }
     }
@@ -38,7 +57,7 @@ struct BoardView: View {
     }
 
     /// Fallback for accessibility text sizes: same board, allowed to scroll rather than clip.
-    private func scrollingBoard() -> some View {
+    private func accessibleBoard() -> some View {
         ScrollView {
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 5),
@@ -152,5 +171,14 @@ struct Legend: View {
                 .font(.caption2)
                 .foregroundStyle(Theme.Palette.inkMuted)
         }
+    }
+}
+
+private extension View {
+    /// Wraps a board that is taller than its space. Vertical indicators stay on: the whole
+    /// point is that the user can tell there is more board below, which is what the old
+    /// landscape rendering failed to communicate — it looked clipped rather than scrollable.
+    func scrollableBoard() -> some View {
+        ScrollView(.vertical, showsIndicators: true) { self }
     }
 }

@@ -38,7 +38,7 @@ and asks in the Default column for a layered architecture, structured concurrenc
 *Three layers, one composition root.* Features (SwiftUI views and `@MainActor` view models),
 Domain (models, protocols, the reservation logic) and Data (HTTP, Keychain, biometrics).
 Domain imports nothing but Foundation. Every service is a protocol, injected from
-`AppEnvironment`, so every collaborator is fakeable and the 81 unit tests need no backend.
+`AppEnvironment`, so every collaborator is fakeable and the 84 unit tests need no backend.
 
 *No third-party dependencies.* `URLSession`, `Security` and `LocalAuthentication` cover
 everything the app does.

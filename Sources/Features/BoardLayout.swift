@@ -84,6 +84,51 @@ struct BoardLayout: Equatable {
         return best
     }
 
+    /// The widest layout that meets the 44pt target, for a board that is allowed to scroll.
+    ///
+    /// Used where every arrangement of 80 cells is taller than the space available — iPhone
+    /// landscape, where the screen is only ~400pt tall, so at a 44pt target no more than five
+    /// or six rows can ever be stacked and 80 cells simply cannot all be shown. Scrolling is
+    /// accepted there; shrinking the target is not, so this sizes from width alone and lets
+    /// height run off the bottom.
+    ///
+    /// Distinct from the accessibility fallback, which needs *generous* cells for large text
+    /// rather than as many as will fit.
+    static func scrolling(
+        count: Int,
+        width: CGFloat,
+        spacing: CGFloat = 4,
+        candidateColumns: ClosedRange<Int> = 5...12
+    ) -> BoardLayout? {
+        var best: BoardLayout?
+
+        for columns in candidateColumns {
+            let cellWidth = ((width - CGFloat(columns - 1) * spacing) / CGFloat(columns)).rounded(.down)
+            guard cellWidth >= Metrics.minCellWidth,
+                  cellWidth + spacing >= Metrics.preferredCellHeight else { continue }
+
+            // Square-ish, and never below the target: the height is free here, so there is no
+            // reason for a cell to be meaner than the width it already affords.
+            let cellHeight = max(Metrics.preferredCellHeight - spacing, cellWidth).rounded(.down)
+            let candidate = BoardLayout(
+                columns: columns,
+                rows: Int(ceil(Double(count) / Double(columns))),
+                cellWidth: cellWidth,
+                cellHeight: cellHeight,
+                spacing: spacing
+            )
+            // More columns means more of the board on screen before scrolling, and every
+            // candidate here already clears the target, so widest wins.
+            if let current = best {
+                if candidate.columns > current.columns { best = candidate }
+            } else {
+                best = candidate
+            }
+        }
+
+        return best
+    }
+
     private var score: CGFloat { min(cellWidth, cellHeight) }
     private var squareness: CGFloat { -abs(cellWidth - cellHeight) }
 
