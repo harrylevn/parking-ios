@@ -65,15 +65,68 @@ The local backend is plaintext HTTP, so ATS carries an exception **scoped to `lo
 (`Sources/App/Info.plist`). It does not disable ATS globally, and it does not apply to any
 other host.
 
-Certificate pinning is **not implemented**, and this is a considered omission rather than an
-oversight. There is no certificate to pin: the backend is `http://localhost:8080` with no TLS
-termination anywhere in the exercise. Implementing pinning here would mean pinning a
-self-signed certificate generated for the demo, which demonstrates the API call but not the
-control — the hard parts of pinning in production are rotation, backup pins and failure
-modes, none of which a localhost stub exercises. What I would ship:
-`URLSessionDelegate` validating the leaf's SPKI hash against a pinned set with at least one
-backup pin, the bypass compiled out of release builds with `#if DEBUG` rather than gated at
-runtime, and a documented rotation runbook.
+### Certificate pinning
+
+**Built on 29/09**, replacing the omission this section used to defend. The backend is
+plaintext and read-only, so TLS is terminated in front of it: `make tls` runs an nginx
+container on `https://localhost:8443` that forwards to `:8080`. `scripts/tls-proxy.sh`
+generates a local root CA and a `localhost` certificate it issues, both P-256, into `.tls/`.
+That folder is gitignored, and no private key leaves it. The CA is added to the simulator's
+trusted roots, so the chain validates the ordinary way, as a publicly issued certificate would.
+
+**What the app checks** (`Sources/Data/CertificatePinning.swift`). Every HTTPS request goes
+through a per-request `URLSessionTaskDelegate`. The server is trusted only if both hold:
+
+1. The chain validates for this host name (`SecTrustEvaluateWithError` under an SSL policy
+   for the host).
+2. Some certificate in it carries a pinned key: the SHA-256 of its SubjectPublicKeyInfo,
+   base64. That is the value `openssl` computes, so `make tls-pin` prints exactly what the app
+   compares against.
+
+Pinning narrows validation; it never replaces it. The right key on an untrusted chain is
+refused, and so is a valid chain with the wrong key, which is what a certificate mis-issued by
+a trusted CA, or one installed by whoever controls the network, looks like.
+
+**How a refusal surfaces.** The handshake is cancelled before any request is sent, and the
+client reports `APIError.untrustedServer`: "The server's identity couldn't be verified, so
+nothing was sent. Try again on a network you trust." It is never retried, not even a
+reservation's Idempotency-Key, because the only server a retry can reach is the one just
+refused. It is deliberately not "check your connection", because the network may be the very
+thing that is compromised.
+
+**Fail closed.** An HTTPS URL with no pins configured trusts nothing. Plaintext exists only in
+debug builds: a release build refuses any non-HTTPS request before sending it, so the
+localhost ATS exception in `Info.plist` cannot become a release downgrade path.
+
+**Policy choices, and why.**
+
+- *Keys, not certificates.* A certificate is renewed every year or so and its key need not
+  be, so pinning the key survives routine renewal.
+- *A backup pin.* The app accepts a pinned key anywhere in the chain, so the issuing CA's key
+  can be pinned alongside the server's. `scripts/tls-proxy.sh rotate` issues a new server key
+  under the same CA. After that, an app pinning only the old key is locked out until it ships
+  a new build, while one that also pinned the CA keeps working. The live demo shows both.
+- *Where pins come from.* Debug builds read `PARKING_BASE_URL` and `PARKING_SPKI_PINS` from
+  the scheme, because the local certificate is generated per machine. Release builds ignore
+  the environment: pins supplied at launch could be replaced by anyone able to launch the app.
+  With no production server in this exercise, a release build has nothing to connect to.
+
+**Evidence.**
+
+- `CertificatePinningTests`: nine unit tests on real certificates evaluated by the Security
+  framework. Pins match `openssl`. The wrong key, an untrusted chain, the wrong host and an
+  empty pin set are each refused, and the CA backup pin is accepted. Removing ordinary
+  validation, the pin comparison or the host-name policy each fails its own test.
+- `PinningDemoUITests`, run by `make pinning-demo` against the live backend through the proxy:
+  - with the proxy's pin, sign-in reaches the backend (its "incorrect password" comes back)
+  - with a wrong pin, the app refuses, and the proxy's access log shows no request at all
+  - with a stale server pin plus the CA pin, it still connects, which is the post-rotation case
+
+**What production would still add.** Pins for the real host shipped in the build, with at
+least two backups from different keys, and a monitored expiry for each. A runbook for rotating
+ahead of expiry. Reporting of pin failures, since a spike means either an attack or a botched
+rotation. And the ATS exception moved to a debug-only `Info.plist`: here it is a runtime refusal
+in release builds rather than an absent exception.
 
 ## Threat note — what this exercise does not implement
 
@@ -93,8 +146,6 @@ to key derivation and pinning logic only, not wholesale.
 persisted data is a JWT in the Keychain. In production, reservation and payment records are
 personal data under Vietnamese law and would need a stated retention period, a deletion path,
 and confirmation that the backing store and its backups stay in-region.
-
-**Certificate pinning.** See above.
 
 **Root/debugger detection, anti-tampering, screenshot suppression.** Not implemented. For a
 parking app the sensitive data on screen is a licence plate suffix and a balance; the

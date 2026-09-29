@@ -126,12 +126,14 @@ Fallback is `.deviceOwnerAuthentication`, not the biometrics-only policy, so a u
 Face ID or locked out after failed attempts falls back to the passcode rather than being
 locked out of the product.
 
-### Not a deviation — certificate pinning
+### Certificate pinning — built, after being carried as a risk
 
-The third Default I did not implement as written is certificate pinning, and I am not claiming
-it as a swap. Nothing was built, so it is carried as an open risk in
-[ADR-006](architecture.md#adr-006) and in [`security.md`](security.md), and it is the one row
-in §8's matrix that is neither kept nor replaced.
+Until 29/09 this was the one Default neither kept nor replaced: there was no TLS to pin, and
+an omission with a rationale is not a swap. It is now built as the Default asks. TLS is
+terminated locally in front of the plaintext backend, the app pins the server's SPKI hash with
+the local CA's key as a backup, and the bypass exists in debug builds only. It is demonstrated
+refusing a wrong pin against the live backend. [ADR-006](architecture.md#adr-006),
+[`security.md`](security.md).
 
 ## 5. The interface
 
@@ -470,8 +472,9 @@ for the rehearsals as much as for the tests.
   1000 clients at 20:00 is 200 req/s of pure overhead for data that changes 80 times total.
 - **A client-supplied idempotency key**, which would delete most of ADR-002.
 - **A time endpoint**, which would delete most of ADR-004.
-- **Certificate pinning** against a real host. Against a local HTTP backend there is nothing
-  to pin; see [`security.md`](security.md).
+- **Certificate pinning** against a real host, with pins shipped in the build, backups from
+  different keys, and monitored expiry. The mechanism is built and demonstrated locally; see
+  [`security.md`](security.md).
 - **A queue-position UI.** The backend already returns `queuePosition` and
   `totalProcessingMs`. With push, "you are 340th of 1000" would turn the 92% failure case
   from a rejection into something legible.
@@ -543,7 +546,7 @@ error.
 | **G** | AI working agreement committed: conventions and quality gates AI code must clear | met (`CLAUDE.md`) |
 | **G** | An honest account of where AI helped and where it failed | met — `docs/ai-workflow.md` was referenced but missing until this audit |
 | D | Face ID / Touch ID re-auth before a reservation, correct non-biometric fallback | kept as written — every attempt prompts; `.deviceOwnerAuthentication` fallback |
-| D | Certificate pinning against the local backend, bypass gated to debug builds | **not built** — see the risk note below |
+| D | Certificate pinning against the local backend, bypass gated to debug builds | kept — TLS terminated in front of the backend (`make tls`), SPKI pin with a CA backup pin, plaintext and environment pins in debug builds only. `CertificatePinningTests` (9, mutation-checked) and `make pinning-demo` live: right pin connects, wrong pin refused before sending, backup pin survives rotation |
 | D | A proposal for measuring AI contribution on a mobile repo | met (`CLAUDE.md`) |
 | D | Data-privacy limits for an AI tool in a banking context | met (`CLAUDE.md`) |
 
@@ -566,10 +569,8 @@ unfinished ones are scheduled rather than abandoned.
 
 ### Known risk
 
-Certificate pinning is the one Default I have neither kept nor replaced with something built.
-`docs/security.md` argues it cannot be meaningfully demonstrated against a plaintext
-`http://localhost` backend, and describes what production would use. That reasoning is sound
-but the brief is explicit that a swap requires you to *build and demo* the alternative, and an
-omission is not a swap. If time allows, the honest fix is to terminate TLS locally with a
-self-signed certificate and pin its SPKI hash, so the control exists and can be demonstrated
-failing on a wrong pin.
+None of the Defaults is now left neither kept nor replaced. Certificate pinning was, until
+29/09; it is built and demonstrated (ADR-006). The risks that remain are recorded where they
+arise: the unexplained loss of a first tap in UI tests (`docs/ai-workflow.md`), Vietnamese not
+yet reviewed by a native speaker, and a VoiceOver pass not yet made by a person
+(`docs/accessibility.md`).

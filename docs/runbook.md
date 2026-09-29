@@ -401,3 +401,45 @@ push. It is a worse answer and should be argued for explicitly, not slipped in.
 3. App on the simulator, `PARKING_WINDOW_HOUR` matching what `make backend-hour` reports.
 4. Rehearsed: a won race, a lost race, and the backend killed mid-reservation
    (`pkill -f spring-boot:run`) — the app must never show a state that is not true.
+5. Certificate pinning (§9): `make tls` running, and `make pinning-demo` green on the day.
+
+## 9. TLS and certificate pinning
+
+The backend is plaintext, so TLS is terminated in front of it for the pinning demo
+(`docs/security.md`). Three terminals: the backend, the proxy, and the demo.
+
+```bash
+make backend-now          # terminal 1
+make tls                  # terminal 2: https://localhost:8443 -> :8080, prints the pin
+make pinning-demo         # terminal 3: the app through the proxy, three cases
+```
+
+The first `make tls` generates a local root CA and a `localhost` certificate in `.tls/`
+(gitignored; no key leaves it), trusts the CA on every booted simulator, and prints the pin.
+`make pinning-demo` trusts the CA on the simulator it runs on as well, so a freshly erased
+simulator needs nothing by hand.
+
+What the three cases show:
+
+| Pins | Result | Why |
+|---|---|---|
+| The proxy's | The backend's "Incorrect licence plate or password." | Connected and trusted: the password is wrong on purpose |
+| A wrong one | "The server's identity couldn't be verified, so nothing was sent." | Refused in the handshake; the proxy's access log shows no request |
+| A stale one plus the CA's | Connected | What survives a server key rotation |
+
+To run the app by hand through the proxy, set in the scheme's environment:
+
+```text
+PARKING_BASE_URL=https://localhost:8443
+PARKING_SPKI_PINS=<the value make tls-pin prints>
+```
+
+**Rotation.** `./scripts/tls-proxy.sh rotate` issues a new server key under the same CA. The
+old pin stops working; the CA pin does not. Rotate, then put only the old pin in the scheme to
+see the lockout a release without a backup pin would suffer.
+
+**If the app refuses a pin you believe is right:** the simulator does not trust the CA. That
+fails ordinary validation, and pinning never overrides it. Run `make tls` again with the
+simulator booted, or check `xcrun simctl keychain <udid> add-root-cert .tls/ca.pem`. A release
+build refuses plaintext and ignores environment pins by design.
+

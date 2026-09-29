@@ -55,6 +55,7 @@ first:
 | `Domain/ReservationCoordinator.swift` | Decides what the app may truthfully claim about a reservation. Enforces one-tap-one-attempt with one Idempotency-Key per tap, repeats that key after a timeout, reads back with `GET /reservations/me`, falls back to the grid only if that fails, and returns `.unknown` when the result cannot be substantiated. An `actor` because the in-flight flag is the guardrail. |
 | `Domain/ServerClock.swift` | Server time from the HTTP `Date` header anchored to a `ContinuousClock`, because the backend has no time endpoint and the device clock cannot be trusted. `ReservationWindow` models the gate exactly as the backend implements it: opens on the hour, shuts at midnight. |
 | `Data/HTTPClient.swift` | Exists mainly for `decodeFailure`, which branches on **body emptiness, not status**, because the backend answers with two different shapes and treating them as one is a crash. |
+| `Data/CertificatePinning.swift` | Certificate pinning: the SPKI hash, the evaluator (chain must validate for the host **and** carry a pinned key), and the per-request delegate that lets `HTTPClient` tell a refused certificate from any other transport failure. See `security.md`. |
 | `Features/BoardLayout.swift` | Sizes the 80-cell board to the space available so every cell fits on a 6.1-inch screen. Pure, so the guardrail is asserted in a unit test rather than eyeballed on a simulator. |
 
 ### The rest
@@ -122,7 +123,7 @@ No test touches the network except `ScreenshotTests`, which is opt-in.
 - Comments explain *why*. A comment restating the code is noise; a comment explaining why a
   `nonisolated(unsafe)` is safe, or why an overlay needs `.allowsHitTesting(false)`, earns
   its place.
-- No third-party dependencies. `URLSession`, `Security` and `LocalAuthentication` cover
+- No third-party dependencies. `URLSession`, `Security`, `CryptoKit` and `LocalAuthentication` cover
   everything needed, and a dependency in a banking app is a supply-chain liability.
 - Force unwrap, force cast and force try are lint **errors** outside test fixtures.
 

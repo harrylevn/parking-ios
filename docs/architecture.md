@@ -15,7 +15,7 @@ deviation is named explicitly.
 | [003](#adr-003) | Classify errors on the payload, not the HTTP status | Accepted |
 | [004](#adr-004) | Server time and refresh without a push channel | Accepted |
 | [005](#adr-005) | Fit all 80 cells, and adapt when there is room | Accepted — supersedes an earlier reading |
-| [006](#adr-006) | Keychain, biometric re-authentication, and the pinning gap | Accepted — one item **not built** |
+| [006](#adr-006) | Keychain, biometric re-authentication, and certificate pinning | Accepted — pinning, first recorded as not built, built on 29/09 |
 | [007](#adr-007) | Repeat a tap's Idempotency-Key, then read back what committed | Accepted — supersedes part of 002 |
 
 > The first six were consolidated from nineteen finer-grained records. The finer records were
@@ -41,7 +41,7 @@ Domain (models, protocols, the reservation logic) and Data (HTTP, Keychain, biom
 Domain imports nothing but Foundation. Every service is a protocol, injected from
 `AppEnvironment`, so every collaborator is fakeable and the 109 unit tests need no backend.
 
-*No third-party dependencies.* `URLSession`, `Security` and `LocalAuthentication` cover
+*No third-party dependencies.* `URLSession`, `Security`, `CryptoKit` and `LocalAuthentication` cover
 everything the app does.
 
 *Swift 6 language mode*, with `SWIFT_STRICT_CONCURRENCY = complete` and warnings as errors.
@@ -266,9 +266,10 @@ at all.
 ---
 
 <a name="adr-006"></a>
-## ADR-006 — Keychain, biometric re-authentication, and the pinning gap
+## ADR-006 — Keychain, biometric re-authentication, and certificate pinning
 
-**Status:** Accepted — **one item is not built; a biometric deviation was reversed**
+**Status:** Accepted — **a biometric deviation was reversed; pinning, first recorded as not
+built, was built on 29/09**
 
 **Context.** 6.5 makes the session token in the Keychain "with a justified accessibility class"
 a Guardrail, and asks in the Default column for biometric re-authentication before a reservation
@@ -293,10 +294,18 @@ unchallenged meant anyone holding the unlocked handset could top the balance up 
 spend was contested. Both now prompt, and the prompt names the amount, because the control
 exists to evidence consent to *this* transaction. Raised at the week-1 checkpoint.
 
-*Pinning:* **not implemented.** `security.md` documents the threat, what production would use —
-a `URLSessionDelegate` validating the leaf's SPKI hash against a pinned set with at least one
-backup pin, the bypass compiled out with `#if DEBUG`, and a rotation runbook — and why it is out
-of scope against an `http://localhost:8080` backend with no TLS anywhere in the exercise.
+*Pinning:* **built on 29/09.** An nginx container terminates TLS in front of the plaintext
+backend, with a local CA and a `localhost` certificate it issues (`make tls`). The app trusts a
+server only if its chain validates for the host **and** some certificate in it carries a pinned
+SPKI hash; the CA's key serves as a backup pin, so the server key can rotate without a release.
+A refusal is `APIError.untrustedServer`, never retried. Plaintext and environment-supplied pins
+exist in debug builds only. Demonstrated live by `make pinning-demo`: the right pin connects, a
+wrong one is refused before any request is sent, and a stale pin plus the CA pin survives a
+rotation. Detail and evidence in `security.md`.
+
+*As first recorded,* it was **not implemented**, on the argument below: that against an
+`http://localhost:8080` backend with no TLS anywhere, pinning a demo certificate would exercise
+the API call but not the control.
 
 **Alternatives.** `AfterFirstUnlock` for the token — correct for apps doing background refresh,
 which this one does not; it would leave the token readable from first unlock until reboot.
@@ -326,7 +335,7 @@ race. That is a feature, not a tuning parameter, and it is not built.
 
 Rejected outright: no re-auth at all, which abandons the requirement rather than adapting it.
 
-**The pinning gap is a risk, not a clean deviation.** The brief allows a Default to be swapped
+**The pinning gap was a risk, not a clean deviation** (kept as written; closed on 29/09). The brief allows a Default to be swapped
 "provided your alternative stays inside the guardrails, you defend the trade-off in
 docs/design.md, and you actually build and demo it". An omission with a rationale is not a swap:
 nothing was built. Pinning a self-signed certificate generated for the demo would exercise the
@@ -345,9 +354,9 @@ against a web client carrying no such control — that cost is disclosed rather 
 the coordinator's contract but not the concrete evaluator — that one is stateless by
 construction rather than by assertion. On a device with no passcode there is nothing to
 authenticate against, and that is treated as a pass, where production would hard-block; with
-the grace period gone it is the only remaining gap in the control. Pinning remains the one
-Default neither kept nor replaced with something built, and it is carried openly as an open
-risk rather than presented as a defended swap.
+the grace period gone it is the only remaining gap in the control. Pinning was carried as an
+open risk until 29/09; building it answered the objection above by exercising the parts that
+matter in production, a backup pin and a rotation, not only the API call.
 
 ---
 
