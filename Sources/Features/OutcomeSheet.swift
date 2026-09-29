@@ -81,13 +81,18 @@ struct OutcomeSheet: View {
             return Style(
                 icon: "checkmark.circle.fill",
                 tint: Theme.Palette.available,
-                title: "Space \(reservation.spaceNumber) is yours",
-                message: "Reserved for tomorrow. $10.00 has been deducted.",
+                title: String(localized: "Space \(reservation.spaceNumber) is yours"),
+                message: String(localized: "Reserved for tomorrow. $10.00 has been deducted."),
+                // Two whole sentences rather than one with a clause spliced on, so a translation
+                // is never asked to agree with a fragment it cannot see.
                 detail: reservation.queuePosition.map { position in
-                    "You were number \(position) in the queue"
-                        + (reservation.totalProcessingMs.map { " · settled in \($0) ms" } ?? "")
+                    reservation.totalProcessingMs.map { settled in
+                        String(localized: """
+                            You were number \(position) in the queue · settled in \(settled) ms
+                            """)
+                    } ?? String(localized: "You were number \(position) in the queue")
                 },
-                action: "Done"
+                action: String(localized: "Done")
             )
 
         case .lost(let code):
@@ -101,19 +106,21 @@ struct OutcomeSheet: View {
             // stays exhaustive and a future caller cannot render a blank sheet.
             return Style(
                 icon: "faceid", tint: Theme.Palette.inkMuted,
-                title: "Not reserved",
-                message: "You didn't confirm it was you, so nothing was sent and nothing was charged.",
-                detail: nil, action: "Close"
+                title: String(localized: "Not reserved"),
+                message: String(localized: """
+                    You didn't confirm it was you, so nothing was sent and nothing was charged.
+                    """),
+                detail: nil, action: String(localized: "Close")
             )
 
         case .rejected(let error):
             return Style(
                 icon: "exclamationmark.triangle.fill",
                 tint: Theme.Palette.danger,
-                title: "Couldn't reserve",
+                title: String(localized: "Couldn't reserve"),
                 message: error.userFacingMessage,
                 detail: nil,
-                action: "Close"
+                action: String(localized: "Close")
             )
         }
     }
@@ -144,38 +151,45 @@ struct OutcomeSheet: View {
             return Style(
                 icon: "checkmark.circle.badge.questionmark",
                 tint: Theme.Palette.warning,
-                title: "Space \(space) looks like yours",
-                message: "It's showing your plate on the board, but the server never sent a "
-                    + "receipt to confirm it.",
-                detail: "Your balance above has been refreshed, so it shows whether the $10 "
-                    + "was taken. The board keeps updating.",
-                action: "Got it"
+                title: String(localized: "Space \(space) looks like yours"),
+                message: String(localized: """
+                    It's showing your plate on the board, but the server never sent a receipt to confirm it.
+                    """),
+                detail: String(localized: """
+                    Your balance above has been refreshed, so it shows whether the $10 was taken. The board \
+                    keeps updating.
+                    """),
+                action: String(localized: "Got it")
             )
 
         case .ambiguous(let suffix):
             return Style(
                 icon: "questionmark.circle.fill",
                 tint: Theme.Palette.warning,
-                title: "Can't tell which space",
-                message: "Two spaces show a plate ending in \(suffix), so we can't tell you "
-                    + "which one is yours — or whether either of them is.",
-                detail: "Your balance above has been refreshed, so it shows whether the $10 "
-                    + "was taken.",
-                action: "Got it"
+                title: String(localized: "Can't tell which space"),
+                message: String(localized: """
+                    Two spaces show a plate ending in \(suffix), so we can't tell you which one is yours — \
+                    or whether either of them is.
+                    """),
+                detail: String(localized: """
+                    Your balance above has been refreshed, so it shows whether the $10 was taken.
+                    """),
+                action: String(localized: "Got it")
             )
 
         case .noEvidence(let cause):
             return Style(
                 icon: "questionmark.circle.fill",
                 tint: Theme.Palette.warning,
-                title: "Still checking",
+                title: String(localized: "Still checking"),
                 message: cause.message,
                 // Both branches, so the user knows what to look for either way. True because
                 // a failed reservation charges nothing, and the board polls every 5 seconds.
-                detail: "If it went through, your space appears on the board in a few seconds "
-                    + "and $10 leaves your balance. If the board doesn't change, nothing was "
-                    + "reserved and nothing was charged.",
-                action: "Watch the board"
+                detail: String(localized: """
+                    If it went through, your space appears on the board in a few seconds and $10 leaves your \
+                    balance. If the board doesn't change, nothing was reserved and nothing was charged.
+                    """),
+                action: String(localized: "Watch the board")
             )
         }
     }
@@ -196,28 +210,32 @@ struct OutcomeSheet: View {
         case .spaceUnavailable:
             return Style(
                 icon: "person.2.fill", tint: Theme.Palette.accent,
-                title: "Someone was faster",
-                message: "That space went to another driver. Nothing was charged.",
+                title: String(localized: "Someone was faster"),
+                message: String(localized: "That space went to another driver. Nothing was charged."),
                 // No claim about what is left: the lot changes hands in about 250 ms, so a
                 // lost named space usually means a full one, and the board is what knows.
                 // The advice is "any space" because naming one is the losing strategy under
                 // contention; the button only closes the sheet, so its label says so.
-                detail: "Reserve any space takes the first one still free, if any are left.",
-                action: "Back to the board"
+                detail: String(localized: """
+                    Reserve any space takes the first one still free, if any are left.
+                    """),
+                action: String(localized: "Back to the board")
             )
         case .lotFull:
             return Style(
                 icon: "nosign", tint: Theme.Palette.reserved,
-                title: "Tomorrow is full",
-                message: "All 80 spaces are taken. Try again when the window opens for the next day.",
-                detail: nil, action: "Close"
+                title: String(localized: "Tomorrow is full"),
+                message: String(localized: """
+                    All 80 spaces are taken. Try again when the window opens for the next day.
+                    """),
+                detail: nil, action: String(localized: "Close")
             )
         case .insufficientBalance:
             return Style(
                 icon: "wallet.bifold.fill", tint: Theme.Palette.warning,
-                title: "Not enough balance",
-                message: "A space costs $10.00. Top up your wallet and try again.",
-                detail: nil, action: "Add funds"
+                title: String(localized: "Not enough balance"),
+                message: String(localized: "A space costs $10.00. Top up your wallet and try again."),
+                detail: nil, action: String(localized: "Add funds")
             )
         default:
             return stateStyle(code)
@@ -229,33 +247,37 @@ struct OutcomeSheet: View {
         case .alreadyReserved:
             return Style(
                 icon: "checkmark.seal.fill", tint: Theme.Palette.mine,
-                title: "You already have a space",
-                message: "Each vehicle can hold one reservation per day.",
-                detail: nil, action: "Got it"
+                title: String(localized: "You already have a space"),
+                message: String(localized: "Each vehicle can hold one reservation per day."),
+                detail: nil, action: String(localized: "Got it")
             )
         case .windowClosed:
             return Style(
                 icon: "clock.fill", tint: Theme.Palette.accent,
-                title: "Not open yet",
-                message: "Reservations open later today. The countdown at the top follows the server clock.",
-                detail: nil, action: "Close"
+                title: String(localized: "Not open yet"),
+                message: String(localized: """
+                    Reservations open later today. The countdown at the top follows the server clock.
+                    """),
+                detail: nil, action: String(localized: "Close")
             )
         case .lockTimeout:
             return Style(
                 icon: "hourglass", tint: Theme.Palette.warning,
-                title: "The server was busy",
-                message: "Too many people arrived at once and your turn timed out. Nothing was charged.",
-                detail: nil, action: "Try again"
+                title: String(localized: "The server was busy"),
+                message: String(localized: """
+                    Too many people arrived at once and your turn timed out. Nothing was charged.
+                    """),
+                detail: nil, action: String(localized: "Try again")
             )
         default:
             return Style(
                 icon: "exclamationmark.circle.fill", tint: Theme.Palette.danger,
-                title: "Couldn't reserve",
+                title: String(localized: "Couldn't reserve"),
                 message: APIError.business(ErrorResponse(
-                    status: 409, error: "", message: "", code: code,
+                    status: 409, error: "", message: String(localized: ""), code: code,
                     timestamp: .distantPast, path: "", validationErrors: nil
                 )).userFacingMessage,
-                detail: nil, action: "Close"
+                detail: nil, action: String(localized: "Close")
             )
         }
     }

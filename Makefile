@@ -9,7 +9,7 @@ DERIVED     := .build/DerivedData
 BACKEND     := $(or $(PARKING_BACKEND),$(CURDIR)/../parking-reservation)
 COMPOSE     := $(BACKEND)/backend/docker-compose.yml
 
-.PHONY: project build test uitest lint archive clean ci \
+.PHONY: project build test uitest lint strings strings-check archive clean ci \
         backend backend-now backend-off backend-reset backend-health backend-hour backend-down loadtest help
 
 # Default target: list what there is to run.
@@ -19,6 +19,8 @@ help:
 	@echo '  make test           unit tests (no backend needed)'
 	@echo '  make uitest         UI tests (no backend needed)'
 	@echo '  make lint           SwiftLint, must be zero violations'
+	@echo '  make strings        sync the String Catalog with the code'
+	@echo '  make strings-check  fail if the catalog is behind or a key is untranslated'
 	@echo '  make ci             everything CI runs'
 	@echo '  make project        regenerate Parking.xcodeproj from project.yml'
 	@echo '  make archive        archive, build number from the commit count'
@@ -103,7 +105,15 @@ archive: project
 		CURRENT_PROJECT_VERSION=$$(git rev-list --count HEAD) \
 		CODE_SIGNING_ALLOWED=NO archive
 
-ci: lint build test uitest
+# The String Catalog follows the code: `strings` pulls in what the compiler extracted on the
+# last build, `strings-check` fails if the catalog is behind or a key lacks its translation.
+strings: build
+	python3 scripts/check-strings.py --write
+
+strings-check: build
+	python3 scripts/check-strings.py
+
+ci: lint build strings-check test uitest
 
 clean:
 	rm -rf $(DERIVED) $(PROJECT)

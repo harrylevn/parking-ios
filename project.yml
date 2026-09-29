@@ -18,6 +18,10 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
     GCC_TREAT_WARNINGS_AS_ERRORS: YES
+    # The compiler extracts every localisable literal at build time, so the String Catalog
+    # is fed from the code rather than maintained by hand (Day 7, "no hardcoded strings").
+    SWIFT_EMIT_LOC_STRINGS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     # Build number derives from the commit count in CI, never hand-edited (6.4).
     CURRENT_PROJECT_VERSION: "1"

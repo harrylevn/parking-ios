@@ -518,7 +518,7 @@ error.
 | **G** | Screen and information architecture designed by you, rationale in `docs/design.md` | met |
 | **G** | All 80 spaces legible on a 6.1-inch screen without pinch-zoom | met — 8×10 at 40×40pt cells, a 44×44pt target, no scrolling in portrait; measured off the running app by `BoardGeometryUITests`, not modelled. `BoardLayoutTests` once certified a layout the screen could not show (§5.2) |
 | **G** | Full state matrix: loading, empty, error, offline, insufficient balance, race lost, success | met (`GridState`, `ReservationOutcome`) |
-| D | HIG, dark mode, no hardcoded user-facing strings (String Catalog or equivalent) | **partly** — HIG and dark mode kept. SwiftUI's `Text("…")` and `Button("…")` literals are `LocalizedStringKey` and extractable, but components taking a plain `String` parameter bypass that, and there is no String Catalog yet. Scheduled day 7. (A *populated* second locale is Stretch, not this row) |
+| D | HIG, dark mode, no hardcoded user-facing strings (String Catalog or equivalent) | kept — HIG and dark mode, and every user-facing string in `Localizable.xcstrings` (149 keys) plus `InfoPlist.xcstrings`. The compiler extracts them (`SWIFT_EMIT_LOC_STRINGS`); components that took a plain `String` now take `LocalizedStringKey` or receive `String(localized:)`. `scripts/check-strings.py` fails CI when code adds a string the catalog lacks, or a key lacks its translation — proved by adding one and watching it fail |
 | D | Dynamic Type to accessibility sizes, VoiceOver labels, 44pt targets, contrast | kept — **44 × 44pt** on a 6.1-inch screen with the reserve bar permanent, measured off the running app by `BoardGeometryUITests`. Twice reported met when it was not; §5.2 has both misses. Board scrolls in landscape, below the reference size, and at accessibility sizes — never in 6.1-inch portrait |
 | D | The 20:00 moment designed deliberately | kept — countdown phases, early pick with no early send, refetch at the opening, a count that says its age, stale picks dropped (§5.7; `OpeningMomentTests`) |
 
@@ -560,7 +560,7 @@ unfinished ones are scheduled rather than abandoned.
 | 6.3 | iPad **or** landscape layouts | both built |
 | 6.5 | A reusable Claude Code skill for a mobile task, demonstrated working | three, in `.claude/skills/` |
 | 6.2 | The k6 race rehearsal, and an Instruments trace under load | day 9 |
-| 6.3 | A second locale populated | day 7 |
+| 6.3 | A second locale populated | built — Vietnamese, every key; the board guardrail re-asserted in it by `BoardGeometryUITests`. Machine-drafted, not yet reviewed by a native speaker |
 | 6.1 | SPM modularisation, or a unidirectional architecture such as TCA | not pursued |
 | 6.4 | Signed `.ipa` on device, fastlane, snapshot tests, a coverage gate | not pursued |
 

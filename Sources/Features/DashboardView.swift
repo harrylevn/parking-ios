@@ -198,8 +198,8 @@ struct DashboardView: View {
         case .empty:
             StatusCard(
                 icon: "square.grid.3x3.slash", tint: Theme.Palette.inkMuted,
-                title: "No spaces configured",
-                message: "The lot has no spaces for tomorrow."
+                title: String(localized: "No spaces configured"),
+                message: String(localized: "The lot has no spaces for tomorrow.")
             )
         case .offline:
             // Not "You're offline": this state covers every transport failure, and the usual
@@ -207,14 +207,16 @@ struct DashboardView: View {
             // user's connection would be a claim the app cannot make.
             StatusCard(
                 icon: "network.slash", tint: Theme.Palette.warning,
-                title: "Can't reach the server",
-                message: "Your connection or the server may be down. Retrying every few seconds; "
-                    + "the board stays hidden rather than showing spaces that might be wrong."
+                title: String(localized: "Can't reach the server"),
+                message: String(localized: """
+                    Your connection or the server may be down. Retrying every few seconds; \
+                    the board stays hidden rather than showing spaces that might be wrong.
+                    """)
             )
         case .failed(let message):
             StatusCard(
                 icon: "exclamationmark.triangle.fill", tint: Theme.Palette.danger,
-                title: "Something went wrong", message: message
+                title: String(localized: "Something went wrong"), message: message
             )
         case .loaded(let grid):
             // `BoardView` is the card's **only** child, and that is load-bearing. It sizes

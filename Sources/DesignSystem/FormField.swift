@@ -6,7 +6,7 @@ import SwiftUI
 /// placement are exactly the details that drift apart when two screens each own a copy.
 struct FormField<Content: View>: View {
     let icon: String
-    let title: String
+    let title: LocalizedStringKey
     let identifier: String
     let focused: Bool
     /// Shown while the field is fine — the rule, stated before it is broken.

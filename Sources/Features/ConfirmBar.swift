@@ -105,24 +105,32 @@ struct ConfirmBar: View {
     /// commit with says what it commits to. `$10` rides along because the price is the other
     /// thing worth knowing before a tap, and the balance it leaves is already in the header.
     private var title: String {
-        spaceNumber.map { "Reserve space \($0) · $10" } ?? "Reserve any space · $10"
+        spaceNumber.map { String(localized: "Reserve space \($0) · $10") }
+            ?? String(localized: "Reserve any space · $10")
     }
 
     private var hint: String {
         if isReserving {
-            return "Waiting for the server to answer. Nothing more is sent while this runs."
+            return String(localized: """
+                Waiting for the server to answer. Nothing more is sent while this runs.
+                """)
         }
         if !isWindowOpen, spaceNumber != nil {
-            return "The button turns on when reservations open. Nothing is sent before you tap it."
+            return String(localized: """
+                The button turns on when reservations open. Nothing is sent before you tap it.
+                """)
         }
         if isLotFull {
-            return "Every space for tomorrow is taken. The board refreshes every few seconds."
+            return String(localized: """
+                Every space for tomorrow is taken. The board refreshes every few seconds.
+                """)
         }
         // Said plainly, because "any" is the option most likely to win and the one a user is
         // least likely to try: the server takes the first free space and the pick is final.
+        let after = DashboardHeader.money(balance - 10)
         return spaceNumber == nil
-            ? "We take the first free space. Balance after, \(DashboardHeader.money(balance - 10))."
-            : "Balance after, \(DashboardHeader.money(balance - 10))."
+            ? String(localized: "We take the first free space. Balance after, \(after).")
+            : String(localized: "Balance after, \(after).")
     }
 }
 

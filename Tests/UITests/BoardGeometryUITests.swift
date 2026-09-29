@@ -16,7 +16,27 @@ final class BoardGeometryUITests: XCTestCase {
     private let reference = CGSize(width: 393, height: 852)
 
     func testAllEightyAreOnScreenAndMeetTheTargetInPortrait() throws {
-        let app = signedInApp()
+        try assertBoardGuardrail(in: signedInApp())
+    }
+
+    /// The same guardrail in the second locale. Vietnamese runs longer than English, and the
+    /// board's height is whatever the header and banner above it leave, so a translation that
+    /// wraps one more line is exactly what could push spaces 73 to 80 below the fold.
+    func testVietnameseKeepsAllEightyOnScreenAndTheTarget() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-AppleLanguages", "(vi)", "-AppleLocale", "vi_VN"]
+        launchAndWaitForLogin(app)
+
+        // Proves the locale took effect, so this cannot pass by quietly running in English.
+        XCTAssertEqual(app.buttons["login.submit"].label, "Đăng nhập")
+        attachScreenshot(named: "vi-login")
+
+        signIn(app)
+        attachScreenshot(named: "vi-board")
+        try assertBoardGuardrail(in: app)
+    }
+
+    private func assertBoardGuardrail(in app: XCUIApplication) throws {
         let screen = app.frame.size
         try XCTSkipIf(
             screen.height < reference.height || screen.width < reference.width,
@@ -77,11 +97,26 @@ final class BoardGeometryUITests: XCTestCase {
 
     private func signedInApp() -> XCUIApplication {
         let app = XCUIApplication()
+        launchAndWaitForLogin(app)
+        signIn(app)
+        return app
+    }
+
+    private func launchAndWaitForLogin(_ app: XCUIApplication) {
         app.launchArguments += ["-UITestMode", "-UITestSkipReauth"]
         app.launch()
+        XCTAssertTrue(app.textFields["login.plate"].waitForExistence(timeout: 15))
+    }
 
+    private func attachScreenshot(named name: String) {
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = name
+        shot.lifetime = .keepAlways
+        add(shot)
+    }
+
+    private func signIn(_ app: XCUIApplication) {
         let plate = app.textFields["login.plate"]
-        XCTAssertTrue(plate.waitForExistence(timeout: 15))
         plate.tap()
         plate.typeText("TEST-0001")
         let password = app.secureTextFields["login.password"]
@@ -91,6 +126,5 @@ final class BoardGeometryUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["space.1"].waitForExistence(timeout: 15), "grid should load")
         dismissSavePasswordPromptIfPresent(in: app, timeout: 3)
-        return app
     }
 }

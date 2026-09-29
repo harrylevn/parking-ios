@@ -129,7 +129,7 @@ struct StatStrip: View {
             .frame(width: 1, height: 24)
     }
 
-    private func stat(value: Int, label: String, tint: Color) -> some View {
+    private func stat(value: Int, label: LocalizedStringKey, tint: Color) -> some View {
         VStack(spacing: 0) {
             Text("\(value)")
                 .font(.system(.title3, design: .rounded).weight(.bold))
@@ -166,7 +166,7 @@ struct Legend: View {
         .accessibilityHidden(true)
     }
 
-    private func item(color: Color, fill: Color, text: String, dashed: Bool) -> some View {
+    private func item(color: Color, fill: Color, text: LocalizedStringKey, dashed: Bool) -> some View {
         HStack(spacing: 5) {
             RoundedRectangle(cornerRadius: 4)
                 .fill(fill)

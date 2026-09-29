@@ -1,0 +1,22 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "The app's name under its icon. A product name, kept as it is.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Parking" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Parking" } }
+      }
+    },
+    "NSFaceIDUsageDescription" : {
+      "comment" : "Shown the first time the app asks to use Face ID.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Confirms it is you before a parking space is reserved." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Xác nhận đúng là bạn trước khi đặt chỗ đỗ xe." } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

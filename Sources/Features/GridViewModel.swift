@@ -309,7 +309,7 @@ final class GridViewModel: ObservableObject {
 
         do {
             try await environment.reauth.authenticate(
-                reason: "Confirm a \(DashboardHeader.money(amount)) deposit"
+                reason: String(localized: "Confirm a \(DashboardHeader.money(amount)) deposit")
             )
         } catch {
             return false

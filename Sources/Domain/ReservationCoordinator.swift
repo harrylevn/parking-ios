@@ -75,7 +75,8 @@ actor ReservationCoordinator {
         defer { attemptInFlight = false }
 
         do {
-            try await reauth.authenticate(reason: "Confirm your parking reservation")
+            // Shown in the Face ID prompt, so it is user-facing copy even though it lives here.
+            try await reauth.authenticate(reason: String(localized: "Confirm your parking reservation"))
         } catch {
             // Not a transport error, though it used to be dressed as one — which showed a user
             // who had just cancelled Face ID "Can't reach the server". Nothing was sent, so

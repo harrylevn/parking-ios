@@ -20,7 +20,7 @@ struct DashboardHeader: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.Palette.inkMuted)
                     .lineLimit(1)
-                    .accessibilityLabel(Text(verbatim: "Signed in as \(plate)"))
+                    .accessibilityLabel(Text("Signed in as \(plate)"))
 
                 Spacer(minLength: 8)
 
@@ -41,7 +41,7 @@ struct DashboardHeader: View {
                     .background(Theme.Palette.accentFill, in: .capsule)
                 }
                 .accessibilityIdentifier("dashboard.wallet")
-                .accessibilityLabel(Text(verbatim: "Balance \(Self.money(balance)). Add funds."))
+                .accessibilityLabel(Text("Balance \(Self.money(balance)). Add funds."))
 
                 Menu {
                     Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive,

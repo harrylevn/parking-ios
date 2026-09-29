@@ -32,29 +32,29 @@ final class RegisterViewModel: ObservableObject {
 
     var isUITesting: Bool { environment.isUITesting }
 
-    static let plateHint = "Uppercase letters, numbers and hyphens (e.g. ABC-1234)."
-    static let passwordHint = "At least 6 characters."
+    static let plateHint = String(localized: "Uppercase letters, numbers and hyphens (e.g. ABC-1234).")
+    static let passwordHint = String(localized: "At least 6 characters.")
 
     /// Mirrors the backend's own constraints so a rejection is explained here rather than
     /// arriving as a 400 with a field map the user never sees.
     var plateProblem: String? {
         let plate = normalisedPlate
         guard !plate.isEmpty else { return nil }
-        if plate.count < 3 || plate.count > 20 { return "Between 3 and 20 characters." }
+        if plate.count < 3 || plate.count > 20 { return String(localized: "Between 3 and 20 characters.") }
         guard plate.allSatisfy({ $0.isUppercase || $0.isNumber || $0 == "-" }) else {
-            return "Letters, numbers and hyphens only."
+            return String(localized: "Letters, numbers and hyphens only.")
         }
         return nil
     }
 
     var passwordProblem: String? {
         guard !password.isEmpty else { return nil }
-        return password.count < 6 ? "At least 6 characters." : nil
+        return password.count < 6 ? Self.passwordHint : nil
     }
 
     var confirmProblem: String? {
         guard !confirmPassword.isEmpty else { return nil }
-        return confirmPassword == password ? nil : "Passwords do not match."
+        return confirmPassword == password ? nil : String(localized: "Passwords do not match.")
     }
 
     var normalisedPlate: String {

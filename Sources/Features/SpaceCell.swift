@@ -110,7 +110,12 @@ struct SpaceCell: View {
         case .mine:
             return Text("Space \(space.number), reserved by you")
         case .reserved:
-            return Text("Space \(space.number), taken by plate ending \(space.plateLast3 ?? "unknown")")
+            // Two keys rather than a fallback word spliced into one: "unknown" inside the
+            // interpolation would have been the one untranslated word in the sentence.
+            if let plate = space.plateLast3 {
+                return Text("Space \(space.number), taken by plate ending \(plate)")
+            }
+            return Text("Space \(space.number), taken")
         }
     }
 }

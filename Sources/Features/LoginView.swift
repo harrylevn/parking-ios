@@ -20,8 +20,8 @@ final class LoginViewModel: ObservableObject {
     /// Read from the configured window rather than written as 20:00, so a demo run with the
     /// backend's window shifted does not open on a screen that contradicts the countdown.
     var windowSummary: String {
-        let hour = environment.window.openingHour
-        return "80 spaces. Opens at \(hour < 10 ? "0" : "")\(hour):00 for tomorrow."
+        let opening = String(format: "%02d:00", environment.window.openingHour)
+        return String(localized: "80 spaces. Opens at \(opening) for tomorrow.")
     }
 
     var canSubmit: Bool {

@@ -1,0 +1,1530 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "": {
+      "shouldTranslate": false
+    },
+    "$": {
+      "shouldTranslate": false
+    },
+    "%lld": {
+      "shouldTranslate": false
+    },
+    "%lld free as of %llds ago": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld free as of %2$llds ago"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Còn %1$lld chỗ trống tính đến %2$lld giây trước"
+          }
+        }
+      }
+    },
+    "%lld free at last check": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Còn %lld chỗ trống ở lần kiểm tra gần nhất"
+          }
+        }
+      }
+    },
+    "%lld free of %lld spaces, %lld taken": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld free of %2$lld spaces, %3$lld taken"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld/%2$lld chỗ còn trống, %3$lld chỗ đã có người đặt"
+          }
+        }
+      }
+    },
+    "%lld hours": {
+      "comment": "Spoken countdown, hours part",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld hour"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld hours"
+                }
+              }
+            }
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld giờ"
+          }
+        }
+      }
+    },
+    "%lld minutes": {
+      "comment": "Spoken countdown, minutes part",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld minute"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld minutes"
+                }
+              }
+            }
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld phút"
+          }
+        }
+      }
+    },
+    "%lld seconds": {
+      "comment": "Spoken countdown, seconds part",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld second"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld seconds"
+                }
+              }
+            }
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld giây"
+          }
+        }
+      }
+    },
+    "0.00": {
+      "shouldTranslate": false
+    },
+    "80 spaces. Opens at %@ for tomorrow.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "80 chỗ. Mở đặt chỗ cho ngày mai lúc %@."
+          }
+        }
+      }
+    },
+    ":": {
+      "shouldTranslate": false
+    },
+    "A space costs $10.00. Top up your wallet and try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mỗi chỗ giá $10.00. Hãy nạp thêm tiền vào ví rồi thử lại."
+          }
+        }
+      }
+    },
+    "ABC-123": {
+      "shouldTranslate": false
+    },
+    "ABC-1234": {
+      "shouldTranslate": false
+    },
+    "Add funds": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nạp tiền"
+          }
+        }
+      }
+    },
+    "Add funds to reserve": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nạp tiền để đặt chỗ"
+          }
+        }
+      }
+    },
+    "All 80 spaces are taken. Try again when the window opens for the next day.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cả 80 chỗ đã được đặt hết. Hãy thử lại khi mở đặt chỗ cho ngày tiếp theo."
+          }
+        }
+      }
+    },
+    "Already have an account? Sign in": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã có tài khoản? Đăng nhập"
+          }
+        }
+      }
+    },
+    "An earlier attempt is still being processed.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lần đặt trước đó vẫn đang được xử lý."
+          }
+        }
+      }
+    },
+    "At least 6 characters": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ít nhất 6 ký tự"
+          }
+        }
+      }
+    },
+    "At least 6 characters.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ít nhất 6 ký tự."
+          }
+        }
+      }
+    },
+    "Back to the board": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quay lại sơ đồ"
+          }
+        }
+      }
+    },
+    "Balance %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số dư %@"
+          }
+        }
+      }
+    },
+    "Balance %@. Add funds.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số dư %@. Nạp tiền."
+          }
+        }
+      }
+    },
+    "Balance after, %@.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số dư sau khi đặt: %@."
+          }
+        }
+      }
+    },
+    "Between 3 and 20 characters.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ 3 đến 20 ký tự."
+          }
+        }
+      }
+    },
+    "Can't reach the server": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không kết nối được máy chủ"
+          }
+        }
+      }
+    },
+    "Can't reach the server.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không kết nối được máy chủ."
+          }
+        }
+      }
+    },
+    "Can't tell which space": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không xác định được chỗ nào"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Huỷ"
+          }
+        }
+      }
+    },
+    "Cancel selection": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ chọn"
+          }
+        }
+      }
+    },
+    "Checking server time…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang kiểm tra giờ máy chủ…"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đóng"
+          }
+        }
+      }
+    },
+    "Confirm a %@ deposit": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác nhận nạp %@"
+          }
+        }
+      }
+    },
+    "Confirm password": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác nhận mật khẩu"
+          }
+        }
+      }
+    },
+    "Confirm your parking reservation": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác nhận đặt chỗ đỗ xe"
+          }
+        }
+      }
+    },
+    "Couldn't reserve": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không đặt được chỗ"
+          }
+        }
+      }
+    },
+    "Create account": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo tài khoản"
+          }
+        }
+      }
+    },
+    "Create an account": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo tài khoản mới"
+          }
+        }
+      }
+    },
+    "Deposit %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nạp %@"
+          }
+        }
+      }
+    },
+    "Deposit amount in dollars": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số tiền nạp, tính bằng đô la"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xong"
+          }
+        }
+      }
+    },
+    "Each vehicle can hold one reservation per day.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mỗi xe chỉ được đặt một chỗ mỗi ngày."
+          }
+        }
+      }
+    },
+    "Enter an amount": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập số tiền"
+          }
+        }
+      }
+    },
+    "Every space for tomorrow is taken. The board refreshes every few seconds.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mọi chỗ cho ngày mai đã được đặt hết. Sơ đồ tự cập nhật sau vài giây."
+          }
+        }
+      }
+    },
+    "Every space is taken for tomorrow.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mọi chỗ cho ngày mai đã được đặt hết."
+          }
+        }
+      }
+    },
+    "Free": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trống"
+          }
+        }
+      }
+    },
+    "Get ready. Reservations open in": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chuẩn bị. Mở đặt chỗ sau"
+          }
+        }
+      }
+    },
+    "Got it": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã hiểu"
+          }
+        }
+      }
+    },
+    "Hide password": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ẩn mật khẩu"
+          }
+        }
+      }
+    },
+    "If it went through, your space appears on the board in a few seconds and $10 leaves your balance. If the board doesn't change, nothing was reserved and nothing was charged.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nếu đặt thành công, chỗ của bạn sẽ hiện trên sơ đồ sau vài giây và số dư bị trừ $10. Nếu sơ đồ không thay đổi, nghĩa là chưa có chỗ nào được đặt và bạn không bị trừ tiền."
+          }
+        }
+      }
+    },
+    "Incorrect licence plate or password.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biển số xe hoặc mật khẩu không đúng."
+          }
+        }
+      }
+    },
+    "It's showing your plate on the board, but the server never sent a receipt to confirm it.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sơ đồ đang hiện biển số của bạn, nhưng máy chủ chưa gửi xác nhận."
+          }
+        }
+      }
+    },
+    "Letters, numbers and hyphens only.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉ dùng chữ cái, chữ số và dấu gạch ngang."
+          }
+        }
+      }
+    },
+    "Licence plate": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biển số xe"
+          }
+        }
+      }
+    },
+    "Loading spaces": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang tải các chỗ"
+          }
+        }
+      }
+    },
+    "More options": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuỳ chọn khác"
+          }
+        }
+      }
+    },
+    "No reservation was found for tomorrow.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tìm thấy chỗ đã đặt cho ngày mai."
+          }
+        }
+      }
+    },
+    "No spaces configured": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có chỗ nào được thiết lập"
+          }
+        }
+      }
+    },
+    "No spaces left": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hết chỗ"
+          }
+        }
+      }
+    },
+    "No spaces left for tomorrow": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày mai đã hết chỗ"
+          }
+        }
+      }
+    },
+    "Not enough balance": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số dư không đủ"
+          }
+        }
+      }
+    },
+    "Not enough balance. Add funds and try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số dư không đủ. Hãy nạp tiền rồi thử lại."
+          }
+        }
+      }
+    },
+    "Not open yet": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa mở đặt chỗ"
+          }
+        }
+      }
+    },
+    "Not reserved": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa đặt chỗ"
+          }
+        }
+      }
+    },
+    "One account per licence plate.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mỗi biển số chỉ có một tài khoản."
+          }
+        }
+      }
+    },
+    "One minute until reservations open.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Còn một phút nữa là mở đặt chỗ."
+          }
+        }
+      }
+    },
+    "One reservation per vehicle per day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mỗi xe một chỗ mỗi ngày"
+          }
+        }
+      }
+    },
+    "Opening in": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở sau"
+          }
+        }
+      }
+    },
+    "Opens in": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở sau"
+          }
+        }
+      }
+    },
+    "Opens later today": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở muộn hơn trong hôm nay"
+          }
+        }
+      }
+    },
+    "Parking": {
+      "shouldTranslate": false
+    },
+    "Password": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mật khẩu"
+          }
+        }
+      }
+    },
+    "Passwords do not match.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mật khẩu không khớp."
+          }
+        }
+      }
+    },
+    "Pick a space now. Reservations open in": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hãy chọn chỗ ngay. Mở đặt chỗ sau"
+          }
+        }
+      }
+    },
+    "Pick a space · opens in": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn chỗ · mở sau"
+          }
+        }
+      }
+    },
+    "Register your vehicle": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đăng ký xe của bạn"
+          }
+        }
+      }
+    },
+    "Repeat the password": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập lại mật khẩu"
+          }
+        }
+      }
+    },
+    "Reservations are open": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã mở đặt chỗ"
+          }
+        }
+      }
+    },
+    "Reservations are open.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã mở đặt chỗ."
+          }
+        }
+      }
+    },
+    "Reservations aren't open yet.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa mở đặt chỗ."
+          }
+        }
+      }
+    },
+    "Reservations open in": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở đặt chỗ sau"
+          }
+        }
+      }
+    },
+    "Reservations open in %@, %@, %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reservations open in %1$@, %2$@, %3$@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở đặt chỗ sau %1$@, %2$@, %3$@"
+          }
+        }
+      }
+    },
+    "Reservations open later today. The countdown at the top follows the server clock.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hôm nay sẽ mở đặt chỗ muộn hơn. Đồng hồ đếm ngược phía trên chạy theo giờ máy chủ."
+          }
+        }
+      }
+    },
+    "Reserve any space takes the first one still free, if any are left.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"Đặt chỗ bất kỳ\" sẽ lấy chỗ trống đầu tiên, nếu vẫn còn."
+          }
+        }
+      }
+    },
+    "Reserve any space · $10": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đặt chỗ bất kỳ · $10"
+          }
+        }
+      }
+    },
+    "Reserve space %lld · $10": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đặt chỗ %lld · $10"
+          }
+        }
+      }
+    },
+    "Reserved for tomorrow. $10.00 has been deducted.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã đặt cho ngày mai. Đã trừ $10.00."
+          }
+        }
+      }
+    },
+    "Reserving…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang đặt chỗ…"
+          }
+        }
+      }
+    },
+    "Show password": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiện mật khẩu"
+          }
+        }
+      }
+    },
+    "Showing your plate, but never confirmed by the server": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang hiện biển số của bạn nhưng máy chủ chưa xác nhận"
+          }
+        }
+      }
+    },
+    "Sign in": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đăng nhập"
+          }
+        }
+      }
+    },
+    "Sign out": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đăng xuất"
+          }
+        }
+      }
+    },
+    "Signed in as %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã đăng nhập với biển số %@"
+          }
+        }
+      }
+    },
+    "Someone reached that space first.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã có người đặt chỗ đó trước."
+          }
+        }
+      }
+    },
+    "Someone was faster": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có người nhanh tay hơn"
+          }
+        }
+      }
+    },
+    "Something went wrong": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã xảy ra lỗi"
+          }
+        }
+      }
+    },
+    "Something went wrong on the server.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Máy chủ gặp lỗi."
+          }
+        }
+      }
+    },
+    "Space %lld is yours": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỗ %lld là của bạn"
+          }
+        }
+      }
+    },
+    "Space %lld looks like yours": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỗ %lld có vẻ là của bạn"
+          }
+        }
+      }
+    },
+    "Space %lld picked · tap here once open": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã chọn chỗ %lld · nhấn khi mở"
+          }
+        }
+      }
+    },
+    "Space %lld, available": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỗ %lld, còn trống"
+          }
+        }
+      }
+    },
+    "Space %lld, reserved by you": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỗ %lld, bạn đã đặt"
+          }
+        }
+      }
+    },
+    "Space %lld, selected": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỗ %lld, đang chọn"
+          }
+        }
+      }
+    },
+    "Space %lld, taken": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỗ %lld, đã có người đặt"
+          }
+        }
+      }
+    },
+    "Space %lld, taken by plate ending %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Space %1$lld, taken by plate ending %2$@"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỗ %1$lld, đã được biển số đuôi %2$@ đặt"
+          }
+        }
+      }
+    },
+    "Still checking": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang kiểm tra"
+          }
+        }
+      }
+    },
+    "Taken": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã đặt"
+          }
+        }
+      }
+    },
+    "Ten seconds until reservations open.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Còn mười giây nữa là mở đặt chỗ."
+          }
+        }
+      }
+    },
+    "That plate already has an account. Sign in instead.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biển số này đã có tài khoản. Hãy đăng nhập."
+          }
+        }
+      }
+    },
+    "That request wasn't valid.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yêu cầu không hợp lệ."
+          }
+        }
+      }
+    },
+    "That space went to another driver. Nothing was charged.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỗ đó đã thuộc về người khác. Bạn không bị trừ tiền."
+          }
+        }
+      }
+    },
+    "The button turns on when reservations open. Nothing is sent before you tap it.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nút sẽ bật khi mở đặt chỗ. Không có gì được gửi đi trước khi bạn nhấn."
+          }
+        }
+      }
+    },
+    "The connection dropped before the reply came back.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối bị ngắt trước khi nhận được phản hồi."
+          }
+        }
+      }
+    },
+    "The connection dropped before we heard back.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối bị ngắt trước khi nhận được phản hồi."
+          }
+        }
+      }
+    },
+    "The lot has no spaces for tomorrow.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bãi xe không có chỗ nào cho ngày mai."
+          }
+        }
+      }
+    },
+    "The request timed out before we heard back.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yêu cầu đã hết thời gian chờ trước khi nhận được phản hồi."
+          }
+        }
+      }
+    },
+    "The server says reservations aren't open yet": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Máy chủ báo chưa mở đặt chỗ"
+          }
+        }
+      }
+    },
+    "The server sent something we couldn't read.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Máy chủ gửi về dữ liệu không đọc được."
+          }
+        }
+      }
+    },
+    "The server was busy": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Máy chủ đang quá tải"
+          }
+        }
+      }
+    },
+    "The server was busy. Try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Máy chủ đang quá tải. Hãy thử lại."
+          }
+        }
+      }
+    },
+    "This app's opening time doesn't match the server's, so it can't show a countdown.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giờ mở đặt chỗ của ứng dụng không khớp với máy chủ nên không thể hiện đồng hồ đếm ngược."
+          }
+        }
+      }
+    },
+    "This vehicle already holds a space for tomorrow.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xe này đã có chỗ cho ngày mai."
+          }
+        }
+      }
+    },
+    "Tomorrow": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày mai"
+          }
+        }
+      }
+    },
+    "Tomorrow is full": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày mai đã hết chỗ"
+          }
+        }
+      }
+    },
+    "Too many people arrived at once and your turn timed out. Nothing was charged.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quá nhiều người đặt cùng lúc nên lượt của bạn đã hết thời gian chờ. Bạn không bị trừ tiền."
+          }
+        }
+      }
+    },
+    "Total": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng"
+          }
+        }
+      }
+    },
+    "Try again": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thử lại"
+          }
+        }
+      }
+    },
+    "Two spaces show a plate ending in %@, so we can't tell you which one is yours — or whether either of them is.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có hai chỗ hiện biển số đuôi %@, nên chúng tôi không thể biết chỗ nào là của bạn, hoặc liệu có chỗ nào là của bạn không."
+          }
+        }
+      }
+    },
+    "Uppercase letters, numbers and hyphens (e.g. ABC-1234).": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chữ in hoa, chữ số và dấu gạch ngang (ví dụ ABC-1234)."
+          }
+        }
+      }
+    },
+    "Waiting for the server to answer. Nothing more is sent while this runs.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang chờ máy chủ phản hồi. Không gửi thêm yêu cầu nào trong lúc này."
+          }
+        }
+      }
+    },
+    "Watch the board": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Theo dõi sơ đồ"
+          }
+        }
+      }
+    },
+    "We take the first free space. Balance after, %@.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hệ thống lấy chỗ trống đầu tiên. Số dư sau khi đặt: %@."
+          }
+        }
+      }
+    },
+    "You already have a space": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đã có chỗ"
+          }
+        }
+      }
+    },
+    "You didn't confirm it was you, so nothing was sent and nothing was charged.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn chưa xác nhận danh tính nên không có gì được gửi đi và bạn không bị trừ tiền."
+          }
+        }
+      }
+    },
+    "You were number %lld in the queue": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đứng thứ %lld trong hàng chờ"
+          }
+        }
+      }
+    },
+    "You were number %lld in the queue · settled in %lld ms": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "You were number %1$lld in the queue · settled in %2$lld ms"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đứng thứ %1$lld trong hàng chờ · xử lý trong %2$lld ms"
+          }
+        }
+      }
+    },
+    "Your attempt is still being processed.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yêu cầu của bạn vẫn đang được xử lý."
+          }
+        }
+      }
+    },
+    "Your balance above has been refreshed, so it shows whether the $10 was taken.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số dư phía trên đã được cập nhật, nên bạn có thể thấy $10 đã bị trừ hay chưa."
+          }
+        }
+      }
+    },
+    "Your balance above has been refreshed, so it shows whether the $10 was taken. The board keeps updating.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số dư phía trên đã được cập nhật, nên bạn có thể thấy $10 đã bị trừ hay chưa. Sơ đồ vẫn tiếp tục cập nhật."
+          }
+        }
+      }
+    },
+    "Your connection or the server may be down. Retrying every few seconds; the board stays hidden rather than showing spaces that might be wrong.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối của bạn hoặc máy chủ có thể đang gặp sự cố. Ứng dụng thử lại sau vài giây; sơ đồ được ẩn đi thay vì hiện các chỗ có thể không đúng."
+          }
+        }
+      }
+    },
+    "Your device clock is over 30 seconds off the server. The countdown follows the server.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đồng hồ thiết bị lệch hơn 30 giây so với máy chủ. Đồng hồ đếm ngược chạy theo giờ máy chủ."
+          }
+        }
+      }
+    },
+    "Your request was sent, but the reply didn't arrive in time.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yêu cầu đã được gửi, nhưng phản hồi không đến kịp."
+          }
+        }
+      }
+    },
+    "Your session expired. Please sign in again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+          }
+        }
+      }
+    },
+    "Yours": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Của bạn"
+          }
+        }
+      }
+    },
+    "hours": {
+      "comment": "Caption under the countdown's hours",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "giờ"
+          }
+        }
+      }
+    },
+    "min": {
+      "comment": "Caption under the countdown's minutes",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "phút"
+          }
+        }
+      }
+    },
+    "sec": {
+      "comment": "Caption under the countdown's seconds",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "giây"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

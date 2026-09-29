@@ -216,16 +216,24 @@ struct CountdownHero: View {
     private var segments: [(value: Int, caption: String)] {
         let total = Int(countdown ?? 0)
         return [
-            (total / 3600, "hours"),
-            ((total % 3600) / 60, "min"),
-            (total % 60, "sec")
+            (total / 3600, String(localized: "hours", comment: "Caption under the countdown's hours")),
+            ((total % 3600) / 60, String(localized: "min", comment: "Caption under the countdown's minutes")),
+            (total % 60, String(localized: "sec", comment: "Caption under the countdown's seconds"))
         ]
     }
 
     private var spokenCountdown: String {
         let parts = segments
-        return "Reservations open in \(parts[0].value) hours, "
-            + "\(parts[1].value) minutes, \(parts[2].value) seconds"
+        // One key per unit, so each can carry its own plural forms in the catalog: "1 hours" is
+        // what VoiceOver used to say an hour before the window opened.
+        let hours = String(localized: "\(parts[0].value) hours", comment: "Spoken countdown, hours part")
+        let minutes = String(
+            localized: "\(parts[1].value) minutes", comment: "Spoken countdown, minutes part"
+        )
+        let seconds = String(
+            localized: "\(parts[2].value) seconds", comment: "Spoken countdown, seconds part"
+        )
+        return String(localized: "Reservations open in \(hours), \(minutes), \(seconds)")
     }
 }
 
