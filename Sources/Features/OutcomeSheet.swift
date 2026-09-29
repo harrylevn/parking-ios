@@ -7,9 +7,10 @@ import SwiftUI
 /// the winning one — it is calm, it explains what happened without blaming the user, and it
 /// always offers something to do next.
 ///
-/// The fourth case is the one most clients would not have. When a reservation times out the
-/// backend gives no way to learn the outcome, so the app says it does not know rather than
-/// guessing. That is the honest state and it is designed, not an error fallback.
+/// The fourth case is the one most clients would not have. When the reply is lost and neither
+/// repeating the tap's key nor reading back what committed settles it (ADR-007), the app says
+/// it does not know rather than guessing. That is the honest state and it is designed, not an
+/// error fallback.
 struct OutcomeSheet: View {
     let outcome: ReservationOutcome
     let onDismiss: () -> Void

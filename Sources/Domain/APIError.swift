@@ -72,8 +72,8 @@ enum APIError: Error, Sendable, Equatable {
     case unauthenticated
 
     /// Transport failed. `failure` matters: unless the request provably never left the
-    /// device, the outcome of a reservation is genuinely unknown and must be reconciled,
-    /// never blindly retried.
+    /// device, the outcome of a reservation is unknown. It may be repeated only with the
+    /// same Idempotency-Key, which makes the repeat a replay rather than a second attempt.
     case transport(message: String, failure: TransportFailure)
 
     /// A 2xx body that did not decode, or a non-2xx with an unrecognised shape.

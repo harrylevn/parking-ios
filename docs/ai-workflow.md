@@ -127,9 +127,10 @@ source against the docs, which is the standing rule, applied late.
 **It drafted the one file the agreement says it does not.** `CLAUDE.md` keeps the
 reconciliation in `ReservationCoordinator` off the list of things AI writes here. For ADR-007 I
 asked for the backend idempotency change and the client side in one go, and the coordinator
-rewrite came back as part of it. It merges only once I have read it line by line and can
-defend each branch myself, and this entry exists so the exception is on the record rather than
-quietly absorbed.
+rewrite came back as part of it. I reviewed it line by line on 29/09 and changed nothing. That
+review came after the commit had been pushed to `main`, which is the wrong order for the rule
+it exists to serve. This entry keeps the exception on the record rather than quietly absorbing
+it.
 
 **The backend's own tests had never run.** Before any idempotency code was written, all nine
 existing integration tests errored before an assertion: a modifying query outside a
