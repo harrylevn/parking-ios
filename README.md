@@ -86,6 +86,8 @@ Two things worth knowing before trusting a run:
 - [`docs/design.md`](docs/design.md) — the problem, the interface and why it looks like this,
   the defence of each deviation, and the Guardrail/Default compliance matrix
 - [`docs/security.md`](docs/security.md) — Keychain, re-authentication, threat note
+- [`docs/accessibility.md`](docs/accessibility.md) — the day-7 audit: method, findings, fixes,
+  and what was accepted and why
 - [`docs/runbook.md`](docs/runbook.md) — build, run, test, and bring the backend up from
   nothing
 - [`docs/defects.md`](docs/defects.md) — defects found and reported in writing: section A is

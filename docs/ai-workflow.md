@@ -148,6 +148,19 @@ failed, and on a different test each run. Stashing the change and running the ba
 showed the same failure on `main`: the tap on a board space sometimes does not
 register. It predates ADR-007 and is still open.
 
+**It wrote a fix that did nothing, and a test that could not tell.** For the header's 34pt
+buttons it wrote a modifier to grow their touch target to 44pt without moving the layout, and a
+test that tapped just outside the drawn edge. The test passed. The mutation check, removing the
+modifier, passed too. Probing found that iOS already accepts taps up to 10pt outside those
+buttons, so the modifier was deleted and the test kept as a guard at the distance that matters.
+Without the mutation check, both would have shipped: plausible code, a green test, and neither
+doing anything.
+
+**The audit's summary was not the finding.** It reported clipped text on sheets that looked
+fine, and was right for the wrong reason: the clipping was the board behind the sheet, cut by
+its edge. It also passed contrast on buttons that computing the ratios showed at 1.7:1. The
+screenshots and the arithmetic were what made its output usable.
+
 ## Tooling in the repository
 
 `.claude/` holds the Claude Code configuration, and it is committed deliberately. The
