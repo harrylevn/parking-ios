@@ -56,6 +56,8 @@ against (ADR-007) is not published; see `docs/runbook.md` §2.
 | `make loadtest` | k6 stress scenario, 1,000 virtual users |
 | `make tls` | TLS on `https://localhost:8443` in front of the backend, for certificate pinning; prints the pin |
 | `make pinning-demo` | the app through the TLS proxy: right pin, wrong pin, and a backup pin after rotation |
+| `make rehearse` | the three demo rehearsals, unattended and checked against the database; `ROUNDS=2` for two |
+| `make trace` | Instruments trace of the app on the board, idle and then during a 150-user race |
 
 ### Opening the window on demand
 
@@ -88,6 +90,8 @@ Two things worth knowing before trusting a run:
 - [`docs/design.md`](docs/design.md) — the problem, the interface and why it looks like this,
   the defence of each deviation, and the Guardrail/Default compliance matrix
 - [`docs/security.md`](docs/security.md) — Keychain, re-authentication, threat note
+- [`docs/performance.md`](docs/performance.md) — the Instruments trace: idle under the poll and
+  during a race, with the method and its caveats
 - [`docs/accessibility.md`](docs/accessibility.md) — the day-7 audit: method, findings, fixes,
   and what was accepted and why
 - [`docs/runbook.md`](docs/runbook.md) — build, run, test, and bring the backend up from

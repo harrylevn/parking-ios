@@ -161,6 +161,23 @@ fine, and was right for the wrong reason: the clipping was the board behind the 
 its edge. It also passed contrast on buttons that computing the ratios showed at 1.7:1. The
 screenshots and the arithmetic were what made its output usable.
 
+**A comment said the bypass was compiled out; the binary said otherwise.** `AppEnvironment`
+stated that the Face ID override could not be triggered on a shipped build, and for the one
+launch argument it guarded, that was true. The UI-test environment behind a second argument
+was not guarded, and it carried an always-yes re-authenticator into release builds. Reading the
+code agreed with the comment. Running `strings` on the release binary did not.
+
+**The rehearsal script was wrong three times, and only running it showed which way.** A
+background `docker exec -i` dropped its database lock at once; Hibernate locks with `FOR NO KEY
+UPDATE`, which a pattern written for `FOR UPDATE` never matched; macOS `xargs -I` caps a
+replacement at 255 bytes, which silently discards a 600-byte JWT. Each looked right on review.
+Each failed in a way that would have made a rehearsal pass for the wrong reason, or not run.
+
+**The first Instruments trace measured the test, not the app.** Idle, it showed 75 ms of CPU a
+second, almost none of it in the app's code: the UI test driver was polling the accessibility
+tree, and the app was answering. Asked why the number was high, the plausible answers were all
+about the app. The answer was in which frames were named.
+
 ## Tooling in the repository
 
 `.claude/` holds the Claude Code configuration, and it is committed deliberately. The
