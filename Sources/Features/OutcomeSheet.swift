@@ -37,6 +37,9 @@ struct OutcomeSheet: View {
                 .font(.title2.weight(.bold))
                 .foregroundStyle(Theme.Palette.ink)
                 .multilineTextAlignment(.center)
+                // Which outcome, independent of the language it is written in: a test that
+                // matched "Space 12 is yours" failed on a simulator set to Vietnamese.
+                .accessibilityIdentifier("outcome.title.\(outcome.id)")
 
             Text(style.message)
                 .font(.subheadline)

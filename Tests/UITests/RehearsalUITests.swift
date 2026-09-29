@@ -68,6 +68,43 @@ final class RehearsalUITests: XCTestCase {
         capture("rehearsal-killed")
     }
 
+    /// One of two app instances, on two simulators, confirming the same space at the same
+    /// instant (`scripts/concurrent.sh`). Each is signed in as a different user and waits,
+    /// with space 12 selected, for a start time both were given; then it taps. The script
+    /// judges the pair: one "is yours", one "was faster", and the database must agree.
+    func testConfirmAtTheSameMoment() throws {
+        try requireRehearsal("concurrent")
+        let tapAt = try XCTUnwrap(Double(environment["REHEARSAL_TAP_AT"] ?? ""), "the script sets the start time")
+        let app = signedIn()
+        selectSpace(app.buttons["space.\(space)"], in: app)
+        let confirm = app.buttons["dashboard.confirm"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+
+        let wait = tapAt - Date().timeIntervalSince1970
+        XCTAssertGreaterThan(wait, 0, "signed in too late for the agreed start; give the script more lead time")
+        if wait > 0 { Thread.sleep(forTimeInterval: wait) }
+        let started = Date().timeIntervalSince1970
+        confirm.tap()
+        let tapped = Date().timeIntervalSince1970
+
+        // By identifier, not wording: the two simulators may run in different languages,
+        // which the demo keeps on purpose.
+        let won = app.staticTexts["outcome.title.won-\(space)"]
+        let lost = app.staticTexts["outcome.title.lost-SPACE_UNAVAILABLE"]
+        let deadline = Date().addingTimeInterval(20)
+        while !won.exists, !lost.exists, Date() < deadline {
+            _ = won.waitForExistence(timeout: 0.5)
+        }
+        let outcome = won.exists ? "won" : lost.exists ? "lost" : "none"
+        print("CONCURRENT outcome=\(outcome) tapStarted=\(started) tapReturned=\(tapped)")
+        capture("concurrent-\(outcome)")
+        XCTAssertNotEqual(outcome, "none", "the app showed neither outcome")
+        // XCTest closes the app when the test ends. Hold the result on screen first, so both
+        // simulators can be watched, or shown, side by side.
+        let hold = UInt32(environment["REHEARSAL_HOLD_SECONDS"] ?? "") ?? 0
+        if hold > 0 { sleep(hold) }
+    }
+
     /// Not a rehearsal: the driver for `scripts/trace.sh`, which attaches Instruments to the app
     /// this launches. It signs in and stays on the board while the script races other users
     /// for the spaces.

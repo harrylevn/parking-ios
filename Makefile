@@ -9,7 +9,7 @@ DERIVED     := .build/DerivedData
 BACKEND     := $(or $(PARKING_BACKEND),$(CURDIR)/../parking-reservation)
 COMPOSE     := $(BACKEND)/backend/docker-compose.yml
 
-.PHONY: project build test uitest lint strings strings-check archive clean ci tls tls-pin pinning-demo rehearse trace \
+.PHONY: project build test uitest lint strings strings-check archive clean ci tls tls-pin pinning-demo rehearse trace concurrent \
         backend backend-now backend-off backend-reset backend-health backend-hour backend-down loadtest help
 
 # Default target: list what there is to run.
@@ -36,6 +36,7 @@ help:
 	@echo '  make tls            TLS proxy on :8443 in front of the backend; prints the pin'
 	@echo '  make pinning-demo   the app through the proxy, right pin then wrong pin'
 	@echo '  make rehearse       the three demo rehearsals, unattended (ROUNDS=2 for two)'
+	@echo '  make concurrent     two users confirm the same space at once: API and two simulators'
 	@echo '  make trace          Instruments trace on the board: idle, then a 150-user race'
 	@echo '  make backend-down   stop postgres and redis'
 	@echo '  make loadtest       k6 stress scenario, 1000 VUs'
@@ -143,6 +144,11 @@ pinning-demo: project
 # mid-reservation, each checked against the database. Takes over :8080. ROUNDS=2 for two.
 rehearse: project
 	./scripts/rehearse.sh $(or $(ROUNDS),1)
+
+# Two users confirming the same space at the same time: TRIALS API races released together
+# (default 20), then two simulators tapping Confirm at an agreed instant. Needs backend-now.
+concurrent: project
+	./scripts/concurrent.sh $(or $(TRIALS),20)
 
 # Instruments trace of the app on the board: idle under the poll, then a 150-user race.
 # Needs the backend up with the window open. Summarise with scripts/trace-summary.py.
