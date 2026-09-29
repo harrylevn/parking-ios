@@ -82,6 +82,25 @@ extension XCTestCase {
             guard app.sheets["Save Password?"].exists || dismissed else { return }
         }
     }
+
+    /// Selects a board space, tapping again only while it is still unselected.
+    ///
+    /// An exception to `tap`'s rule that a tap vanishing with nothing on screen fails the test,
+    /// made on evidence gathered on 29/09. On the iOS 26.3 simulator, with the host under load,
+    /// the first tap on a space shortly after the board appears was lost in most suite runs:
+    /// delivered dead centre on a settled, uncovered cell, and never reaching the app. Logging
+    /// in `BoardView.select` showed one call per test, from the second tap. On iOS 26.0 it never
+    /// happened. The cause is not established; a re-layout during the press was tested directly
+    /// and ruled out.
+    ///
+    /// The retry is safe only because it is conditional. Selection toggles, so tapping again
+    /// regardless could deselect the space and let the test pass for the wrong reason.
+    func selectSpace(_ cell: XCUIElement, in app: XCUIApplication, attempts: Int = 3) {
+        for _ in 0..<attempts {
+            tap(cell, in: app) { cell.waitForSelected(timeout: 2) }
+            if cell.isSelected { return }
+        }
+    }
 }
 
 @MainActor
@@ -164,7 +183,7 @@ final class ReservationFlowUITests: XCTestCase {
 
         // Selecting is deliberately separate from committing, so the confirm bar must appear
         // before any money can move.
-        tap(firstFree, in: app) { firstFree.waitForSelected(timeout: 2) }
+        selectSpace(firstFree, in: app)
 
         // Two separate waits, so a failure says whether the tap was lost or the bar failed
         // to appear after a registered tap. Collapsing them hides which half broke.
@@ -235,7 +254,7 @@ final class UncertainOutcomeUITests: XCTestCase {
 
         let firstFree = app.buttons["space.1"]
         XCTAssertTrue(firstFree.waitForExistence(timeout: 10), "grid should appear after sign in")
-        tap(firstFree, in: app) { firstFree.waitForSelected(timeout: 2) }
+        selectSpace(firstFree, in: app)
 
         let confirm = app.buttons["dashboard.confirm"]
         XCTAssertTrue(confirm.waitForExistence(timeout: 5))
