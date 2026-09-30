@@ -13,7 +13,9 @@ reserves outside the window. This sequence prevents both.
 ## 1. Backend
 
 - Check that the backend is cloned at `${PARKING_BACKEND:-../parking-reservation}` and that
-  `git -C <that path> branch --show-current` is `master`. If it is `main`, stop and tell the
+  `git -C <that path> branch --show-current` is `feature/reservation-idempotency`, the branch
+  the app is built against (ADR-007). `master` also works, but only with
+  `PARKING_IDEMPOTENCY_KEYS=0` in the app's environment. If it is `main`, stop and tell the
   user: `main` holds a LICENSE and nothing else.
 - Run `make backend-health`.
   - **Up already:** you cannot tell which window hour it was started with. Ask the user.

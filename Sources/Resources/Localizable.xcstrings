@@ -361,6 +361,16 @@
         }
       }
     },
+    "Confirm a $10 parking reservation": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác nhận đặt chỗ đỗ xe giá $10"
+          }
+        }
+      }
+    },
     "Confirm a %@ deposit": {
       "localizations": {
         "vi": {
@@ -377,16 +387,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Xác nhận mật khẩu"
-          }
-        }
-      }
-    },
-    "Confirm your parking reservation": {
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Xác nhận đặt chỗ đỗ xe"
           }
         }
       }
