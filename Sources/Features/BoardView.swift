@@ -73,7 +73,10 @@ struct BoardView: View {
         return LazyVGrid(columns: columns, spacing: layout.spacing) {
             cells(height: layout.cellHeight, spacing: layout.spacing)
         }
-        .frame(maxHeight: .infinity, alignment: .top)
+        // Centred, not top-aligned. Cell heights are rounded down and capped for the width,
+        // so the rows rarely fill the card exactly, and top alignment put all of the remainder
+        // under the last row: twice the margin at the bottom that there was at the top.
+        .frame(maxHeight: .infinity, alignment: .center)
     }
 
     /// Fallback for accessibility text sizes: same board, allowed to scroll rather than clip.

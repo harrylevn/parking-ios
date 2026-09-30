@@ -106,8 +106,12 @@ struct DashboardView: View {
                 HoldingBanner(spaceNumber: space, isConfirmed: model.hasConfirmedReservation)
             }
 
-            board()
-            if model.state.grid != nil { Legend() }
+            // Centred between the board and the floating confirm bar, which it used to sit flush
+            // on: the column's 8pt is split, not added, so the cells keep their 44pt.
+            VStack(spacing: 4) {
+                board()
+                if model.state.grid != nil { Legend().padding(.bottom, 4) }
+            }
         }
         .padding(.horizontal, Theme.Metric.gutter)
         // The bar is now present whenever a reservation is possible, selected or not, and it
