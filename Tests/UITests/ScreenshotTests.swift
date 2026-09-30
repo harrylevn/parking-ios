@@ -25,6 +25,10 @@ final class ScreenshotTests: XCTestCase {
     }
 
     private func capture(_ app: XCUIApplication, _ name: String, landscape: Bool = false) {
+        // iOS offers to save the password on its own schedule, sometimes well after the board
+        // has loaded, and one regenerated set shipped a dark board behind the prompt. Checked
+        // here, at the moment of capture, rather than trusting each test to wait long enough.
+        dismissSavePasswordPromptIfPresent(in: app)
         let shot = XCTAttachment(image: upright(XCUIScreen.main.screenshot().image, landscape: landscape))
         shot.name = name
         shot.lifetime = .keepAlways
@@ -58,30 +62,40 @@ final class ScreenshotTests: XCTestCase {
     /// confirmation. Fresh each run because one reservation per vehicle per day is a backend
     /// invariant: a fixed plate captures these flows once and then never again that day, and
     /// the failure is quiet — the board simply comes back with nothing selectable.
+    ///
+    /// Retries on a taken plate rather than returning it. The demo and rehearsal scripts leave
+    /// hundreds of `TEST-####` accounts behind with other passwords, and a plate that collided
+    /// used to come back anyway: sign-in then failed on the password, about one
+    /// `make screenshots` run in three, and the cleared field looked like lost keystrokes.
     private func makeFundedAccount() async throws -> String {
-        let plate = "TEST-\(Int.random(in: 1000...9999))"
-        let credentials = #"{"licensePlate":"\#(plate)","password":"probation123"}"#
-
         guard let register = URL(string: "http://localhost:8080/auth/register"),
-              let deposit = URL(string: "http://localhost:8080/wallet/deposit") else { return plate }
+              let deposit = URL(string: "http://localhost:8080/wallet/deposit") else {
+            throw URLError(.badURL)
+        }
 
-        var signUp = URLRequest(url: register)
-        signUp.httpMethod = "POST"
-        signUp.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        signUp.httpBody = Data(credentials.utf8)
-        let (body, _) = try await URLSession.shared.data(for: signUp)
+        for _ in 0..<20 {
+            let plate = "TEST-\(Int.random(in: 1000...9999))"
+            var signUp = URLRequest(url: register)
+            signUp.httpMethod = "POST"
+            signUp.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            signUp.httpBody = Data(#"{"licensePlate":"\#(plate)","password":"probation123"}"#.utf8)
+            let (body, _) = try await URLSession.shared.data(for: signUp)
 
-        guard let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
-              let token = json["token"] as? String else { return plate }
+            guard let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+                  let token = json["token"] as? String else { continue }
 
-        var topUp = URLRequest(url: deposit)
-        topUp.httpMethod = "POST"
-        topUp.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        topUp.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        topUp.httpBody = Data(#"{"amount":50.00}"#.utf8)
-        _ = try await URLSession.shared.data(for: topUp)
-
-        return plate
+            var topUp = URLRequest(url: deposit)
+            topUp.httpMethod = "POST"
+            topUp.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            topUp.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            topUp.httpBody = Data(#"{"amount":50.00}"#.utf8)
+            _ = try await URLSession.shared.data(for: topUp)
+            return plate
+        }
+        // Thrown, not returned: signing in with a plate this test does not own is the bug.
+        throw NSError(domain: "ScreenshotTests", code: 1, userInfo: [
+            NSLocalizedDescriptionKey: "no free TEST-#### plate in 20 attempts"
+        ])
     }
 
     private func signIn(_ app: XCUIApplication, as plate: String) {
