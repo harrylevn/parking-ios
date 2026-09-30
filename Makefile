@@ -9,7 +9,7 @@ DERIVED     := .build/DerivedData
 BACKEND     := $(or $(PARKING_BACKEND),$(CURDIR)/../parking-reservation)
 COMPOSE     := $(BACKEND)/backend/docker-compose.yml
 
-.PHONY: project build test uitest lint strings strings-check archive clean ci tls tls-pin pinning-demo rehearse trace concurrent \
+.PHONY: project build test uitest lint strings strings-check archive clean ci tls tls-pin pinning-demo rehearse trace concurrent device device-config \
         backend backend-now backend-off backend-reset backend-health backend-hour backend-down loadtest help
 
 # Default target: list what there is to run.
@@ -37,6 +37,8 @@ help:
 	@echo '  make pinning-demo   the app through the proxy, right pin then wrong pin'
 	@echo '  make rehearse       the three demo rehearsals, unattended (ROUNDS=2 for two)'
 	@echo '  make concurrent     two users confirm the same space at once: API and two simulators'
+	@echo '  make device         build, install and launch on the connected iPhone, against this Mac'
+	@echo '  make device-config  point Xcode device builds at this Mac (then press Run in Xcode)'
 	@echo '  make trace          Instruments trace on the board: idle, then a 150-user race'
 	@echo '  make backend-down   stop postgres and redis'
 	@echo '  make loadtest       k6 stress scenario, 1000 VUs'
@@ -149,6 +151,15 @@ rehearse: project
 # (default 20), then two simulators tapping Confirm at an agreed instant. Needs backend-now.
 concurrent: project
 	./scripts/concurrent.sh $(or $(TRIALS),20)
+
+# The app on the connected iPhone, pointed at this Mac's backend over the local network.
+# Needs Config/Local.xcconfig (see Config/Local.xcconfig.example) and the backend up.
+device: project
+	./scripts/device.sh
+
+# Only writes Config/Device.xcconfig, for building and running from Xcode instead.
+device-config:
+	./scripts/device.sh --config-only
 
 # Instruments trace of the app on the board: idle under the poll, then a 150-user race.
 # Needs the backend up with the window open. Summarise with scripts/trace-summary.py.

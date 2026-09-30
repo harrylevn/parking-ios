@@ -87,9 +87,12 @@ protection worth the name either.
 
 ## Transport
 
-The local backend is plaintext HTTP, so ATS carries an exception **scoped to `localhost`**
-(`Sources/App/Info.plist`). It does not disable ATS globally, and it does not apply to any
-other host.
+The local backend is plaintext HTTP, so ATS carries two narrow exceptions
+(`Sources/App/Info.plist`): insecure loads for `localhost`, and `NSAllowsLocalNetworking` for
+`.local` names, so a debug build on a real iPhone can reach the development Mac (runbook §12).
+Neither disables ATS globally or reaches any public host. A release build refuses plaintext in
+`HTTPClient` whatever ATS allows, and ignores the server address a debug build reads from its
+`Info.plist`.
 
 ### Certificate pinning
 

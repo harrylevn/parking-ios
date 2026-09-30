@@ -497,3 +497,47 @@ identifier, not wording, so the two simulators may run in different languages. S
 English and one in Vietnamese is a good way to demonstrate the localisation during the same
 race.
 
+## 12. Running on a real iPhone
+
+```bash
+cp Config/Local.xcconfig.example Config/Local.xcconfig   # once; set DEVELOPMENT_TEAM
+make backend-now                                         # its own terminal
+make device
+```
+
+On a phone, `localhost` is the phone. `make device` builds the app to reach this Mac by its
+local network name, `http://<LocalHostName>.local:8080` (`scutil --get LocalHostName`). It
+reads the running backend's window hour, writes both into the build, and installs and launches
+it on the first connected iPhone (`PARKING_DEVICE=<id>` to pick another).
+
+**Building from Xcode instead.** Run `make device-config` first, then choose the iPhone as
+the destination and press Run. Xcode passes nothing on the command line, so the address and
+hour come from `Config/Device.xcconfig`, which `make device-config` (and `make device`) writes.
+It applies to device builds only, so the simulator stays on `localhost`. Rerun it whenever the
+backend restarts at another hour; if Xcode still shows the old value, clean the build folder
+(⇧⌘K) once.
+
+Why it is built in rather than set in the scheme: Xcode's scheme environment only applies when
+Xcode launches the app. Opened from the home screen, a device build has no scheme, so the
+values come from `Info.plist` instead (`LaunchSettings`). That only happens in debug builds;
+release builds read neither, and refuse plaintext regardless.
+
+On the phone:
+
+1. **Allow Local Network access** when asked. Every request fails until you do.
+2. **Register a synthetic plate** (`TEST-####`). Face ID is real on a device, so the deposit
+   and each reservation prompt.
+
+Requirements and what goes wrong:
+
+| Symptom | Cause |
+|---|---|
+| "Can't reach the server" | The phone cannot reach the Mac. They must share a network: the same Wi-Fi, or the Mac on the phone's Personal Hotspot. Check `curl http://<name>.local:8080/actuator/health` from the Mac |
+| "Can't reach the server" from an Xcode build, but `make device` works | `Config/Device.xcconfig` is missing: run `make device-config`, then Run again |
+| It worked, then fails after a restart of the backend at another hour | The window hour is built in. Run `make device` (or `make device-config` and Run) again |
+| Signing error | `DEVELOPMENT_TEAM` is missing or wrong in `Config/Local.xcconfig` |
+| Nothing happens on launch | The phone is locked, or has not trusted this Mac |
+
+The transport exception is `NSAllowsLocalNetworking`, which allows plaintext to `.local` names
+only. It is the local-development bypass `docs/security.md` describes, not a general one.
+

@@ -22,6 +22,8 @@
 	<string>1</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
 		<key>NSExceptionDomains</key>
 		<dict>
 			<key>localhost</key>
@@ -33,6 +35,14 @@
 	</dict>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Confirms it is you before money moves: reserving a space or adding funds.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Connects to the development server on this network.</string>
+	<key>PARKING_BASE_URL</key>
+	<string>$(PARKING_BASE_URL)</string>
+	<key>PARKING_SPKI_PINS</key>
+	<string>$(PARKING_SPKI_PINS)</string>
+	<key>PARKING_WINDOW_HOUR</key>
+	<string>$(PARKING_WINDOW_HOUR)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

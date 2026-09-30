@@ -1,0 +1,10 @@
+// Copy to Config/Local.xcconfig (gitignored) to run on a device. scripts/device.sh fills in the
+// server address and window hour itself, so only the team is required here.
+
+// Your team, from Xcode > Settings > Accounts, or the OU of your Apple Development certificate.
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+
+// Optional: fixed values for builds made without scripts/device.sh. Debug only. The "/$()/"
+// stops xcconfig reading "//" as the start of a comment.
+// PARKING_BASE_URL[config=Debug] = http:/$()/Your-Mac.local:8080
+// PARKING_WINDOW_HOUR[config=Debug] = 20

@@ -1,54 +1,72 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "CFBundleDisplayName" : {
-      "comment" : "The app's name under its icon. A product name, kept as it is.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Parking"
+  "sourceLanguage": "en",
+  "strings": {
+    "CFBundleDisplayName": {
+      "comment": "The app's name under its icon. A product name, kept as it is.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parking"
           }
         },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Parking"
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parking"
           }
         }
       }
     },
-    "CFBundleName" : {
-      "comment" : "Bundle name",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Parking"
+    "CFBundleName": {
+      "comment": "Bundle name",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Parking"
           }
         }
       }
     },
-    "NSFaceIDUsageDescription" : {
-      "comment" : "Shown the first time the app asks to use Face ID.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Confirms it is you before money moves: reserving a space or adding funds."
+    "NSFaceIDUsageDescription": {
+      "comment": "Shown the first time the app asks to use Face ID.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirms it is you before money moves: reserving a space or adding funds."
           }
         },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Xác nhận đúng là bạn trước khi có giao dịch tiền: đặt chỗ hoặc nạp tiền."
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác nhận đúng là bạn trước khi có giao dịch tiền: đặt chỗ hoặc nạp tiền."
+          }
+        }
+      }
+    },
+    "NSLocalNetworkUsageDescription": {
+      "comment": "Asked the first time a development build connects to the server on the local network.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connects to the development server on this network."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối tới máy chủ phát triển trong mạng này."
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

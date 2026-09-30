@@ -1,0 +1,15 @@
+// Build settings for the app target, committed. Per-machine values come from Local.xcconfig,
+// which is gitignored: copy Local.xcconfig.example and fill it in (docs/runbook.md, §12).
+//
+// The PARKING_* values are written into Info.plist and read by debug builds only, so a build
+// installed on a device and opened from the home screen, where Xcode's scheme environment does
+// not apply, still knows which server to talk to. Release builds ignore them.
+
+PARKING_BASE_URL =
+PARKING_WINDOW_HOUR =
+PARKING_SPKI_PINS =
+
+// Written by scripts/device.sh (make device, or make device-config before building in Xcode):
+// this Mac's address and the backend's window hour, for device builds only.
+#include? "Device.xcconfig"
+#include? "Local.xcconfig"

@@ -64,7 +64,7 @@ final class AppEnvironment: ObservableObject {
 
     /// The real app: Keychain-backed session, live HTTP, biometric re-auth.
     static func live(
-        configuration: APIConfiguration = .fromEnvironment(ProcessInfo.processInfo.environment)
+        configuration: APIConfiguration = .fromEnvironment(LaunchSettings.current)
     ) -> AppEnvironment {
         let tokenStore = KeychainTokenStore()
         let serverClock = ServerClock()
@@ -80,7 +80,7 @@ final class AppEnvironment: ObservableObject {
         )
         // The window hour is configuration, not a constant: the demo runs with
         // app.reservation.window-hour shifted, and hardcoding 20 would break it.
-        let environment = ProcessInfo.processInfo.environment
+        let environment = LaunchSettings.current
         let hour = Int(environment["PARKING_WINDOW_HOUR"] ?? "") ?? 20
         // Repeating a key is safe only against a backend that honours Idempotency-Key. One
         // that ignores it runs a repeat as a second attempt whenever the first failed without

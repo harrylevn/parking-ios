@@ -51,12 +51,26 @@ targets:
         # Face ID re-authentication before anything that moves money: a reservation or a
         # deposit (6.5, ADR-006). Translated in Sources/Resources/InfoPlist.xcstrings.
         NSFaceIDUsageDescription: "Confirms it is you before money moves: reserving a space or adding funds."
-        # The local backend is plaintext HTTP. Scoped to localhost only, and this
-        # exception is documented in docs/security.md as a local-development bypass.
+        # The local backend is plaintext HTTP. Scoped to localhost, and to the local network
+        # for running on a device against the development Mac (`.local` names). Documented in
+        # docs/security.md as a local-development bypass; release builds refuse plaintext in
+        # HTTPClient whatever ATS allows.
         NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
           NSExceptionDomains:
             localhost:
               NSExceptionAllowsInsecureHTTPLoads: true
+        # iOS asks before an app talks to devices on the local network. Only a development
+        # build pointed at the Mac ever does. Translated in InfoPlist.xcstrings.
+        NSLocalNetworkUsageDescription: "Connects to the development server on this network."
+        # Debug builds read these when the scheme's environment does not set them: a device
+        # build opened from the home screen has no scheme. From Config/*.xcconfig.
+        PARKING_BASE_URL: $(PARKING_BASE_URL)
+        PARKING_WINDOW_HOUR: $(PARKING_WINDOW_HOUR)
+        PARKING_SPKI_PINS: $(PARKING_SPKI_PINS)
+    configFiles:
+      Debug: Config/Parking.xcconfig
+      Release: Config/Parking.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.vncdc.parking
