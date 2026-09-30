@@ -1,0 +1,48 @@
+# fastlane is a thin entry point here, not a second pipeline. The checks CI runs are defined
+# once, in the Makefile, and these lanes call them; fastlane takes over only where it adds
+# something the Makefile does not have, building and exporting the .ipa with gym.
+# Justified in docs/design.md (Dependencies). Run with `make lane LANE=<name>`.
+
+default_platform(:ios)
+
+ROOT = File.expand_path("..", __dir__)
+
+def make(target)
+  sh("make", "-C", ROOT, target)
+end
+
+platform :ios do
+  desc "SwiftLint at zero violations"
+  lane(:lint) { make("lint") }
+
+  desc "Unit tests, then the coverage gate"
+  lane(:test) { make("test") }
+
+  desc "UI tests on the simulator, against in-process fakes"
+  lane(:uitest) { make("uitest") }
+
+  desc "Everything CI runs: lint, build, String Catalog check, unit tests, UI tests"
+  lane(:ci) { make("ci") }
+
+  desc "A development-signed .ipa, built by gym and pointed at this Mac's backend"
+  lane :ipa do
+    team = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
+    UI.user_error!("Set DEVELOPMENT_TEAM in Config/Local.xcconfig") unless team
+    # The Mac's address and the backend's hour, into the build (Config/Device.xcconfig).
+    sh(File.join(ROOT, "scripts/device.sh"), "--config-only")
+    build_number = sh("git", "-C", ROOT, "rev-list", "--count", "HEAD", log: false).strip
+    build_app(
+      project: File.join(ROOT, "Parking.xcodeproj"),
+      scheme: "Parking",
+      # Debug, as with make ipa: a Release build refuses plaintext and cannot reach the backend.
+      configuration: "Debug",
+      export_method: "development",
+      export_team_id: team,
+      destination: "generic/platform=iOS",
+      xcargs: "-allowProvisioningUpdates CURRENT_PROJECT_VERSION=#{build_number}",
+      output_directory: File.join(ROOT, ".build/fastlane"),
+      output_name: "Parking.ipa",
+      derived_data_path: File.join(ROOT, ".build/DerivedData")
+    )
+  end
+end

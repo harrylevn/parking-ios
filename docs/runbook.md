@@ -541,3 +541,33 @@ Requirements and what goes wrong:
 The transport exception is `NSAllowsLocalNetworking`, which allows plaintext to `.local` names
 only. It is the local-development bypass `docs/security.md` describes, not a general one.
 
+## 13. A signed `.ipa`, fastlane, snapshots and the coverage gate
+
+```bash
+make ipa                 # archive, export, verify the signature, install on the iPhone
+make ipa NO_INSTALL=1    # the same, without installing
+make lane LANE=ipa       # the same .ipa, built by fastlane's gym, in .build/fastlane/
+```
+
+Both need `DEVELOPMENT_TEAM` in `Config/Local.xcconfig`, and the backend running for the
+address and hour they build in (§12). The `.ipa` is archived from **Debug**, deliberately: a
+Release build refuses plaintext and ignores the server address, so it would install and then
+reach nothing. `make ipa` prints what it verified — signer, profile and provisioned devices,
+version and build number, and the server the build points at.
+
+**fastlane.** Homebrew's Ruby (`brew install ruby`), not the system one; `make lane` puts it on
+the path and installs the gems pinned in `Gemfile.lock` into `vendor/bundle` on first use. The
+lanes other than `ipa` call the Makefile, so `make lane LANE=ci` and `make ci` run the same
+checks.
+
+**Snapshots.** `make test` compares 20 views against the PNGs in
+`Tests/UnitTests/__Snapshots__/`, recorded on the iOS 26.3 simulator. After a deliberate visual
+change, or a new simulator runtime, run `make snapshots-record` and look at every changed
+image in the diff before committing it. A failing snapshot attaches the actual image to the
+result bundle.
+
+**Coverage gate.** `make test` ends with `scripts/coverage-gate.py`: Domain 90%, Data 85%,
+view models 80%. Overall coverage is printed and not gated, because it counts SwiftUI bodies
+the unit tests are not meant to reach. Relax a floor for one run with, for example,
+`COVERAGE_FLOOR_DATA=80 make test` — and say why in the commit if it stays relaxed.
+

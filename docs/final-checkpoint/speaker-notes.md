@@ -17,7 +17,7 @@ which is where the trade-offs get tested.
 
 The one line to land: *nothing is left neither kept nor replaced.* At week 1, certificate
 pinning was a written risk; it is now built and demonstrable. Point at the numbers, but do not
-read them: 123 unit tests, 26 UI tests of which 13 run in CI and 13 are live suites the scripts
+read them: 147 unit tests, 26 UI tests of which 13 run in CI and 13 are live suites the scripts
 run against the real backend.
 
 ## What changed since week 1

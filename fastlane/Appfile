@@ -1,0 +1,6 @@
+app_identifier("com.vncdc.parking")
+
+# The team comes from Config/Local.xcconfig, which is gitignored, so nothing personal is committed.
+local = File.expand_path("../Config/Local.xcconfig", __dir__)
+team = File.exist?(local) && File.read(local)[/^\s*DEVELOPMENT_TEAM\s*=\s*(\S+)/, 1]
+team_id(team) if team && team != "YOUR_TEAM_ID"

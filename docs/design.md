@@ -40,11 +40,19 @@ from an arbitrary executor, `ReservationCoordinator` because its in-flight flag 
 one-tap-one-attempt under concurrent taps. The grid poll loop is a `Task` owned by the view
 model and cancelled on teardown.
 
-No third-party dependencies. Swift 6 language mode, complete strict concurrency, warnings as
-errors. One `nonisolated(unsafe)` survives, on two `ISO8601DateFormatter` statics, with the
+No third-party dependencies in the app. Swift 6 language mode, complete strict concurrency,
+warnings as errors. One `nonisolated(unsafe)` survives, on two `ISO8601DateFormatter` statics, with the
 reasoning at the call site.
 
 → [ADR-001](architecture.md#adr-001) for why each of those, and what was considered instead.
+
+**Dependencies.** One, and not in the app:
+
+- **fastlane** (`Gemfile`, pinned by `Gemfile.lock`) — build tooling only, never linked; the
+  brief's 6.4 stretch names it, and its lanes wrap the Makefile so CI's checks stay defined once.
+
+Snapshot tests were the other candidate (swift-snapshot-testing), and were written without it:
+about eighty lines in `Snapshotting.swift` did not justify the app's first test dependency.
 
 ## 3. What the backend's actual behaviour forced
 
@@ -566,7 +574,7 @@ unfinished ones are scheduled rather than abandoned.
 | 6.2 | The k6 race rehearsal, and an Instruments trace under load | built — `make rehearse` (won, lost, killed, checked against the database, two rounds unattended), `make concurrent`, and `make trace` ([`performance.md`](performance.md)) |
 | 6.3 | A second locale populated | built — Vietnamese, every key; the board guardrail re-asserted in it by `BoardGeometryUITests`. Machine-drafted, not yet reviewed by a native speaker |
 | 6.1 | SPM modularisation, or a unidirectional architecture such as TCA | not pursued |
-| 6.4 | Signed `.ipa` on device, fastlane, snapshot tests, a coverage gate | on device only — a signed development build on an iPhone 14 Pro Max (`make device`); no `.ipa` distribution, fastlane, snapshots or coverage gate |
+| 6.4 | Signed `.ipa` on device, fastlane, snapshot tests, a coverage gate | all four built. A development-signed `.ipa`, verified and installed on an iPhone 14 Pro Max (`make ipa`); fastlane lanes over the Makefile, with `gym` building the same `.ipa` (`make lane LANE=ipa`); 20 snapshot references with no library; a coverage gate in `make test` — Domain 93%, Data 92%, view models 88% against floors of 90, 85 and 80, mutation-checked (without the network tests Data falls to 51% and the gate fails) |
 
 ### Known risk
 

@@ -9,7 +9,7 @@ DERIVED     := .build/DerivedData
 BACKEND     := $(or $(PARKING_BACKEND),$(CURDIR)/../parking-reservation)
 COMPOSE     := $(BACKEND)/backend/docker-compose.yml
 
-.PHONY: project build test uitest snapshots-record lint strings strings-check archive clean ci tls tls-pin pinning-demo rehearse trace concurrent device device-config ipa \
+.PHONY: project build test uitest snapshots-record lint strings strings-check archive clean ci tls tls-pin pinning-demo rehearse trace concurrent device device-config ipa lane \
         backend backend-now backend-off backend-reset backend-health backend-hour backend-down loadtest help
 
 # Default target: list what there is to run.
@@ -41,6 +41,7 @@ help:
 	@echo '  make device         build, install and launch on the connected iPhone, against this Mac'
 	@echo '  make device-config  point Xcode device builds at this Mac (then press Run in Xcode)'
 	@echo '  make ipa            a signed development .ipa, verified and installed on the iPhone'
+	@echo '  make lane LANE=…    a fastlane lane: lint, test, uitest, ci, ipa'
 	@echo '  make trace          Instruments trace on the board: idle, then a 150-user race'
 	@echo '  make backend-down   stop postgres and redis'
 	@echo '  make loadtest       k6 stress scenario, 1000 VUs'
@@ -174,6 +175,14 @@ device: project
 # connected iPhone (NO_INSTALL=1 to skip). CI keeps the unsigned Release archive.
 ipa: project
 	./scripts/ipa.sh $(if $(NO_INSTALL),--no-install,)
+
+# fastlane lanes (fastlane/Fastfile), on Homebrew's Ruby with the gems pinned in Gemfile.lock.
+# The first run installs them into vendor/bundle.  make lane LANE=ipa
+FASTLANE_ENV = PATH="/opt/homebrew/opt/ruby/bin:$$PATH"
+lane:
+	@test -n "$(LANE)" || (echo 'usage: make lane LANE=lint|test|uitest|ci|ipa'; exit 1)
+	$(FASTLANE_ENV) bundle check > /dev/null || $(FASTLANE_ENV) bundle install
+	$(FASTLANE_ENV) bundle exec fastlane $(LANE)
 
 # Only writes Config/Device.xcconfig, for building and running from Xcode instead.
 device-config:

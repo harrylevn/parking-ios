@@ -122,7 +122,9 @@ review round-trips, never a per-person leaderboard. (`CLAUDE.md`)
 **Why no dependencies: not even Alamofire, or TCA?**
 None would save more than a few dozen lines, and in a banking client every dependency is
 supply-chain surface to audit and update. `URLSession`, `Security`, `CryptoKit` and
-`LocalAuthentication` cover everything. (ADR-001)
+`LocalAuthentication` cover everything. (ADR-001) The one exception is fastlane, and it is
+build tooling, never linked into the app; the snapshot tests were written without a library
+for the same reason.
 
 **Is the accessibility claim real?**
 Apple's audit, in light, dark and the largest text size, runs in CI and fails on anything not

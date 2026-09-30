@@ -73,7 +73,8 @@ synthetic example get the same quality of help as real records, at none of the r
 - Swift API Design Guidelines; American spelling in code identifiers, British in prose.
 - Comments explain intent and trade-offs. No comments restating the code.
 - Commits are scoped and imperative, and explain why in the body when the why is not obvious.
-- No dependency without a one-line justification in `docs/design.md`. Currently: none.
+- No dependency without a one-line justification in `docs/design.md`. Currently: none in the
+  app; fastlane, as build tooling only.
 
 ## Measuring AI contribution on a mobile repo
 

@@ -23,13 +23,14 @@ Same format as the week-1 deck ([`../slides.md`](../slides.md)). Speaker notes:
 - **Every Guardrail met; every Default kept, or swapped and the swap built.** None left
   neither kept nor replaced. Certificate pinning was the last, built on day 8.
 - **Stretch items built:** Swift 6 language mode, clock-skew warning, iPad *and* landscape, a
-  second locale (Vietnamese), the race rehearsals, an Instruments trace, three Claude Code skills.
+  second locale (Vietnamese), the race rehearsals, an Instruments trace, three Claude Code skills,
+  a signed `.ipa`, fastlane, snapshot tests and a coverage gate.
 
 | | |
 |---|---|
-| App | 28 Swift files, 4,764 lines, **zero third-party dependencies** |
-| Tests | **123 unit** · **26 UI**: 13 in CI on fakes, 13 live-only (pinning, rehearsals, screenshots) |
-| Gates | SwiftLint 0 violations · zero warnings under Swift 6 · String Catalog in sync, 150 keys |
+| App | 28 Swift files, 4,764 lines, **zero third-party dependencies** (fastlane is build tooling only) |
+| Tests | **147 unit**, with 20 snapshot references · **26 UI**: 13 in CI on fakes, 13 live-only (pinning, rehearsals, screenshots) |
+| Gates | SwiftLint 0 violations · zero warnings under Swift 6 · String Catalog in sync, 150 keys · coverage: Domain 93%, Data 92%, view models 88% |
 | CI | Self-hosted runner, every push: lint, build, strings, unit, UI, archive — green on head |
 | Evidence | 7 ADRs · 11 defects reported (1 in the brief, 10 in the backend) |
 
@@ -189,10 +190,11 @@ database lock holds the request inside the server, then `SIGKILL`.
 
 | Layer | What it proves |
 |---|---|
-| 123 unit tests | Domain and view models, on fakes: races, retries, clock, error shapes, pinning |
+| 147 unit tests | Domain, view models and the network layer, on fakes: races, retries, clock, error shapes, pinning, Keychain |
+| Snapshots | 20 references — outcome sheets, cells, the confirm bar — in light, dark and the largest text |
 | 13 UI tests in CI | Login → board → reserve, the uncertain sheets, the 6.1-inch guardrail (EN + VI), an accessibility audit in light, dark and the largest text |
 | Live suites | Rehearsals, concurrency, pinning, the Instruments trace — run by scripts |
-| Gates | Lint 0 · no warnings · catalog in sync · mutation checks on the tests that matter |
+| Gates | Lint 0 · no warnings · catalog in sync · coverage floors per layer · mutation checks on the tests that matter |
 
 Performance (`make trace`): ~1% of one core idle on the board; the worst moment, all 80 cells
 changing in one poll, is a **25 ms** main-thread burst — one frame. No hangs.

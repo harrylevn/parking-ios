@@ -91,7 +91,10 @@ extension XCTestCase {
     /// delivered dead centre on a settled, uncovered cell, and never reaching the app. Logging
     /// in `BoardView.select` showed one call per test, from the second tap. On iOS 26.0 it never
     /// happened. The cause is not established; a re-layout during the press was tested directly
-    /// and ruled out.
+    /// and ruled out. On 30/09 it hit the login screen's "Create an account" link once in a full
+    /// suite run (`testAuditDark`; the attached screenshot shows the login screen, uncovered), so
+    /// it is not specific to the board. That tap is deliberately left unguarded, so the flake
+    /// stays visible rather than being retried away everywhere.
     ///
     /// The retry is safe only because it is conditional. Selection toggles, so tapping again
     /// regardless could deselect the space and let the test pass for the wrong reason.
