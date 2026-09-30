@@ -31,7 +31,9 @@ struct KeychainTokenStore: TokenStoring {
         self.account = account
     }
 
-    private var baseQuery: [String: Any] {
+    /// Internal rather than private so `KeychainTokenStoreTests` can read the stored item's
+    /// attributes back and check the accessibility class the Keychain actually recorded.
+    var baseQuery: [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

@@ -52,9 +52,14 @@ build: project
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' \
 		-derivedDataPath $(DERIVED) build
 
+# Unit tests, then the coverage gate: floors on Domain, Data and the view models, where the
+# logic lives (scripts/coverage-gate.py says why not one overall number).
 test: project
+	rm -rf $(DERIVED)/unit-tests.xcresult
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' \
-		-derivedDataPath $(DERIVED) -only-testing:ParkingTests test
+		-derivedDataPath $(DERIVED) -only-testing:ParkingTests -enableCodeCoverage YES \
+		-resultBundlePath $(DERIVED)/unit-tests.xcresult test
+	python3 scripts/coverage-gate.py $(DERIVED)/unit-tests.xcresult
 
 uitest: project
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' \

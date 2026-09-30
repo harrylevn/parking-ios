@@ -110,4 +110,63 @@ final class CertificatePinningTests: XCTestCase {
         XCTAssertEqual(configuration.baseURL, APIConfiguration.localBackend.baseURL)
         XCTAssertTrue(configuration.pinnedKeys.isEmpty)
     }
+
+    // MARK: - The delegate that answers the handshake
+
+    /// What a TLS handshake hands the delegate. `URLProtectionSpace` exposes the server's trust
+    /// read-only, so a subclass supplies it, the only way to drive the delegate without TLS.
+    private final class ServerTrustSpace: URLProtectionSpace, @unchecked Sendable {
+        private let trust: SecTrust?
+        init(trust: SecTrust?, method: String = NSURLAuthenticationMethodServerTrust) {
+            self.trust = trust
+            super.init(
+                host: "localhost", port: 8443, protocol: "https", realm: nil, authenticationMethod: method
+            )
+        }
+        required init?(coder: NSCoder) { nil }
+        override var serverTrust: SecTrust? { trust }
+    }
+
+    private final class IgnoringSender: NSObject, URLAuthenticationChallengeSender {
+        func use(_ credential: URLCredential, for challenge: URLAuthenticationChallenge) {}
+        func continueWithoutCredential(for challenge: URLAuthenticationChallenge) {}
+        func cancel(_ challenge: URLAuthenticationChallenge) {}
+    }
+
+    private func answer(_ space: URLProtectionSpace, pins: Set<String>) async
+        -> (PinningTaskDelegate, URLSession.AuthChallengeDisposition) {
+        let delegate = PinningTaskDelegate(pins: pins)
+        let challenge = URLAuthenticationChallenge(
+            protectionSpace: space, proposedCredential: nil, previousFailureCount: 0,
+            failureResponse: nil, error: nil, sender: IgnoringSender()
+        )
+        let session = URLSession(configuration: .ephemeral)
+        let task = session.dataTask(with: URLRequest(url: URL(fileURLWithPath: "/")))
+        let (disposition, _) = await delegate.urlSession(session, task: task, didReceive: challenge)
+        return (delegate, disposition)
+    }
+
+    func testThePinnedServerIsAnsweredWithItsOwnCredential() async throws {
+        let space = ServerTrustSpace(trust: try serverTrust())
+        let (delegate, disposition) = await answer(space, pins: [Self.leafPin])
+        XCTAssertEqual(disposition, .useCredential)
+        XCTAssertFalse(delegate.didRefuseServer)
+    }
+
+    /// A refusal cancels the handshake and is remembered, which is how `HTTPClient` tells it
+    /// apart from every other cancelled request and reports `untrustedServer`.
+    func testAWrongPinCancelsTheHandshakeAndIsRemembered() async throws {
+        let space = ServerTrustSpace(trust: try serverTrust())
+        let (delegate, disposition) = await answer(space, pins: [Self.unrelatedPin])
+        XCTAssertEqual(disposition, .cancelAuthenticationChallenge)
+        XCTAssertTrue(delegate.didRefuseServer)
+    }
+
+    /// Other challenge kinds, such as a client certificate, are not the pin's business.
+    func testOtherChallengesGetDefaultHandling() async throws {
+        let space = ServerTrustSpace(trust: nil, method: NSURLAuthenticationMethodClientCertificate)
+        let (delegate, disposition) = await answer(space, pins: [Self.leafPin])
+        XCTAssertEqual(disposition, .performDefaultHandling)
+        XCTAssertFalse(delegate.didRefuseServer)
+    }
 }
