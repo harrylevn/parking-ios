@@ -30,7 +30,7 @@ questions.
 
 | File | Shows |
 |---|---|
-| `concurrent-won.png`, `concurrent-lost.png` | The two simulators after tapping 0 ms apart |
+| `concurrent-won.png`, `concurrent-lost.png` | The two simulators after tapping 1 ms apart; the loser in Vietnamese and dark mode |
 | `race-won.png`, `race-lost.png`, `race-killed.png` | The three rehearsals |
 | `pinning-refused.png` | A wrong pin, refused |
 | `board-vietnamese.png` | The board in the second locale |

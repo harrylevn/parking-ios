@@ -43,8 +43,9 @@ another request holds. Naming a space locks exactly one row, and losing that loc
 
 **How do you know two simultaneous taps cannot both win?**
 Tested at two levels. The API: two requests released from a barrier a median 32 µs apart, 20 of
-20 trials with exactly one winner and one debit, and the winner split 10–10. The app: two
-simulators tapping 0 ms apart; one "is yours", one "someone was faster", and the database agrees.
+20 trials with exactly one winner and one debit, and the winner split 12–8 between the two
+threads (10–10 on an earlier run): no clear edge either way. The app: two simulators tapping 1 ms apart; one "is
+yours", one "someone was faster", and the database agrees.
 (`make concurrent`)
 
 ---
@@ -111,7 +112,9 @@ key is committed (D10), so anyone with the repository can mint a session for any
 Not established. On the iOS 26.3 simulator the first tap on a space sometimes never reaches the
 app; logging proved the re-tap is what lands. It never happened on iOS 26.0, and a layout change
 during the press was ruled out. The test re-taps only while the space is still unselected, so it
-cannot pass for the wrong reason. It has not been seen on a real device.
+cannot pass for the wrong reason. On 30/09 it hit the login screen's "Create an account" link
+once, so it is not specific to the board; that tap is left unguarded so the problem stays
+visible. It has not been seen on a real device.
 
 **How much of this did AI write, and how do you know it is right?**
 Much of the drafting. The agreement makes AI code clear the same gates as mine, and the important

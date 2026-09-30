@@ -28,7 +28,7 @@ Same format as the week-1 deck ([`../slides.md`](../slides.md)). Speaker notes:
 
 | | |
 |---|---|
-| App | 28 Swift files, 4,764 lines, **zero third-party dependencies** (fastlane is build tooling only) |
+| App | 28 Swift files, 4,773 lines, **zero third-party dependencies** (fastlane is build tooling only) |
 | Tests | **147 unit**, with 20 snapshot references · **26 UI**: 13 in CI on fakes, 13 live-only (pinning, rehearsals, screenshots) |
 | Gates | SwiftLint 0 violations · zero warnings under Swift 6 · String Catalog in sync, 150 keys · coverage: Domain 93%, Data 92%, view models 88% |
 | CI | Self-hosted runner, every push: lint, build, strings, unit, UI, archive — green on head |
@@ -146,10 +146,12 @@ Every result is checked against the database, not only the screen.
 </p>
 
 - **API:** both requests released from a barrier, median 32 µs apart. **20 of 20** trials: one
-  winner, one `SPACE_UNAVAILABLE`, one $10 debit; the winner split **10–10**. With "any space",
-  20 of 20 gave both users a space, never the same one.
-- **App:** two simulators tapped Confirm **0 ms apart**. One *"is yours"*, one *"someone was
+  winner, one `SPACE_UNAVAILABLE`, one $10 debit; the winner split **12–8** between the two
+  threads: no clear edge either way. With "any space", 20 of 20 gave both users a space,
+  never the same one.
+- **App:** two simulators tapped Confirm **1 ms apart**. One *"is yours"*, one *"someone was
   faster, nothing was charged"* — and the loser's board already shows the winner's plate.
+  The loser ran in Vietnamese and dark mode: the outcome is matched by identifier, not wording.
 
 ---
 
@@ -195,6 +197,7 @@ database lock holds the request inside the server, then `SIGKILL`.
 | 13 UI tests in CI | Login → board → reserve, the uncertain sheets, the 6.1-inch guardrail (EN + VI), an accessibility audit in light, dark and the largest text |
 | Live suites | Rehearsals, concurrency, pinning, the Instruments trace — run by scripts |
 | Gates | Lint 0 · no warnings · catalog in sync · coverage floors per layer · mutation checks on the tests that matter |
+| Delivery | A development-signed `.ipa`, verified and installed on an iPhone 14 Pro Max — `make ipa`, or fastlane's `gym` over the same settings |
 
 Performance (`make trace`): ~1% of one core idle on the board; the worst moment, all 80 cells
 changing in one poll, is a **25 ms** main-thread burst — one frame. No hangs.
@@ -211,6 +214,8 @@ changing in one poll, is a **25 ms** main-thread burst — one frame. No hangs.
   - a no-op tap-target fix with a test that passed without it — caught by a mutation check
   - a comment claiming the Face ID bypass was compiled out; `strings` on the binary disagreed
   - a trace that measured the test driver, not the app
+  - a test helper that signed in as accounts it did not own; it looked like lost keystrokes
+    until the failure screenshot was read
 - **Measuring contribution:** a per-commit `AI-Assisted` trailer, correlated with defects and
   review round-trips — never a leaderboard.
 
@@ -239,8 +244,9 @@ changing in one poll, is a **25 ms** main-thread burst — one frame. No hangs.
 
 ## Open, and said plainly
 
-- A UI-test first tap is sometimes lost on the iOS 26.3 simulator; the cause is not found. A
-  guarded re-tap keeps CI green; it has not been seen on a real device.
+- A UI-test first tap is sometimes lost on the iOS 26.3 simulator — mostly on a board space,
+  once on the login screen; the cause is not found. The board tap is re-tried only while the
+  space is still unselected; it has not been seen on a real device.
 - The Vietnamese is machine-drafted, and no person has yet made a VoiceOver pass.
 - The idempotency backend lives on a local branch: the account has no push access upstream.
 

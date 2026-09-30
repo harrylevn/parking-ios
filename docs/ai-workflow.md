@@ -178,6 +178,14 @@ second, almost none of it in the app's code: the UI test driver was polling the 
 tree, and the app was answering. Asked why the number was high, the plausible answers were all
 about the app. The answer was in which frames were named.
 
+**A test helper signed in as accounts it did not own.** The screenshot suite made a fresh
+account on a random `TEST-####` plate and returned the plate even when registration failed. The
+demo scripts had left 964 of the 9,000 plates taken, so about one run in three signed in with the
+wrong password, and the field the app clears afterwards made it look like lost keystrokes. The
+first failure was put down to the known simulator flake; the second, with the same screenshot,
+could not be. The helper now retries with a new plate and throws rather than return one it
+does not own. It was plausible code, and it failed quietly.
+
 ## Tooling in the repository
 
 `.claude/` holds the Claude Code configuration, and it is committed deliberately. The

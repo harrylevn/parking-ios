@@ -87,8 +87,10 @@ reported: the committed JWT signing key, and the day-long lockout after a crash.
 
 The point is not the count, it is that the tests that matter are *mutation-checked*: I break
 the code they protect and confirm they fail. Two examples: each database fallback in the
-idempotency backend, and each check in the pinning evaluator. Mention the trace in one
-sentence: idle is about 1% of a core, the worst moment is one frame.
+idempotency backend, and each check in the pinning evaluator. The coverage gate works the same
+way: without the network tests, Data coverage falls to 51% and the build fails. Mention the
+trace in one sentence: idle is about 1% of a core, the worst moment is one frame. If asked
+about delivery, the `.ipa` is signed, verified and installed by one command.
 
 ### AI (3 min)
 
@@ -97,6 +99,11 @@ limits on what may reach an AI tool in a banking context. Then the honest part, 
 failure fully rather than three in passing: the tap-target fix that did nothing, with a test that
 passed, exposed only because I removed the fix and the test still passed. The lesson is the
 process, not the tool: a green test is not evidence until you have seen it go red.
+
+If there is time for a second, the most recent: the screenshot suite failed about one run in
+three, and it looked like lost keystrokes. The failure screenshot showed a rejected password.
+The helper picked a random plate, and when the plate was already taken it used it anyway.
+Reading the evidence first found in minutes what three theories would not have.
 
 ---
 
