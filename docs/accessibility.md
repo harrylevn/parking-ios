@@ -22,7 +22,7 @@ Contrast was then measured directly: the WCAG 2.x ratio for every palette colour
 the surface or fill it actually sits on.
 
 **Result:** 53 distinct findings on the first run. After the fixes below: none that fail,
-plus eight accepted exceptions, each with a written reason.
+plus nine accepted exceptions, each with a written reason.
 
 ## Findings and fixes
 

@@ -470,7 +470,8 @@ for the rehearsals as much as for the tests.
 
 - **Push or SSE instead of polling.** The backend supports neither. A 5-second poll across
   1000 clients at 20:00 is 200 req/s of pure overhead for data that changes 80 times total.
-- **A client-supplied idempotency key**, which would delete most of ADR-002.
+- **A client-supplied idempotency key** on the backend's main line. Built on 28/09 on a branch,
+  with the reviewer's agreement (ADR-007); production would also want the guard fix in D11.
 - **A time endpoint**, which would delete most of ADR-004.
 - **Certificate pinning** against a real host, with pins shipped in the build, backups from
   different keys, and monitored expiry. The mechanism is built and demonstrated locally; see
@@ -521,7 +522,7 @@ error.
 | **G** | Screen and information architecture designed by you, rationale in `docs/design.md` | met |
 | **G** | All 80 spaces legible on a 6.1-inch screen without pinch-zoom | met — 8×10 at 40×40pt cells, a 44×44pt target, no scrolling in portrait; measured off the running app by `BoardGeometryUITests`, not modelled. `BoardLayoutTests` once certified a layout the screen could not show (§5.2) |
 | **G** | Full state matrix: loading, empty, error, offline, insufficient balance, race lost, success | met (`GridState`, `ReservationOutcome`) |
-| D | HIG, dark mode, no hardcoded user-facing strings (String Catalog or equivalent) | kept — HIG and dark mode, and every user-facing string in `Localizable.xcstrings` (149 keys) plus `InfoPlist.xcstrings`. The compiler extracts them (`SWIFT_EMIT_LOC_STRINGS`); components that took a plain `String` now take `LocalizedStringKey` or receive `String(localized:)`. `scripts/check-strings.py` fails CI when code adds a string the catalog lacks, or a key lacks its translation — proved by adding one and watching it fail |
+| D | HIG, dark mode, no hardcoded user-facing strings (String Catalog or equivalent) | kept — HIG and dark mode, and every user-facing string in `Localizable.xcstrings` (150 keys) plus `InfoPlist.xcstrings`. The compiler extracts them (`SWIFT_EMIT_LOC_STRINGS`); components that took a plain `String` now take `LocalizedStringKey` or receive `String(localized:)`. `scripts/check-strings.py` fails CI when code adds a string the catalog lacks, or a key lacks its translation — proved by adding one and watching it fail |
 | D | Dynamic Type to accessibility sizes, VoiceOver labels, 44pt targets, contrast | kept — **44 × 44pt** on a 6.1-inch screen with the reserve bar permanent, measured off the running app by `BoardGeometryUITests`. Twice reported met when it was not; §5.2 has both misses. Board scrolls in landscape, below the reference size, and at accessibility sizes — never in 6.1-inch portrait. Audited on 29/09 with `performAccessibilityAudit` in light, dark and the largest text size: 53 findings, fixed or accepted with reasons in [`accessibility.md`](accessibility.md), and asserted by `AccessibilityAuditUITests` in CI. Not yet covered: a spoken VoiceOver pass by a person |
 | D | The 20:00 moment designed deliberately | kept — countdown phases, early pick with no early send, refetch at the opening, a count that says its age, stale picks dropped (§5.7; `OpeningMomentTests`) |
 
@@ -562,10 +563,10 @@ unfinished ones are scheduled rather than abandoned.
 | 6.2 | A written design for moving to push or SSE | §7 |
 | 6.3 | iPad **or** landscape layouts | both built |
 | 6.5 | A reusable Claude Code skill for a mobile task, demonstrated working | three, in `.claude/skills/` |
-| 6.2 | The k6 race rehearsal, and an Instruments trace under load | day 9 |
+| 6.2 | The k6 race rehearsal, and an Instruments trace under load | built — `make rehearse` (won, lost, killed, checked against the database, two rounds unattended), `make concurrent`, and `make trace` ([`performance.md`](performance.md)) |
 | 6.3 | A second locale populated | built — Vietnamese, every key; the board guardrail re-asserted in it by `BoardGeometryUITests`. Machine-drafted, not yet reviewed by a native speaker |
 | 6.1 | SPM modularisation, or a unidirectional architecture such as TCA | not pursued |
-| 6.4 | Signed `.ipa` on device, fastlane, snapshot tests, a coverage gate | not pursued |
+| 6.4 | Signed `.ipa` on device, fastlane, snapshot tests, a coverage gate | on device only — a signed development build on an iPhone 14 Pro Max (`make device`); no `.ipa` distribution, fastlane, snapshots or coverage gate |
 
 ### Known risk
 

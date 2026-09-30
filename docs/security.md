@@ -63,7 +63,7 @@ Two actions qualify, and the prompt names the amount in both:
 
 | Action | Prompt |
 |---|---|
-| Reserve a space (debits $10) | "Confirm your parking reservation" |
+| Reserve a space (debits $10) | "Confirm a $10 parking reservation" |
 | Deposit into the wallet (credits it) | "Confirm a $50 deposit" |
 
 The deposit was added after the week-1 checkpoint raised it. Gating only the reservation read

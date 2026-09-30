@@ -79,6 +79,8 @@ Two things worth knowing before trusting a run:
 
 ## Documentation
 
+- [`docs/final-checkpoint/`](docs/final-checkpoint/) — the final presentation: deck, speaker
+  notes, the live demo script with fallbacks, and prepared answers
 - [`docs/slides.md`](docs/slides.md) — Week-1 checkpoint deck, in the same format as the
   backend team's status update
 - [`docs/presentation.md`](docs/presentation.md) — the speaker notes behind that deck: status,
