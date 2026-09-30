@@ -37,6 +37,11 @@ targets:
       path: Sources/App/Info.plist
       properties:
         CFBundleDisplayName: Parking
+        # From the build settings, not literals. XcodeGen wrote "1" and "1.0" here, so every
+        # archive shipped as 1.0 (1) and the commit-count build number make archive passes
+        # never reached the app. Found by make ipa printing the version.
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
         # Required because this target supplies its own Info.plist, so nothing synthesises
         # a scene manifest. Without it the app is not scene-based: the window never resizes,
         # so rotating the device leaves a portrait-shaped app letterboxed on a landscape

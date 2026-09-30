@@ -9,7 +9,7 @@ DERIVED     := .build/DerivedData
 BACKEND     := $(or $(PARKING_BACKEND),$(CURDIR)/../parking-reservation)
 COMPOSE     := $(BACKEND)/backend/docker-compose.yml
 
-.PHONY: project build test uitest lint strings strings-check archive clean ci tls tls-pin pinning-demo rehearse trace concurrent device device-config \
+.PHONY: project build test uitest lint strings strings-check archive clean ci tls tls-pin pinning-demo rehearse trace concurrent device device-config ipa \
         backend backend-now backend-off backend-reset backend-health backend-hour backend-down loadtest help
 
 # Default target: list what there is to run.
@@ -39,6 +39,7 @@ help:
 	@echo '  make concurrent     two users confirm the same space at once: API and two simulators'
 	@echo '  make device         build, install and launch on the connected iPhone, against this Mac'
 	@echo '  make device-config  point Xcode device builds at this Mac (then press Run in Xcode)'
+	@echo '  make ipa            a signed development .ipa, verified and installed on the iPhone'
 	@echo '  make trace          Instruments trace on the board: idle, then a 150-user race'
 	@echo '  make backend-down   stop postgres and redis'
 	@echo '  make loadtest       k6 stress scenario, 1000 VUs'
@@ -161,6 +162,11 @@ concurrent: project
 # Needs Config/Local.xcconfig (see Config/Local.xcconfig.example) and the backend up.
 device: project
 	./scripts/device.sh
+
+# A development-signed .ipa from the Debug configuration, verified and installed on the
+# connected iPhone (NO_INSTALL=1 to skip). CI keeps the unsigned Release archive.
+ipa: project
+	./scripts/ipa.sh $(if $(NO_INSTALL),--no-install,)
 
 # Only writes Config/Device.xcconfig, for building and running from Xcode instead.
 device-config:
