@@ -142,7 +142,7 @@ Every result is checked against the database, not only the screen.
 
 <p>
 <img src="images/concurrent-won.png" width="260" alt="Space 12 is yours">
-<img src="images/concurrent-lost.png" width="260" alt="Someone was faster">
+<img src="images/concurrent-lost.png" width="260" alt="Someone was faster, in Vietnamese and dark mode">
 </p>
 
 - **API:** both requests released from a barrier, median 32 µs apart. **20 of 20** trials: one

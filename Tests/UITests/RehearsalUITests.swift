@@ -97,6 +97,10 @@ final class RehearsalUITests: XCTestCase {
         }
         let outcome = won.exists ? "won" : lost.exists ? "lost" : "none"
         print("CONCURRENT outcome=\(outcome) tapStarted=\(started) tapReturned=\(tapped)")
+        // Let the sheet and the refreshed counts settle first: captured the moment the title
+        // appeared, a slide shipped with FREE and TAKEN mid-transition. The timings above are
+        // already taken, so the pause measures nothing differently.
+        Thread.sleep(forTimeInterval: 1.5)
         capture("concurrent-\(outcome)")
         XCTAssertNotEqual(outcome, "none", "the app showed neither outcome")
         // XCTest closes the app when the test ends. Hold the result on screen first, so both
