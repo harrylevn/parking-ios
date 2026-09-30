@@ -9,7 +9,7 @@ DERIVED     := .build/DerivedData
 BACKEND     := $(or $(PARKING_BACKEND),$(CURDIR)/../parking-reservation)
 COMPOSE     := $(BACKEND)/backend/docker-compose.yml
 
-.PHONY: project build test uitest lint strings strings-check archive clean ci tls tls-pin pinning-demo rehearse trace concurrent device device-config ipa \
+.PHONY: project build test uitest snapshots-record lint strings strings-check archive clean ci tls tls-pin pinning-demo rehearse trace concurrent device device-config ipa \
         backend backend-now backend-off backend-reset backend-health backend-hour backend-down loadtest help
 
 # Default target: list what there is to run.
@@ -18,6 +18,7 @@ help:
 	@echo '  make build          build the app'
 	@echo '  make test           unit tests (no backend needed)'
 	@echo '  make uitest         UI tests (no backend needed)'
+	@echo '  make snapshots-record  re-record the view snapshots after a deliberate visual change'
 	@echo '  make lint           SwiftLint, must be zero violations'
 	@echo '  make strings        sync the String Catalog with the code'
 	@echo '  make strings-check  fail if the catalog is behind or a key is untranslated'
@@ -61,6 +62,12 @@ test: project
 		-derivedDataPath $(DERIVED) -only-testing:ParkingTests -enableCodeCoverage YES \
 		-resultBundlePath $(DERIVED)/unit-tests.xcresult test
 	python3 scripts/coverage-gate.py $(DERIVED)/unit-tests.xcresult
+
+# Re-record the view snapshots (Tests/UnitTests/__Snapshots__/). Review every changed image
+# in the diff before committing: a snapshot is only as good as the look it was taken of.
+snapshots-record: project
+	TEST_RUNNER_SNAPSHOT_RECORD=1 xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' \
+		-derivedDataPath $(DERIVED) -only-testing:ParkingTests/ViewSnapshotTests test
 
 uitest: project
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' \
