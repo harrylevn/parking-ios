@@ -197,7 +197,7 @@ the Default column as the expected answer.
 | # | Condition | Why |
 |---|---|---|
 | 1 | The repo exists on GitHub and this clone has a remote | Nothing to register a runner against otherwise. `git remote -v` shows it |
-| 2 | The repo is **private** | Guardrail 6.5, and a hard security requirement: see 6.2 |
+| 2 | The repo is **private** | Guardrail 6.5, and a hard security requirement: see 7.2 |
 | 3 | You have **admin** on the repo | Settings → Actions → Runners is admin-only |
 | 4 | `gh` is authenticated with `repo` scope | `gh auth status` — used to mint the registration token |
 
@@ -205,7 +205,7 @@ the Default column as the expected answer.
 
 | # | Condition | Why |
 |---|---|---|
-| 5 | macOS on arm64 | Runner package is `osx-arm64`. This machine: MacBook Pro M4, 16 GB, macOS 26.5.1 — the machine the brief calls "your Mac mini". 16 GB is tight; see 6.6 |
+| 5 | macOS on arm64 | Runner package is `osx-arm64`. This machine: MacBook Pro M4, 16 GB, macOS 26.5.1 — the machine the brief calls "your Mac mini". 16 GB is tight; see 7.6 |
 | 6 | Xcode installed, selected and licensed | `xcode-select -p`; `sudo xcodebuild -license accept` once |
 | 7 | An iOS simulator runtime is installed | The workflow runs UI tests on `iPhone 17 Pro`; `xcrun simctl list runtimes` |
 | 8 | `xcodegen`, `swiftlint` and `git` on the runner's PATH | The project is generated, not committed. Homebrew's `/opt/homebrew/bin` must be on PATH for the runner's shell, which does **not** inherit your interactive profile |
