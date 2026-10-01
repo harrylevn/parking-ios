@@ -132,7 +132,8 @@ for the same reason.
 **Is the accessibility claim real?**
 Apple's audit, in light, dark and the largest text size, runs in CI and fails on anything not
 explicitly accepted with a reason. It found real failures: outcome sheets unreadable at large
-sizes, every dark-mode button below contrast. **Not done: a spoken VoiceOver pass by a person.**
+sizes, every dark-mode button below contrast. Then a VoiceOver pass on my phone, by ear, found
+nothing to change. **Not done: testing with someone who uses VoiceOver every day.**
 (`accessibility.md`)
 
 **Is the Vietnamese right?**

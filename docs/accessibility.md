@@ -78,13 +78,16 @@ screen. The same kind of issue anywhere else still fails the test.
   exactly the sheets whose buttons it affects.
 - `BoardGeometryUITests` re-asserts the 6.1-inch guardrail in both locales.
 
+## A VoiceOver pass by a person
+
+The audit checks that labels exist and are readable, not that the order and wording make sense
+spoken aloud. On 01/10 I went through the app with VoiceOver on my iPhone, and found nothing
+that needed changing.
+
 ## What this does not cover
 
-- **A VoiceOver pass by a person.** The audit checks that labels exist and are readable, not
-  that the order and wording make sense spoken aloud in the 20:00 race. That needs someone
-  listening, on a device.
+- **A daily VoiceOver user.** The pass above was made by the developer. Someone who relies on
+  VoiceOver would judge, for example, whether eighty spaces are quick enough to move through.
 - **iPad and landscape.** The tours run in iPhone portrait only.
 - **Vietnamese at large sizes.** Longer strings at the largest size were not audited.
-- **Screenshots in `docs/screenshots/`** predate the colour changes, and need regenerating
-  with `make screenshots` against the backend.
-- **Real devices.** Everything here ran on the simulator.
+- **Real devices.** The audits ran on the simulator; only the VoiceOver pass was on a phone.

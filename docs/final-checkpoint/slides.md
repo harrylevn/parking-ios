@@ -237,7 +237,7 @@ changing in one poll, is a **25 ms** main-thread burst — one frame. No hangs.
 ## What changes at production scale
 
 - Push instead of polling · the backend fixes D10 and D11 · pins shipped in the build with
-  monitored expiry · pin-failure and outcome telemetry · a VoiceOver pass by a person.
+  monitored expiry · pin-failure and outcome telemetry · testing with a daily VoiceOver user.
 
 ---
 
@@ -246,8 +246,6 @@ changing in one poll, is a **25 ms** main-thread burst — one frame. No hangs.
 - A UI-test first tap is sometimes lost on the iOS 26.3 simulator — mostly on a board space,
   once on the login screen; the cause is not found. The board tap is re-tried only while the
   space is still unselected; it has not been seen on a real device.
-- No person has yet made a VoiceOver pass, in either language. (The Vietnamese was reviewed by
-  a native speaker on 01/10.)
 - The idempotency backend lives on a local branch: the account has no push access upstream.
 
 ---

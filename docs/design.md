@@ -531,7 +531,7 @@ error.
 | **G** | All 80 spaces legible on a 6.1-inch screen without pinch-zoom | met — 8×10 at 40×40pt cells, a 44×44pt target, no scrolling in portrait; measured off the running app by `BoardGeometryUITests`, not modelled. `BoardLayoutTests` once certified a layout the screen could not show (§5.2) |
 | **G** | Full state matrix: loading, empty, error, offline, insufficient balance, race lost, success | met (`GridState`, `ReservationOutcome`) |
 | D | HIG, dark mode, no hardcoded user-facing strings (String Catalog or equivalent) | kept — HIG and dark mode, and every user-facing string in `Localizable.xcstrings` (150 keys) plus `InfoPlist.xcstrings`. The compiler extracts them (`SWIFT_EMIT_LOC_STRINGS`); components that took a plain `String` now take `LocalizedStringKey` or receive `String(localized:)`. `scripts/check-strings.py` fails CI when code adds a string the catalog lacks, or a key lacks its translation — proved by adding one and watching it fail |
-| D | Dynamic Type to accessibility sizes, VoiceOver labels, 44pt targets, contrast | kept — **44 × 44pt** on a 6.1-inch screen with the reserve bar permanent, measured off the running app by `BoardGeometryUITests`. Twice reported met when it was not; §5.2 has both misses. Board scrolls in landscape, below the reference size, and at accessibility sizes — never in 6.1-inch portrait. Audited on 29/09 with `performAccessibilityAudit` in light, dark and the largest text size: 53 findings, fixed or accepted with reasons in [`accessibility.md`](accessibility.md), and asserted by `AccessibilityAuditUITests` in CI. Not yet covered: a spoken VoiceOver pass by a person |
+| D | Dynamic Type to accessibility sizes, VoiceOver labels, 44pt targets, contrast | kept — **44 × 44pt** on a 6.1-inch screen with the reserve bar permanent, measured off the running app by `BoardGeometryUITests`. Twice reported met when it was not; §5.2 has both misses. Board scrolls in landscape, below the reference size, and at accessibility sizes — never in 6.1-inch portrait. Audited on 29/09 with `performAccessibilityAudit` in light, dark and the largest text size: 53 findings, fixed or accepted with reasons in [`accessibility.md`](accessibility.md), and asserted by `AccessibilityAuditUITests` in CI. A VoiceOver pass by a person, on a phone, on 01/10: nothing needed changing |
 | D | The 20:00 moment designed deliberately | kept — countdown phases, early pick with no early send, refetch at the opening, a count that says its age, stale picks dropped (§5.7; `OpeningMomentTests`) |
 
 ### 6.4 Testing and delivery discipline
@@ -580,5 +580,4 @@ unfinished ones are scheduled rather than abandoned.
 
 None of the Defaults is now left neither kept nor replaced. Certificate pinning was, until
 29/09; it is built and demonstrated (ADR-006). The risks that remain are recorded where they
-arise: the unexplained loss of a first tap in UI tests (`docs/ai-workflow.md`), and a
-VoiceOver pass not yet made by a person (`docs/accessibility.md`).
+arise: the unexplained loss of a first tap in UI tests (`docs/ai-workflow.md`).
