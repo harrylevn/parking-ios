@@ -236,8 +236,10 @@ changing in one poll, is a **25 ms** main-thread burst — one frame. No hangs.
 
 ## What changes at production scale
 
-- Push instead of polling · the backend fixes D10 and D11 · pins shipped in the build with
-  monitored expiry · pin-failure and outcome telemetry · testing with a daily VoiceOver user.
+- Push instead of polling · a reminder a few minutes before the window opens (local first;
+  APNs only for changes) · the backend fixes D10 and D11 · pins shipped in the build with
+  monitored expiry · pin-failure and outcome telemetry, crashes through MetricKit (Firebase only
+  after a security review) · testing with a daily VoiceOver user.
 
 ---
 

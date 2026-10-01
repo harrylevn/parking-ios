@@ -71,6 +71,14 @@ changing in one poll, is a 25 ms burst. (ADR-004, `performance.md`)
 - **Observability:** outcome rates (won, lost, unknown) and pin failures as metrics, because a
   spike in "unknown" or in pin failures is the first sign of trouble.
 
+**Why not notify users when the window opens?**
+I would, a few minutes *before* it opens. The hour is fixed, so a local notification needs no
+server and no dependency; remote push via APNs only for changes such as a closed day or a full
+lot. Never at the opening itself: push delivery is best-effort, so whoever got it late would
+lose for a reason that is ours, not theirs. Firebase would be the first dependency and a third
+party seeing device identifiers, so in a bank it waits for the security review; MetricKit
+covers crashes without it. (`design.md` §7)
+
 **What would you do differently next time?**
 Measure the backend before designing, which I did, but also read its crash paths before
 building on them: D11 was only found by a rehearsal that killed it.

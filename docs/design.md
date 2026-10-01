@@ -478,6 +478,18 @@ for the rehearsals as much as for the tests.
 
 - **Push or SSE instead of polling.** The backend supports neither. A 5-second poll across
   1000 clients at 20:00 is 200 req/s of pure overhead for data that changes 80 times total.
+- **A reminder before the window opens.** The hour is fixed, so a local notification a few
+  minutes before it needs no server, no device token and no dependency, and fires offline; it
+  would be scheduled on server time (`ServerClock`), not the phone's. Remote push, through APNs
+  from the bank's own backend, only where the schedule can change: a moved hour, a closed day,
+  or "the lot is full" so people stop waiting. Three rules either way. Remind *before* the
+  opening, never at it: APNs and FCM deliver on a best-effort basis, so a notification saying
+  "open now" would turn delivery delay into a lost race. Nothing on the lock screen beyond the
+  time: no balance, no plate. And re-run the load test with everyone arriving at 19:55.
+- **Crash reporting.** MetricKit first: Apple's own crash and hang diagnostics, no SDK, nothing
+  sent to a third party. Firebase Crashlytics, and FCM with it, only once the bank's security
+  and data-protection review has approved Google as a processor of device identifiers; it
+  would also be the first dependency, and need its justification here.
 - **A client-supplied idempotency key** on the backend's main line. Built on 28/09 on a branch,
   with the reviewer's agreement (ADR-007); production would also want the guard fix in D11.
 - **A time endpoint**, which would delete most of ADR-004.
