@@ -119,7 +119,7 @@ Fallback: `images/race-won.png`, `images/race-lost.png`, `images/race-killed.png
 TRIALS=5 make concurrent
 ```
 
-1. **API:** two users released from a barrier microseconds apart, 20 trials; always one winner.
+1. **API:** two users released from a barrier microseconds apart, five trials; always one winner.
 2. **App:** both simulators sign in, select space 12, and tap Confirm together about 90 s after
    launch. Watch the two windows: one *"is yours"*, one *"someone was faster"*, and the loser's
    board shows the winner's plate on space 12. The script prints how far apart the taps

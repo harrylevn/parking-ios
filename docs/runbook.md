@@ -196,7 +196,7 @@ the Default column as the expected answer.
 
 | # | Condition | Why |
 |---|---|---|
-| 1 | The repo exists on GitHub and this clone has a remote | Nothing to register a runner against otherwise. `git remote -v` is currently empty |
+| 1 | The repo exists on GitHub and this clone has a remote | Nothing to register a runner against otherwise. `git remote -v` shows it |
 | 2 | The repo is **private** | Guardrail 6.5, and a hard security requirement: see 6.2 |
 | 3 | You have **admin** on the repo | Settings → Actions → Runners is admin-only |
 | 4 | `gh` is authenticated with `repo` scope | `gh auth status` — used to mint the registration token |
@@ -214,8 +214,9 @@ the Default column as the expected answer.
 | 10b | **The Mac does not idle-sleep** | A runner cannot survive idle sleep — jobs are suspended mid-build and the run eventually fails or hangs. This machine shipped at `sleep 1` on both battery and AC, i.e. asleep after one idle minute. Set with `sudo pmset -c sleep 0`, which changes the AC profile only and leaves battery behaviour alone. Verify with `pmset -g custom`. **Needs a real terminal** — `sudo` cannot prompt for a password without a TTY |
 | 11 | Installed as a launchd service (`svc.sh`) | Otherwise the runner dies with the terminal and CI stops silently between pushes |
 
-**Not required:** the backend. Unit and UI tests run against in-process fakes, and
-`ScreenshotTests` is skipped unless `SCREENSHOTS=1`. CI never needs Postgres, Redis or the API.
+**Not required:** the backend. Unit and UI tests run against in-process fakes, and the live
+suites (`ScreenshotTests`, `RehearsalUITests`, `PinningDemoUITests`) skip unless their scripts
+enable them. CI never needs Postgres, Redis or the API.
 
 **No secrets are needed.** `make archive` passes `CODE_SIGNING_ALLOWED=NO`, so there is no
 certificate, provisioning profile or App Store credential anywhere in the pipeline — which is
@@ -235,8 +236,8 @@ fine here and would not be fine everywhere:
   probation project that is an accepted risk. In production I would run it as a dedicated
   macOS user with no Keychain items and no SSH keys, or in an ephemeral VM.
 - **Job code is not sandboxed between runs.** The workspace persists, so a compromised
-  dependency could linger. There are no third-party dependencies in this project, which
-  narrows that surface to approximately zero.
+  dependency could linger. The app has no third-party dependencies, and CI never installs
+  fastlane's gems, which narrows that surface to approximately zero.
 
 ### 7.3 Registering it
 
