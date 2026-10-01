@@ -101,22 +101,19 @@ Data       HTTPClient · certificate pinning · Keychain · Face ID
 
 ---
 
-## The hardest problem: a reply that never arrives
+## The hardest problem: a lost reply now has an answer (ADR-007)
 
-**Before (week 1).** Idempotency keyed by the server on (user, date); a retry answered
-`DUPLICATE_REQUEST` for both *still running* and *already succeeded*. So the app never retried,
-matched its plate suffix on the board, and often had to say *"still checking"*.
+| When the reply is lost and… | Week 1: no key | Now: one Idempotency-Key per tap |
+|---|---|---|
+| the space was won | "Still checking", guessed from a plate suffix | The same key replays the win: "Space 12 is yours", with the receipt |
+| the race was lost | "Still checking" | The same key replays the loss: "Someone was faster", nothing charged |
+| the request never arrived | "Still checking", and no safe way to retry | Repeating the key runs it once: the real outcome |
+| it is still processing | "Still checking" | `IDEMPOTENCY_IN_PROGRESS`, then `GET /reservations/me` reads back what committed |
 
-**After (approved change, ADR-007).**
-
-1. One UUID per tap, sent as `Idempotency-Key`.
-2. A timeout repeats **the same key**: the server replays the first outcome instead of
-   running a second attempt, or answers `IDEMPOTENCY_IN_PROGRESS`.
-3. Still unresolved: `GET /reservations/me` reads back what committed.
-4. Only if the server is unreachable does the board get consulted, as before.
-
-Backend: Redis for the hot path, Postgres as the authority (the key is written in the same
-transaction as the $10). 23 integration tests; each database fallback mutation-checked.
+**Never charged twice:** a repeat is the same attempt, not a second one, and the key is written
+in the same transaction as the $10. Only when nobody can reach the server does the app still
+say "we don't know yet", and where the $10 stands. Backend: 23 integration tests, each database
+fallback mutation-checked.
 
 ---
 
