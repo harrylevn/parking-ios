@@ -90,13 +90,14 @@ Two things worth knowing before trusting a run:
   the defect that needs a decision, and the scope points to ratify
 - [`docs/plan.md`](docs/plan.md) — the ten working days, what each one has to deliver, and
   what gets cut first if a day is lost
-- [`docs/architecture.md`](docs/architecture.md) — the decision log: six ADRs, including the
-  reading that was corrected and the one item left as an open risk
-- [`docs/codebase.md`](docs/codebase.md) — what lives where, and the four files worth
+- [`docs/architecture.md`](docs/architecture.md) — the decision log: seven ADRs, including the
+  reading that was corrected and the idempotency change agreed with the reviewer
+- [`docs/codebase.md`](docs/codebase.md) — what lives where, and the five files worth
   reading first
 - [`docs/design.md`](docs/design.md) — the problem, the interface and why it looks like this,
   the defence of each deviation, and the Guardrail/Default compliance matrix
-- [`docs/security.md`](docs/security.md) — Keychain, re-authentication, threat note
+- [`docs/security.md`](docs/security.md) — Keychain, re-authentication, certificate pinning,
+  the secrets and logs check, threat note
 - [`docs/performance.md`](docs/performance.md) — the Instruments trace: idle under the poll and
   during a race, with the method and its caveats
 - [`docs/accessibility.md`](docs/accessibility.md) — the day-7 audit: method, findings, fixes,
@@ -105,4 +106,6 @@ Two things worth knowing before trusting a run:
   nothing
 - [`docs/defects.md`](docs/defects.md) — defects found and reported in writing: section A is
   errors in the brief itself, section B is backend defects worked around in the client
+- [`docs/ai-workflow.md`](docs/ai-workflow.md) — where AI helped, and where it failed, kept as
+  the work went
 - [`CLAUDE.md`](CLAUDE.md) — AI working agreement and quality gates
