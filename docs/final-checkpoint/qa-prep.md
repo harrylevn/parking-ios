@@ -136,8 +136,8 @@ sizes, every dark-mode button below contrast. **Not done: a spoken VoiceOver pas
 (`accessibility.md`)
 
 **Is the Vietnamese right?**
-Machine-drafted and consistent, not yet reviewed by a native speaker. A CI check fails if any key
-lacks a translation, so it cannot silently rot.
+Machine-drafted, then reviewed in the running app by a native speaker on 01/10. A CI check
+fails if any key lacks a translation, so it cannot silently rot.
 
 **Did you change the backend? The brief says it is read-only.**
 Once, with your agreement: the idempotency change, on a branch, with 23 integration tests. It is

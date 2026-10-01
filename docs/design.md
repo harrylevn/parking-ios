@@ -572,7 +572,7 @@ unfinished ones are scheduled rather than abandoned.
 | 6.3 | iPad **or** landscape layouts | both built |
 | 6.5 | A reusable Claude Code skill for a mobile task, demonstrated working | three, in `.claude/skills/` |
 | 6.2 | The k6 race rehearsal, and an Instruments trace under load | built — `make rehearse` (won, lost, killed, checked against the database, two rounds unattended), `make concurrent`, and `make trace` ([`performance.md`](performance.md)) |
-| 6.3 | A second locale populated | built — Vietnamese, every key; the board guardrail re-asserted in it by `BoardGeometryUITests`. Machine-drafted, not yet reviewed by a native speaker |
+| 6.3 | A second locale populated | built — Vietnamese, every key; the board guardrail re-asserted in it by `BoardGeometryUITests`. Machine-drafted, then reviewed in the app by a native speaker on 01/10 |
 | 6.1 | SPM modularisation, or a unidirectional architecture such as TCA | not pursued |
 | 6.4 | Signed `.ipa` on device, fastlane, snapshot tests, a coverage gate | all four built. A development-signed `.ipa`, verified and installed on an iPhone 14 Pro Max (`make ipa`); fastlane lanes over the Makefile, with `gym` building the same `.ipa` (`make lane LANE=ipa`); 20 snapshot references with no library; a coverage gate in `make test` — Domain 93%, Data 92%, view models 88% against floors of 90, 85 and 80, mutation-checked (without the network tests Data falls to 51% and the gate fails) |
 
@@ -580,6 +580,5 @@ unfinished ones are scheduled rather than abandoned.
 
 None of the Defaults is now left neither kept nor replaced. Certificate pinning was, until
 29/09; it is built and demonstrated (ADR-006). The risks that remain are recorded where they
-arise: the unexplained loss of a first tap in UI tests (`docs/ai-workflow.md`), Vietnamese not
-yet reviewed by a native speaker, and a VoiceOver pass not yet made by a person
-(`docs/accessibility.md`).
+arise: the unexplained loss of a first tap in UI tests (`docs/ai-workflow.md`), and a
+VoiceOver pass not yet made by a person (`docs/accessibility.md`).
