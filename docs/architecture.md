@@ -39,7 +39,7 @@ and asks in the Default column for a layered architecture, structured concurrenc
 *Three layers, one composition root.* Features (SwiftUI views and `@MainActor` view models),
 Domain (models, protocols, the reservation logic) and Data (HTTP, Keychain, biometrics).
 Domain imports nothing but Foundation. Every service is a protocol, injected from
-`AppEnvironment`, so every collaborator is fakeable and the 109 unit tests need no backend.
+`AppEnvironment`, so every collaborator is fakeable and the 147 unit tests need no backend.
 
 *No third-party dependencies.* `URLSession`, `Security`, `CryptoKit` and `LocalAuthentication` cover
 everything the app does.
@@ -95,8 +95,9 @@ of 1,000 win, a p95 of 248 ms, p99 of 368 ms.
 
 **Decision.** The client is pessimistic and says so when it does not know.
 
-- `ReservationOutcome` has four cases — `won`, `lost`, `rejected` and `unknown`. The UI renders
-  `unknown` as a designed state, not as an error. `unknown` carries an `Uncertainty` naming
+- `ReservationOutcome` has five cases — `won`, `lost`, `rejected`, `notConfirmed` (the user
+  declined re-authentication, so nothing was sent) and `unknown`. The UI renders `unknown` as a
+  designed state, not as an error. `unknown` carries an `Uncertainty` naming
   which of three situations holds — the space probably *is* ours, two plates share our suffix,
   or there is no evidence either way — because a single sheet for all three was reported as
   distressing at the week-1 checkpoint, and the flattening was most of the reason.
