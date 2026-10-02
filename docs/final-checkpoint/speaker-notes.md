@@ -80,8 +80,8 @@ Lead with the finding, not the feature list: when I inspected the release binary
 environment, with a Face ID bypass, was compiled into it. The code's own comment said
 otherwise. It is fixed and re-verified, and it is the reason I trust `strings` over comments.
 Then pinning: pin the key, not the certificate; the CA key as a backup, so the server can rotate
-without a release, which the demo showed. Then the two backend defects I could not fix and have
-reported: the committed JWT signing key, and the day-long lockout after a crash.
+without a release, which the demo showed. Then the backend defect I could not fix and have
+reported: the committed JWT signing key.
 
 ### Testing and CI (3 min)
 

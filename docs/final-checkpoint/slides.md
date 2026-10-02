@@ -180,8 +180,8 @@ database lock holds the request inside the server, then `SIGKILL`.
   app has none), the URL cache after a live session, CI.
 - **Found and fixed:** the UI-test environment, with an always-yes Face ID, was compiled into
   release builds. Now debug-only; the release binary re-inspected.
-- **Reported, not fixable here:** the backend commits its JWT signing key (D10); a crash
-  mid-reservation locks that user out for the day (D11).
+- **Reported, not fixable here:** the backend commits its JWT signing key (D10), so anyone
+  with the repository can mint a session for any user.
 
 ---
 
@@ -234,7 +234,7 @@ changing in one poll, is a **25 ms** main-thread burst — one frame. No hangs.
 ## What changes at production scale
 
 - Push instead of polling · a reminder a few minutes before the window opens (local first;
-  APNs only for changes) · the backend fixes D10 and D11 · pins shipped in the build with
+  APNs only for changes) · the backend fixes D10 · pins shipped in the build with
   monitored expiry · pin-failure and outcome telemetry, crashes through MetricKit (Firebase only
   after a security review) · testing with a daily VoiceOver user.
 
