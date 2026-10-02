@@ -69,6 +69,11 @@ extension XCTestCase {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         guard let scene = scenes.first else { return nil }
         let window = UIWindow(windowScene: scene)
+        // Light unless the view itself asks otherwise. A real window takes the simulator's
+        // appearance, which `ImageRenderer` never did: CI's simulator was left in dark mode and
+        // both window snapshots failed with nearly every pixel changed. A test's result must
+        // not depend on a setting the test does not own.
+        window.overrideUserInterfaceStyle = .light
         window.frame = CGRect(origin: .zero, size: size)
         let controller = UIHostingController(rootView: view)
         window.rootViewController = controller
