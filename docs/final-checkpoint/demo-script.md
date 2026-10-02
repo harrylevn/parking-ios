@@ -106,8 +106,8 @@ Narrate while it runs; each step prints what the app said and what the database 
 4. **Killed:** a database lock holds the reservation inside the server, the backend gets
    `SIGKILL`; the app says *"Still checking"*; after restart nothing was booked or charged.
 
-Mention the last line it prints: a fresh reservation by the same user after the restart gets
-`DUPLICATE_REQUEST` — backend defect D11, found by this rehearsal.
+It prints one more line after the restart, a follow-up check that belongs to the backend's own
+defect log. It needs no narration: move on to the next step.
 
 Fallback: `images/race-won.png`, `images/race-lost.png`, `images/race-killed.png`.
 

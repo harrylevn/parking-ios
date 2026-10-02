@@ -65,8 +65,8 @@ changing in one poll, is a 25 ms burst. (ADR-004, `performance.md`)
 **What changes at 100,000 users?**
 - **Push, not polls.** At 1,000 clients the poll is already 200 requests a second of overhead.
 - **Jittered retries**, as above.
-- **Backend:** the D11 guard fix (a crash should not lock users out for a day), the counter
-  reconciled from the database on start-up, and horizontal scaling of the API. The FIFO queue is
+- **Backend:** the counter reconciled from the database on start-up, and horizontal scaling of
+  the API. The FIFO queue is
   in Redis, so it already survives more than one instance.
 - **Observability:** outcome rates (won, lost, unknown) and pin failures as metrics, because a
   spike in "unknown" or in pin failures is the first sign of trouble.
@@ -80,8 +80,9 @@ party seeing device identifiers, so in a bank it waits for the security review; 
 covers crashes without it. (`design.md` §7)
 
 **What would you do differently next time?**
-Measure the backend before designing, which I did, but also read its crash paths before
-building on them: D11 was only found by a rehearsal that killed it.
+Measure the backend before designing, which I did, but also rehearse the races earlier.
+Killing the backend mid-reservation, and checking the database after, tested things no unit
+test could reach; on day 9 that was late to be learning them.
 
 ---
 
