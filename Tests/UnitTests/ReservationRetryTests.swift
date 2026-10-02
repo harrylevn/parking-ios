@@ -4,7 +4,7 @@ import XCTest
 /// Repeating a tap's Idempotency-Key, and reading back what committed (ADR-007).
 ///
 /// Each test names the behaviour that would be lost without it. The fakes answer the way the
-/// backend on `feature/reservation-idempotency` does: a repeat of a key gets the first
+/// idempotency backend (`harrylevn/parking-backend`) does: a repeat of a key gets the first
 /// request's outcome, or `IDEMPOTENCY_IN_PROGRESS` while it runs.
 final class ReservationRetryTests: XCTestCase {
 

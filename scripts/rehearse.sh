@@ -7,8 +7,9 @@
 #   ./rehearse.sh 2          two rounds back to back, as the plan requires
 #
 # It owns the backend while it runs: whatever is on :8080 is stopped, and the backend is
-# started from ../parking-reservation, which must be on feature/reservation-idempotency,
-# the branch the app is built against. Postgres and Redis are reset before every scenario.
+# started from ../parking-reservation, which must carry the idempotency change the app is
+# built against (harrylevn/parking-backend, master). Postgres and Redis are reset before
+# every scenario.
 # Accounts are synthetic, registered fresh each time as TEST-7xxx.
 
 set -euo pipefail
@@ -197,9 +198,11 @@ killed() {
   echo "    a fresh reservation by $PLATE after the restart: $after"
 }
 
-say "backend branch: $(git -C "$REPO" branch --show-current)"
-[[ "$(git -C "$REPO" branch --show-current)" == feature/reservation-idempotency ]] \
-  || fail "check out feature/reservation-idempotency in $REPO (or run the app with PARKING_IDEMPOTENCY_KEYS=0)"
+# Checked by the code on disk rather than a branch name: the file is what gets built, and the
+# change has lived on more than one branch.
+say "backend: $REPO ($(git -C "$REPO" branch --show-current))"
+[[ -f "$REPO/backend/src/main/java/com/parking/service/IdempotencyService.java" ]] \
+  || fail "$REPO has no idempotency support: clone harrylevn/parking-backend (or run the app with PARKING_IDEMPOTENCY_KEYS=0)"
 
 for round in $(seq 1 "$ROUNDS"); do
   say "round $round of $ROUNDS"

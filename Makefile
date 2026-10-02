@@ -142,7 +142,7 @@ clean:
 # --- Backend -----------------------------------------------------------------
 # Wrappers over scripts/backend-up.sh so the commands are findable from here
 # rather than only in docs/runbook.md. All of them need the backend cloned at
-# $(BACKEND), on its master branch — main holds a LICENSE and nothing else.
+# $(BACKEND), cloned from harrylevn/parking-backend (docs/runbook.md §2).
 
 # Certificate pinning (docs/security.md). `tls` terminates TLS on :8443 in front of the
 # backend and prints the pin; `pinning-demo` runs the app through it with the right pin and

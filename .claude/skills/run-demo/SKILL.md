@@ -13,10 +13,11 @@ reserves outside the window. This sequence prevents both.
 ## 1. Backend
 
 - Check that the backend is cloned at `${PARKING_BACKEND:-../parking-reservation}` and that
-  `git -C <that path> branch --show-current` is `feature/reservation-idempotency`, the branch
-  the app is built against (ADR-007). `master` also works, but only with
-  `PARKING_IDEMPOTENCY_KEYS=0` in the app's environment. If it is `main`, stop and tell the
-  user: `main` holds a LICENSE and nothing else.
+  `<that path>/backend/src/main/java/com/parking/service/IdempotencyService.java` exists: the
+  idempotency change the app is built against (ADR-007), from `harrylevn/parking-backend`.
+  Without it (the original `trint218` backend), the app needs `PARKING_IDEMPOTENCY_KEYS=0` in
+  its environment. Check `backend/src/main/resources/keys/private_key_pkcs8.pem` exists too;
+  if not, generate it as `docs/runbook.md` §2 says.
 - Run `make backend-health`.
   - **Up already:** you cannot tell which window hour it was started with. Ask the user.
   - **Down:** start `make backend-now` with `run_in_background` (it runs in the

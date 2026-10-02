@@ -243,7 +243,8 @@ changing in one poll, is a **25 ms** main-thread burst — one frame. No hangs.
 - A UI-test first tap is sometimes lost on the iOS 26.3 simulator — mostly on a board space,
   once on the login screen; the cause is not found. The board tap is re-tried only while the
   space is still unselected; it has not been seen on a real device.
-- The idempotency backend lives on a local branch: the account has no push access upstream.
+- The idempotency change is not upstream: the account has no push access, so it is published
+  separately as `harrylevn/parking-backend`.
 
 ---
 

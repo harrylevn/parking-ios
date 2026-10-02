@@ -6,9 +6,11 @@ Two different things are recorded here, and they go to different places:
   what they say. These are not backend defects and cannot be "worked around in the client";
   they need correcting at source.
 * **Section B — backend defects.** The backend is read-only per the brief's guardrail, with
-  one exception the reviewer agreed on 28/09: D4, idempotency, fixed on the backend branch
-  `feature/reservation-idempotency`, which is local and not pushed. Nothing else was patched. Each item records what was
-  observed, how to reproduce it, and how the client works around it.
+  one exception the reviewer agreed on 28/09: D4, idempotency, fixed in
+  [harrylevn/parking-backend](https://github.com/harrylevn/parking-backend), published
+  separately because the account cannot push upstream. Its signing keys and Terraform state
+  were removed from history before publishing (D10). Nothing else was patched. Each item
+  records what was observed, how to reproduce it, and how the client works around it.
 
 Backend under test: `trint218/parking-reservation`, branch `master`, commit `f27120c`.
 Verified 2026-09-21 against a local run (Spring Boot 3.3.4, Java 21, Postgres 15, Redis 7).

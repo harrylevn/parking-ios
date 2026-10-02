@@ -13,25 +13,32 @@ companies over 250 employees.
 
 ## 2. Backend
 
-Clone the **`master`** branch. A plain `git clone` lands on `main`, which contains a LICENSE
-and nothing else.
+Clone the backend the app is built against alongside the iOS repo. It is the original backend
+plus the key replay and `GET /reservations/me` (ADR-007), published separately because the
+GitHub account has no write access to `trint218/parking-reservation`:
 
 ```bash
-git clone -b master https://github.com/trint218/parking-reservation.git
+git clone https://github.com/harrylevn/parking-backend.git ../parking-reservation
 ```
 
-Then put **`PARKING_IDEMPOTENCY_KEYS=0`** in the scheme's environment variables. `master`
-ignores the `Idempotency-Key` header, so a repeat after a lost reply could be a genuine second
-attempt; the setting turns repeats off and the app falls back to reconciling against the board,
-as it did before ADR-007.
+Its JWT signing key was taken out of the repository before publishing (D10), so generate one
+before the first start:
 
-The backend the app is built against adds the key replay and `GET /reservations/me`. It lives
-on a branch, `feature/reservation-idempotency`, that exists **only in the author's local
-clone**: the GitHub account has no write access to `trint218/parking-reservation`, so it has
-not been pushed. On that clone, leave `PARKING_IDEMPOTENCY_KEYS` unset and repeats are on.
+```bash
+mkdir -p ../parking-reservation/backend/src/main/resources/keys
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
+  -out ../parking-reservation/backend/src/main/resources/keys/private_key_pkcs8.pem
+```
 
-Clone it alongside the iOS repo, or set `PARKING_BACKEND` to wherever it lives. Then, from
-the **iOS** repository root:
+Leave `PARKING_IDEMPOTENCY_KEYS` unset and repeats are on. Against the original
+`trint218/parking-reservation` (`master`; its `main` holds only a LICENSE), which ignores the
+`Idempotency-Key` header, put **`PARKING_IDEMPOTENCY_KEYS=0`** in the scheme's environment
+variables: there a repeat after a lost reply could be a genuine second attempt, so the setting
+turns repeats off and the app falls back to reconciling against the board, as it did before
+ADR-007.
+
+Set `PARKING_BACKEND` if the clone lives anywhere else. Then, from the **iOS** repository
+root:
 
 ```bash
 make backend                   # gate ON, window 20:00 — the demo configuration
@@ -451,8 +458,8 @@ ROUNDS=2 make rehearse
 ```
 
 Unattended, about four minutes a round. It takes over `:8080`: whatever backend is running is
-stopped, and the backend is started from `../parking-reservation`, which must be on
-`feature/reservation-idempotency`. Each round:
+stopped, and the backend is started from `../parking-reservation`, which must carry the
+idempotency change (§2); the script refuses to start without it. Each round:
 
 | Step | Drives | Checked against the database |
 |---|---|---|

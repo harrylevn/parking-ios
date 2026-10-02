@@ -151,5 +151,5 @@ fails if any key lacks a translation, so it cannot silently rot.
 
 **Did you change the backend? The brief says it is read-only.**
 Once, with your agreement: the idempotency change, on a branch, with 23 integration tests. It is
-on a local branch because the account has no push access upstream. Everything else found in the
-backend is reported, not patched. (`defects.md`)
+published as `harrylevn/parking-backend`, because the account has no push access upstream.
+Everything else found in the backend is reported, not patched. (`defects.md`)

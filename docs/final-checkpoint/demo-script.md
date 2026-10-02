@@ -15,7 +15,7 @@ Three terminals, all in the `parking-ios` repository.
 
 | Terminal | Command | Leave it |
 |---|---|---|
-| 1 | `make backend-now` (backend on `feature/reservation-idempotency`) | Running |
+| 1 | `make backend-now` (backend cloned from `harrylevn/parking-backend`) | Running |
 | 2 | `make tls` (the TLS proxy, for the pinning step) | Running |
 | 3 | Everything below | Yours |
 
