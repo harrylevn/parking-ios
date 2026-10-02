@@ -78,6 +78,17 @@ Still signed in as `TEST-6101`.
 | **Offline** | `./scripts/demo.sh freeze`, wait ~15 s, then `./scripts/demo.sh thaw` | The board hides rather than show spaces that may be wrong; recovers on its own |
 | **Unknown ×3** | `./scripts/demo.sh unknown probablyHeld` (then `ambiguous`, `noEvidence`) | Three different honest sheets, each saying where the $10 stands |
 
+**Right after the win, show the database's side**, read straight from Postgres rather than
+through the app's API:
+
+```bash
+./scripts/demo.sh db
+```
+
+Point at the top row: `TEST-6101`, the same space as the receipt, $10 paid, balance 90.00, and
+the tap's Idempotency-Key in **the same row as the payment**, which is what "written in the same
+transaction as the $10" means on the ADR-007 slide. The `for` column is tomorrow's date.
+
 Say for the unknowns: *with the idempotency change these are now rare, only when the server
 cannot be reached at all; so they are shown on fakes rather than by breaking the network.*
 
@@ -97,6 +108,9 @@ Terminal 1's backend stops when this starts: the rehearsal runs its own, with th
 opened on the current hour. That is expected; leave terminal 1 as it is.
 
 Narrate while it runs; each step prints what the app said and what the database confirms.
+Every `database:` line is a query against Postgres, not the app's API, and the script stops with
+`REHEARSAL FAILED` if the two disagree. (`demo.sh db` adds little here: the rehearsal empties the
+reservations before each scenario.)
 
 1. **Gate:** the backend is started with the window an hour ahead and a reservation must get
    `429 WINDOW_CLOSED`: proof the gate is on, not bypassed.
@@ -124,6 +138,8 @@ TRIALS=5 make concurrent
    launch. Watch the two windows: one *"is yours"*, one *"someone was faster"*, and the loser's
    board shows the winner's plate on space 12. The script prints how far apart the taps
    landed (1 ms on the last run) and that the database agrees.
+3. **The database itself:** `./scripts/demo.sh db 1`. One row for space 12, the winner's plate,
+   $10 paid. The loser has no row at all, and no $10 left their account.
 
 Fallback: `images/concurrent-won.png`, `images/concurrent-lost.png`.
 

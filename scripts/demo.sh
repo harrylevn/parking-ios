@@ -10,6 +10,7 @@
 #                                 probablyHeld | ambiguous | noEvidence
 #   ./demo.sh countdown           launch with the window an hour ahead: the countdown on screen
 #   ./demo.sh freeze | thaw       suspend or resume the backend: the offline state, then recovery
+#   ./demo.sh db [N]              the database's view: the last N reservations (default 5)
 #
 # Simulator: DEMO_SIM (default "iPhone 17 Pro", newest runtime). Password for every account
 # made here: demo-pass.
@@ -22,7 +23,11 @@ API="http://localhost:8080"
 PASSWORD="demo-pass"
 APP="$ROOT/.build/DerivedData/Build/Products/Debug-iphonesimulator/Parking.app"
 
-sql() { docker exec parking-postgres psql -U postgres -d parking -tAc "$1"; }
+# The database runs in UTC and the backend in this Mac's zone, so a bare CURRENT_DATE is the
+# wrong "today" for seven hours of the night here, and times read back seven hours out.
+LOCAL_TZ="$(readlink /etc/localtime | sed 's#.*/zoneinfo/##')"
+psql_local() { docker exec -e PGTZ="$LOCAL_TZ" parking-postgres psql -U postgres -d parking "$@"; }
+sql() { psql_local -tAc "$1"; }
 token_of() { python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])'; }
 backend_up() { curl -sf -o /dev/null "$API/actuator/health" || { echo "Backend is not up: make backend-now" >&2; exit 1; }; }
 window_hour() {
@@ -126,6 +131,20 @@ case "${1:-}" in
     xcrun simctl launch "$device" com.vncdc.parking -UITestMode -UITestSkipReauth -UITestOutcome "$2" > /dev/null
     echo "Fakes, outcome $2: sign in with any plate and password, pick a space, confirm."
     ;;
+  db)
+    # What the slides mean by "checked against the database", shown rather than asserted: read
+    # straight from Postgres, not through the API the app uses. The key is in the reservation's
+    # own row because it is written in the same transaction as the $10 (ADR-007).
+    limit="${2:-5}"
+    [[ "$limit" =~ ^[0-9]+$ ]] || { echo "usage: $0 db [N]" >&2; exit 2; }
+    psql_local -P footer=off -c \
+      "SELECT r.space_number AS space, u.license_plate AS plate, r.amount_paid AS paid,
+              u.balance, coalesce(left(r.idempotency_key::text, 8) || '…', 'none') AS key,
+              to_char(r.reservation_date, 'DD/MM') AS \"for\", to_char(r.created_at, 'HH24:MI:SS') AS made
+       FROM reservations r JOIN users u ON u.id = r.user_id
+       ORDER BY r.created_at DESC LIMIT $limit;"
+    echo "For tomorrow: $(sql "SELECT count(*) FROM reservations WHERE reservation_date = CURRENT_DATE + 1;") of 80 reserved, \$$(sql "SELECT coalesce(sum(amount_paid), 0) FROM reservations WHERE reservation_date = CURRENT_DATE + 1;") taken"
+    ;;
   *)
-    sed -n '2,15p' "$0"; exit 2 ;;
+    sed -n '2,16p' "$0"; exit 2 ;;
 esac
