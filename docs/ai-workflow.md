@@ -186,6 +186,16 @@ first failure was put down to the known simulator flake; the second, with the sa
 could not be. The helper now retries with a new plate and throws rather than return one it
 does not own. It was plausible code, and it failed quietly.
 
+**A snapshot test depended on a setting it did not own.** The two largest-text snapshots render
+in a real window, added because `ImageRenderer` drew a scroll view blank. A real window takes the
+simulator's appearance; `ImageRenderer` never did, and nobody, the AI included, asked what else
+the switch brought with it. It stayed green for two days, then failed three pushes in a row
+with 99.9% of pixels changed, on commits that touched only documentation. The simulator CI uses
+had been left in dark mode; how is not proven. The window is now pinned to light, the failure
+was reproduced on the dark simulator before the fix, and both appearances pass after it. The
+lesson is the one the clean-clone check was for: a test that passes only in the state of this
+machine is checking the machine.
+
 ## Tooling in the repository
 
 `.claude/` holds the Claude Code configuration, and it is committed deliberately. The
