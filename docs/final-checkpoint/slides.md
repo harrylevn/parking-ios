@@ -227,8 +227,6 @@ changing in one poll, is a **25 ms** main-thread burst — one frame. No hangs.
 - **Pessimistic reservation, not optimistic.** An optimistic cell would be wrong 92% of the time.
 - **Polling, not push.** The backend offers no push; a 5 s poll costs ~nothing idle and is
   matched to the server's cache. Push/SSE is the first production change (`design.md` §7).
-- **Four retries of one key, a second apart.** Recovers a lost reply without adding load in the
-  one minute the server can least afford it.
 - **Pin the server key with a CA backup.** Survives renewal and rotation without a release.
 
 ## What changes at production scale
